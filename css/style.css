@@ -864,3 +864,33 @@ button.btn--white { background-color: transparent; }
   .mapa__credito { order: 3; margin-top: -8px; }
   .mapa__nome { font-size: 5.4px; }
 }
+
+/* ===== Calendário: abas, filtros e edições anteriores ===== */
+.cal-tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--paper); justify-self: start; max-width: 100%; }
+.cal-tab { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; color: var(--navy); font: 700 0.98rem var(--body); cursor: pointer; white-space: nowrap; }
+.cal-tab:hover { background: rgba(36, 50, 90, 0.07); }
+.cal-tab[aria-pressed="true"] { background: var(--navy); color: #fff; box-shadow: 0 4px 12px rgba(24, 34, 63, 0.18); }
+.cal-tab__n { min-width: 26px; padding: 1px 7px; border-radius: 99px; background: rgba(36, 50, 90, 0.1); font-size: 0.8rem; text-align: center; }
+.cal-tab[aria-pressed="true"] .cal-tab__n { background: var(--red-btn); color: #fff; }
+.cal-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+.cal-filters .cal-search { grid-column: 1 / -1; }
+.cal-filters [hidden] { display: none; }
+@media (min-width: 900px) { .cal-filters { grid-template-columns: minmax(0, 1fr) 170px 170px auto; } .cal-filters .cal-search { grid-column: auto; } }
+.cal-select select {
+  width: 100%; min-height: 50px; padding: 0 40px 0 14px; border: 1px solid var(--rule); border-radius: 10px;
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2324325a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px;
+  font: 600 1rem var(--body); color: var(--navy); appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.cal-select select:focus { outline: 3px solid var(--red); outline-offset: 2px; background-color: #fff; }
+.cal-clear { min-height: 44px; padding: 0; border: 0; background: none; color: var(--red-btn); font: 700 0.95rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; justify-self: start; }
+.cal-tools .dist-filter[hidden] { display: none; }
+.cal-count { margin: -2px 0 0; color: var(--muted); font-size: 0.92rem; font-weight: 600; }
+.cal-count:empty { display: none; }
+.cal-more { display: flex; margin: 32px auto 0; min-height: 48px; border-color: var(--navy); color: var(--navy); background: #fff; }
+.cal-more:hover { background: var(--navy); color: #fff; }
+.cal-more[hidden] { display: none; }
+.race-card__thumb--logo { display: grid; place-items: center; padding: 10px; background: #fff; border: 1px solid var(--rule); }
+.race-card__thumb--logo img { object-fit: contain; object-position: center; }
+.race-card--past .race-card__thumb--date span { font-size: 0.72rem; }
+.tag-past { display: inline-block; vertical-align: middle; padding: 2px 8px; border-radius: 4px; background: #e6f2eb; color: #17613a; font: 700 0.72rem/1.4 var(--body); letter-spacing: 0.04em; text-transform: uppercase; }
+.race-card__obs { margin: 4px 0 0; color: var(--muted); font-size: 0.85rem; font-style: italic; }

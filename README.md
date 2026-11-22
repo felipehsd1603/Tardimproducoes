@@ -27,6 +27,7 @@ assets/fotos/       fotos dos eventos
 Abra `js/eventos.js`:
 
 - `PROXIMAS`: provas com data. Cada prova tem um `id` e ganha uma página própria (`prova.html?id=...`) com informações, valores, kit, programação, percurso, regulamento e resultados. Campos vazios não aparecem, e a página avisa o que ainda vai ser publicado. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
+- O **calendário** da página inicial tem duas abas: *Próximas* (de `PROXIMAS`) e *Edições anteriores* (todas as edições/etapas das corridas em `REALIZADAS`, da mais recente para a mais antiga), com busca e filtros por ano, mês e distância.
 - `REALIZADAS`: portfólio de trabalhos realizados, separados por área (eventos esportivos ou prevenção contra incêndio). Cada trabalho ganha uma página (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (trabalhos, eventos, serviços de prevenção, instituições atendidas e participantes) são calculados sozinhos.
 - `GALERIA`: fotos do carrossel "Na rua com a Tardim Produções" (foto, legenda e descrição). Coloque as fotos em `assets/fotos/`.
 - `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
