@@ -13,7 +13,8 @@ css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
 js/prova.js         monta a página de cada prova (com breadcrumb)
-js/portfolio.js     monta o portfólio e o estudo de caso
+js/portfolio.js     monta o portfólio e a página de cada trabalho
+js/ui.js            animações ao rolar, contagem dos números e menu
 js/demo.js          modo demonstração (só com ?demo=1)
 assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas

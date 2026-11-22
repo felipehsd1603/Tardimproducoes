@@ -286,6 +286,36 @@
   });
   if (window.DEMO) document.getElementById("ver-portfolio").href = "portfolio.html?demo=1";
 
+  // ---------- Faixa de confiança: números + clientes ----------
+  var trustStats = document.getElementById("trust-stats");
+  if (trustStats) {
+    var reais = (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).filter(function (r) { return !r.demo; });
+    var clientesUnicos = {};
+    reais.forEach(function (r) { if (r.cliente) clientesUnicos[r.cliente] = true; });
+    var nEventos = reais.filter(function (r) { return r.icone !== "incendio" && r.area !== "Prevenção contra incêndio"; }).length;
+    var fundacao = Number((typeof SITE !== "undefined" && SITE.fundacao) || 0);
+    var itens = [];
+    if (fundacao) itens.push([new Date().getFullYear() - fundacao, "anos de estrada"]);
+    itens.push([reais.length, "trabalhos no portfólio"]);
+    itens.push([nEventos, "eventos esportivos"]);
+    itens.push([Object.keys(clientesUnicos).length, "instituições e empresas atendidas"]);
+    itens.forEach(function (it) {
+      var d = el("div", "trust__stat");
+      var b = el("b", null, String(it[0]));
+      b.setAttribute("data-count", String(it[0]));
+      d.append(b, el("span", null, it[1]));
+      trustStats.append(d);
+    });
+
+    // Nomes dos clientes passando (usa a mesma lista do bloco Institucional)
+    var nomes = Array.prototype.map.call(document.querySelectorAll(".inst__clients li"), function (li) { return li.textContent; });
+    var track = document.getElementById("marquee");
+    [0, 1].forEach(function () {
+      nomes.forEach(function (n) { track.append(el("span", "marquee__item", n)); });
+    });
+    document.getElementById("trust-clientes").textContent = "Clientes atendidos: " + nomes.join(", ") + ".";
+  }
+
   // ---------- Contatos ----------
   if (typeof SITE !== "undefined") {
     // WhatsApp: todos os links com data-wa usam o número e a mensagem pronta
