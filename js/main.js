@@ -89,11 +89,7 @@
     var p = proximas[0];
     var dp = data(p.data);
     var dias = Math.round((dp - hoje) / 86400000);
-    var diaSemana = DIAS[dp.getDay()];
     document.getElementById("next-name").textContent = p.nome;
-    document.getElementById("next-when").textContent =
-      diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1) + ", " + dp.getDate() + " de " + MESES[dp.getMonth()] +
-      (p.hora ? " · largada " + p.hora : "");
     var nDias = document.getElementById("next-days");
     var lDias = document.getElementById("next-days-label");
     if (dias === 0) { nDias.textContent = "É hoje!"; lDias.textContent = ""; }
@@ -210,13 +206,16 @@
       if (s) spy.observe(s);
     });
 
-    // Botão flutuante some quando a seção de contato está na tela
+    // Botão flutuante: aparece depois da abertura e some na seção de contato
     var flutuante = document.querySelector(".wa-float");
+    var hero = document.querySelector(".hero");
     var contato = document.getElementById("contato");
-    if (flutuante && contato) {
-      new IntersectionObserver(function (en) {
-        flutuante.classList.toggle("is-hidden", en[0].isIntersecting);
-      }).observe(contato);
+    if (flutuante && hero && contato) {
+      var naAbertura = true, noContato = false;
+      var atualiza = function () { flutuante.classList.toggle("is-hidden", naAbertura || noContato); };
+      atualiza();
+      new IntersectionObserver(function (en) { naAbertura = en[0].isIntersecting; atualiza(); }, { threshold: 0.25 }).observe(hero);
+      new IntersectionObserver(function (en) { noContato = en[0].isIntersecting; atualiza(); }).observe(contato);
     }
   }
 
