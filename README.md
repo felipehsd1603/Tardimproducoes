@@ -40,6 +40,19 @@ Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Co
 
 No `index.html`, troque o número `?v=...` dos arquivos `css/style.css`, `js/eventos.js` e `js/main.js` (por exemplo, `?v=20261122-1` para `?v=20261122-2`). Assim o navegador dos visitantes baixa a versão nova em vez de usar a cópia antiga em cache.
 
+## Páginas geradas automaticamente
+
+O script `scripts/gerar-paginas.js` cria, a partir do `js/eventos.js`:
+
+- `prova-<id>.html`: uma página por prova, com a prévia certa (arte e título) ao compartilhar no WhatsApp;
+- `trabalho-<id>.html`: uma página por trabalho do portfólio, também com prévia própria;
+- `sitemap.xml` e `robots.txt`, para o Google;
+- `404.html`, a página de erro com a cara da Tardim Produções.
+
+Ele roda sozinho a cada publicação (workflow do GitHub Pages). Para ver localmente depois de editar o `eventos.js`, rode `node scripts/gerar-paginas.js`.
+
+Ao trocar para domínio próprio, mude `SITE.urlBase` no `js/eventos.js`.
+
 ## Ver localmente
 
 É só abrir o `index.html` no navegador.

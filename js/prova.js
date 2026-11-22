@@ -25,7 +25,7 @@
 
   var site = typeof SITE !== "undefined" ? SITE : {};
   var provas = typeof PROXIMAS !== "undefined" ? PROXIMAS : [];
-  var id = new URLSearchParams(location.search).get("id");
+  var id = window.PAGINA_ID || new URLSearchParams(location.search).get("id");
   var ev = provas.filter(function (p) { return p.id === id; })[0];
   var raiz = document.getElementById("prova");
   var demoQ = window.DEMO ? "?demo=1" : "";
@@ -260,7 +260,7 @@
     outras.forEach(function (p) {
       var pd = data(p.data);
       var a = el("a", "other-race");
-      a.href = "prova.html?id=" + encodeURIComponent(p.id) + (window.DEMO ? "&demo=1" : "");
+      a.href = window.DEMO ? "prova.html?id=" + encodeURIComponent(p.id) + "&demo=1" : "prova-" + p.id + ".html";
       if (p.poster) { var im = el("img"); im.src = p.poster; im.alt = ""; im.loading = "lazy"; a.append(im); }
       var t = el("div");
       t.append(el("span", null, pd.getDate() + " de " + MESES[pd.getMonth()] + " de " + pd.getFullYear()), el("strong", null, p.nome));
