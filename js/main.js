@@ -30,13 +30,18 @@
   proximas.forEach(function (ev) {
     var d = data(ev.data);
     var item = el("article", "race");
+    var detalhe = "prova.html?id=" + encodeURIComponent(ev.id || "");
 
     if (ev.poster) {
+      var pl = el("a", "race__poster-link");
+      pl.href = detalhe;
+      pl.setAttribute("aria-label", "Ver detalhes: " + ev.nome);
       var img = el("img", "race__poster");
       img.src = ev.poster;
       img.alt = "Arte de divulgação: " + ev.nome;
       img.loading = "lazy";
-      item.append(img);
+      pl.append(img);
+      item.append(pl);
     }
 
     var info = el("div", "race__info");
@@ -47,36 +52,30 @@
       el("b", null, d.getDate() + " de " + MESES[d.getMonth()]),
       " de " + d.getFullYear()
     );
-    info.append(quando, el("h3", null, ev.nome));
+    var titulo = el("h3");
+    var tl = el("a", null, ev.nome);
+    tl.href = detalhe;
+    titulo.append(tl);
+    info.append(quando, titulo);
 
+    var percursos = Array.isArray(ev.percursos) ? ev.percursos.join(" · ") : ev.percursos;
     var dl = el("dl", "race__facts");
-    [["Local", ev.local], ["Largada", ev.hora], ["Percursos", ev.percursos]].forEach(function (f) {
+    [["Local", ev.local], ["Largada", ev.hora], ["Percursos", percursos]].forEach(function (f) {
       if (!f[1]) return;
       dl.append(el("dt", null, f[0]), el("dd", null, f[1]));
     });
     info.append(dl);
-    if (ev.info) info.append(el("p", "race__note", ev.info));
+    if (ev.resumo) info.append(el("p", "race__note", ev.resumo));
 
     var acoes = el("div", "race__actions");
     var a = el("a", "btn btn--red", "Fazer inscrição");
     a.href = ev.inscricao || linkPadrao;
     a.target = "_blank";
     a.rel = "noopener";
+    var ver = el("a", "btn btn--line", "Ver detalhes da prova");
+    ver.href = detalhe;
 
-    // "Salvar na agenda" (Google Agenda)
-    var ymd = ev.data.replace(/-/g, "");
-    var fim = new Date(d.getTime() + 86400000);
-    var ymdFim = fim.getFullYear() + String(fim.getMonth() + 1).padStart(2, "0") + String(fim.getDate()).padStart(2, "0");
-    var cal = el("a", "btn btn--line", "Salvar na agenda");
-    cal.href = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
-      "&text=" + encodeURIComponent(ev.nome) +
-      "&dates=" + ymd + "/" + ymdFim +
-      "&location=" + encodeURIComponent(ev.local || "") +
-      "&details=" + encodeURIComponent((ev.hora ? "Largada " + ev.hora + ". " : "") + "Inscrições: " + (ev.inscricao || linkPadrao));
-    cal.target = "_blank";
-    cal.rel = "noopener";
-
-    acoes.append(a, cal);
+    acoes.append(a, ver);
     info.append(acoes);
 
     item.append(info);
@@ -89,7 +88,10 @@
     var p = proximas[0];
     var dp = data(p.data);
     var dias = Math.round((dp - hoje) / 86400000);
-    document.getElementById("next-name").textContent = p.nome;
+    var nomeEl = document.getElementById("next-name");
+    var nomeLink = el("a", null, p.nome);
+    nomeLink.href = "prova.html?id=" + encodeURIComponent(p.id || "");
+    nomeEl.append(nomeLink);
     var nDias = document.getElementById("next-days");
     var lDias = document.getElementById("next-days-label");
     if (dias === 0) { nDias.textContent = "É hoje!"; lDias.textContent = ""; }
