@@ -62,54 +62,56 @@
     item.setAttribute("data-dist", dist.join("|"));
     var detalhe = linkProva(ev.id);
 
-    if (ev.poster) {
-      var pl = el("a", "race__poster-link");
-      pl.href = detalhe;
-      pl.setAttribute("aria-label", "Ver detalhes: " + ev.nome);
-      var img = el("img", "race__poster");
-      img.src = ev.poster;
-      img.alt = "Arte de divulgação: " + ev.nome;
-      img.loading = "lazy";
-      pl.append(img);
-      item.append(pl);
-    }
+    item.className = "race race-card";
+    item.setAttribute("data-busca", (ev.nome + " " + (ev.local || "")).toLowerCase());
 
-    var info = el("div", "race__info");
-    var quando = el("p", "race__date");
-    var dia = DIAS[d.getDay()];
-    quando.append(
-      dia.charAt(0).toUpperCase() + dia.slice(1) + ", ",
-      el("b", null, d.getDate() + " de " + MESES[d.getMonth()]),
-      " de " + d.getFullYear()
-    );
-    if (ev.demo) quando.append(" ", el("span", "tag-demo", "Exemplo"));
-    var titulo = el("h4");
+    // Miniatura da arte (ou bloco com a data, se não houver arte)
+    var thumb = el("a", "race-card__thumb");
+    thumb.href = detalhe;
+    thumb.setAttribute("aria-label", "Ver detalhes: " + ev.nome);
+    thumb.tabIndex = -1;
+    if (ev.poster) {
+      var img = el("img");
+      img.src = ev.poster;
+      img.alt = "";
+      img.loading = "lazy";
+      thumb.append(img);
+    } else {
+      thumb.classList.add("race-card__thumb--date");
+      thumb.append(el("b", null, String(d.getDate())), el("span", null, MESES[d.getMonth()].slice(0, 3)));
+    }
+    item.append(thumb);
+
+    var corpo = el("div", "race-card__body");
+    var titulo = el("h4", "race-card__name");
     var tl = el("a", null, ev.nome);
     tl.href = detalhe;
     titulo.append(tl);
-    info.append(quando, titulo);
+    corpo.append(titulo);
 
-    var percursos = Array.isArray(ev.percursos) ? ev.percursos.join(" · ") : ev.percursos;
-    var dl = el("dl", "race__facts");
-    [["Local", ev.local], ["Largada", ev.hora], ["Percursos", percursos]].forEach(function (f) {
-      if (!f[1]) return;
-      dl.append(el("dt", null, f[0]), el("dd", null, f[1]));
-    });
-    info.append(dl);
-    if (ev.resumo) info.append(el("p", "race__note", ev.resumo));
+    var dia = DIAS[d.getDay()];
+    var quando = el("p", "race-card__date", dia.charAt(0).toUpperCase() + dia.slice(1, 3) + ", " +
+      d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear() + (ev.hora ? " · " + ev.hora : ""));
+    if (ev.demo) quando.append(" ", el("span", "tag-demo", "Exemplo"));
+    corpo.append(quando);
 
-    var acoes = el("div", "race__actions");
-    var a = el("a", "btn btn--red", "Fazer inscrição");
+    var percursos = Array.isArray(ev.percursos) ? ev.percursos : (ev.percursos ? [ev.percursos] : []);
+    if (percursos.length) corpo.append(el("p", "race-card__dist", percursos.join(" • ")));
+    if (ev.local) corpo.append(el("p", "race-card__place", ev.local));
+
+    var acoes = el("div", "race-card__actions");
+    var a = el("a", "btn btn--red btn--sm", "Inscreva-se ↗");
     a.href = ev.inscricao || linkPadrao;
     a.target = "_blank";
     a.rel = "noopener";
-    var ver = el("a", "btn btn--line", "Ver detalhes da prova");
+    a.setAttribute("aria-label", "Inscreva-se na " + ev.nome + " (abre em nova aba)");
+    var ver = el("a", "race-card__more", "Saber mais");
     ver.href = detalhe;
-
+    ver.setAttribute("aria-label", "Saber mais sobre a " + ev.nome);
     acoes.append(a, ver);
-    info.append(acoes);
+    corpo.append(acoes);
 
-    item.append(info);
+    item.append(corpo);
     grupos[chave].races.append(item);
   });
   ordemGrupos.forEach(function (k) { lista.append(grupos[k].el); });
@@ -119,39 +121,62 @@
   var chavesDist = Object.keys(todasDist).sort(function (a, b) {
     return parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", "."));
   });
-  if (proximas.length >= 3 && chavesDist.length >= 2) {
-    var filtro = el("div", "dist-filter");
-    filtro.setAttribute("role", "group");
-    filtro.setAttribute("aria-label", "Filtrar provas por distância");
-    filtro.append(el("span", "dist-filter__label", "Distância:"));
-    var aviso = el("p", "muted dist-filter__empty", "Nenhuma prova com essa distância no momento.");
-    aviso.hidden = true;
-    function aplica(valor) {
-      filtro.querySelectorAll("button").forEach(function (b) {
-        b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === valor));
+  // Busca + filtro por distância (aparecem com 3 ou mais provas)
+  if (proximas.length >= 3) {
+    var barra = el("div", "cal-tools");
+    var estado = { q: "", dist: "" };
+
+    var busca = el("label", "cal-search");
+    busca.append(el("span", "sr-only", "Buscar provas por nome ou local"));
+    var campo = el("input");
+    campo.type = "search";
+    campo.placeholder = "Buscar provas por nome ou local…";
+    campo.autocomplete = "off";
+    busca.append(campo);
+    barra.append(busca);
+
+    var filtro = null;
+    if (chavesDist.length >= 2) {
+      filtro = el("div", "dist-filter");
+      filtro.setAttribute("role", "group");
+      filtro.setAttribute("aria-label", "Filtrar provas por distância");
+      [""].concat(chavesDist).forEach(function (k) {
+        var b = el("button", "dist-chip", k === "" ? "Todas" : k + " km");
+        b.type = "button";
+        b.setAttribute("data-v", k);
+        b.addEventListener("click", function () { estado.dist = k; aplica(); });
+        filtro.append(b);
       });
+      barra.append(filtro);
+    }
+
+    var aviso = el("p", "muted dist-filter__empty", "Nenhuma prova encontrada com esses filtros.");
+    aviso.hidden = true;
+
+    function semAcento(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+    function aplica() {
+      if (filtro) filtro.querySelectorAll("button").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === estado.dist));
+      });
+      var termo = semAcento(estado.q.trim().toLowerCase());
       var visiveis = 0;
       lista.querySelectorAll(".month-group").forEach(function (g) {
         var algum = false;
         g.querySelectorAll(".race").forEach(function (r) {
-          var ok = valor === "" || r.getAttribute("data-dist").split("|").indexOf(valor) >= 0;
-          r.hidden = !ok;
-          if (ok) { algum = true; visiveis++; }
+          var okDist = estado.dist === "" || r.getAttribute("data-dist").split("|").indexOf(estado.dist) >= 0;
+          var okBusca = !termo || semAcento(r.getAttribute("data-busca")).indexOf(termo) >= 0;
+          r.hidden = !(okDist && okBusca);
+          if (!r.hidden) { algum = true; visiveis++; }
         });
         g.hidden = !algum;
       });
       aviso.hidden = visiveis > 0;
     }
-    [""].concat(chavesDist).forEach(function (k) {
-      var b = el("button", "dist-chip", k === "" ? "Todas" : k + " km");
-      b.type = "button";
-      b.setAttribute("data-v", k);
-      b.addEventListener("click", function () { aplica(k); });
-      filtro.append(b);
-    });
-    lista.parentNode.insertBefore(filtro, lista);
+    campo.addEventListener("input", function () { estado.q = campo.value; aplica(); });
+
+    lista.parentNode.insertBefore(barra, lista);
     lista.parentNode.insertBefore(aviso, lista.nextSibling);
-    aplica("");
+    aplica();
   }
 
   // ---------- Card "próxima prova" na abertura ----------
