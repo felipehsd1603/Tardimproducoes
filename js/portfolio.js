@@ -156,7 +156,10 @@
     var stats = el("div", "pf-stats");
     function stat(valor, rotulo) {
       var d = el("div", "pf-stat");
-      d.append(el("b", null, valor), el("span", null, rotulo));
+      var b = el("b", null, "+" + valor);
+      b.setAttribute("data-count", String(valor).replace(/\D/g, ""));
+      b.setAttribute("data-prefix", "+");
+      d.append(b, el("span", null, rotulo));
       stats.append(d);
     }
     var nCorridas = 0, cidades = {};

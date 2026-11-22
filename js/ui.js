@@ -57,6 +57,7 @@
       obsNum.unobserve(e.target);
       var el = e.target;
       var alvo = Number(el.getAttribute("data-count") || el.textContent.replace(/\D/g, ""));
+      var prefixo = el.getAttribute("data-prefix") || "";
       if (!alvo || reduz) return;
       var inicio = null;
       var dur = 1100;
@@ -64,9 +65,9 @@
         if (inicio === null) inicio = t;
         var p = Math.min(1, (t - inicio) / dur);
         var suave = 1 - Math.pow(1 - p, 3);
-        el.textContent = formata(alvo * suave);
+        el.textContent = prefixo + formata(alvo * suave);
         if (p < 1) requestAnimationFrame(passo);
-        else el.textContent = formata(alvo);
+        else el.textContent = prefixo + formata(alvo);
       }
       requestAnimationFrame(passo);
     });

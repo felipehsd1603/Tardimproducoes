@@ -306,8 +306,9 @@
     itens.push([Object.keys(clientesUnicos).length, "instituições e empresas atendidas"]);
     itens.forEach(function (it) {
       var d = el("div", "trust__stat");
-      var b = el("b", null, String(it[0]));
+      var b = el("b", null, "+" + it[0]);
       b.setAttribute("data-count", String(it[0]));
+      b.setAttribute("data-prefix", "+");
       d.append(b, el("span", null, it[1]));
       trustStats.append(d);
     });
