@@ -59,17 +59,32 @@
     return a;
   }
 
+  // Ícones para eventos sem logo
+  var ICONES = {
+    corrida: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 19 13v-2a5.1 5.1 0 0 1-4.4-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5 0-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>',
+    incendio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5.7s.7 2.6.7 4.7c0 2-1.3 3.6-3.3 3.6S7.4 7.4 7.4 5.4l.1-.4A11.4 11.4 0 0 0 4.7 12.5a7.3 7.3 0 0 0 14.6 0C19.3 7.3 16.8 3 13.5.7ZM11.7 19.5c-1.6 0-2.9-1.3-2.9-2.9 0-1.5 1-2.6 2.6-2.9 1.6-.3 3.3-1.1 4.2-2.4.4 1.2.6 2.5.6 3.8 0 2.4-2 4.4-4.5 4.4Z"/></svg>',
+  };
+  function iconeEvento(ev, cls) {
+    var d = el("div", cls + " icon--" + (ev.icone || "corrida"));
+    d.innerHTML = ICONES[ev.icone] || ICONES.corrida;
+    return d;
+  }
+
   // Card de evento (usado na lista e em "outros eventos")
   function card(ev) {
     var a = el("a", "case-card");
     a.href = linkEvento(ev.id);
     a.setAttribute("data-tipo", ev.tipo || "");
-    var capa = el("div", "case-card__cover" + (ev.capa ? "" : " case-card__cover--logo"));
-    var img = el("img");
-    img.src = ev.capa || ev.logo;
-    img.alt = "";
-    img.loading = "lazy";
-    capa.append(img);
+    var capa = el("div", "case-card__cover" + (ev.capa ? "" : (ev.logo ? " case-card__cover--logo" : " case-card__cover--icon")));
+    if (ev.capa || ev.logo) {
+      var img = el("img");
+      img.src = ev.capa || ev.logo;
+      img.alt = "";
+      img.loading = "lazy";
+      capa.append(img);
+    } else {
+      capa.append(iconeEvento(ev, "case-icon"));
+    }
     if (ev.capa && ev.logo) {
       var badge = el("img", "case-card__badge");
       badge.src = ev.logo; badge.alt = ""; badge.loading = "lazy";
@@ -110,15 +125,18 @@
     var tw = el("div", "wrap portfolio-hero");
     tw.append(breadcrumb([["Início", "index.html" + demoQ], ["Portfólio"]]));
     tw.append(el("h1", null, "Portfólio de eventos"));
-    tw.append(el("p", "event-hero__place", "Corridas e eventos esportivos produzidos pela Tardim Produções para conselhos profissionais, órgãos públicos, federações e empresas em Minas Gerais."));
+    tw.append(el("p", "event-hero__place", "Corridas, eventos esportivos e projetos de prevenção contra incêndio da Tardim Produções para tribunais, prefeituras, conselhos profissionais, federações e empresas em Minas Gerais."));
 
     // Números (só aparecem quando há dados)
     var clientes = {};
     var totalPart = 0;
+    var comNumero = 0;
     eventos.forEach(function (e) {
       if (e.cliente) clientes[e.cliente] = true;
-      if (e.participantes) totalPart += Number(e.participantes) || 0;
+      if (e.participantes) { totalPart += Number(e.participantes) || 0; comNumero++; }
     });
+    // Só mostra o total de participantes quando há números de pelo menos 3 eventos
+    if (comNumero < 3) totalPart = 0;
     var stats = el("div", "pf-stats");
     function stat(valor, rotulo) {
       var d = el("div", "pf-stat");
@@ -137,8 +155,13 @@
     var cw = el("div", "wrap");
 
     // Filtro por tipo de cliente
-    var tipos = [];
-    eventos.forEach(function (e) { if (e.tipo && tipos.indexOf(e.tipo) < 0) tipos.push(e.tipo); });
+    var contagem = {};
+    eventos.forEach(function (e) { if (e.tipo) contagem[e.tipo] = (contagem[e.tipo] || 0) + 1; });
+    var tipos = Object.keys(contagem).sort(function (a, b) {
+      if (a === "Outros") return 1;
+      if (b === "Outros") return -1;
+      return contagem[b] - contagem[a];
+    });
     var grade = el("div", "case-grid");
     if (tipos.length >= 2) {
       var filtro = el("div", "dist-filter pf-filter");
@@ -191,6 +214,7 @@
       ht.append(breadcrumb([["Início", "index.html" + demoQ], ["Portfólio", "portfolio.html" + demoQ], [ev.nome]]));
       var linha = el("div", "case-title");
       if (ev.logo) { var lg = el("img", "case-title__logo"); lg.src = ev.logo; lg.alt = "Logo " + ev.nome; linha.append(lg); }
+      else linha.append(iconeEvento(ev, "case-title__logo case-title__icon"));
       var tt = el("div");
       var sub = el("p", "event-hero__date", [ev.ano, ev.tipo].filter(Boolean).join(" · "));
       if (ev.demo) sub.append(" ", el("span", "tag-demo", "Exemplo"));

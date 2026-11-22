@@ -56,4 +56,4 @@ O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions →
 - Contratante e número de participantes de cada prova.
 - Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
 - Conferir o ano da Corrida da Guarda Civil Municipal.
-- Portfólio: cliente, número de participantes, serviços, fotos e depoimento de cada evento.
+- Portfólio: número de participantes, fotos e depoimento de cada evento; confirmar a Corrida da Administração (CRA-MG) e o ano da Corrida da Polícia Civil e da Corrida João César de Oliveira.
