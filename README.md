@@ -10,7 +10,9 @@ prova.html          página de cada prova (prova.html?id=...)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
-js/prova.js         monta a página de cada prova
+js/prova.js         monta a página de cada prova (com breadcrumb)
+js/demo.js          modo demonstração (só com ?demo=1)
+assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas
 assets/fotos/       fotos dos eventos
 ```
@@ -25,6 +27,10 @@ Abra `js/eventos.js`:
 - `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
 
 No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
+
+## Modo demonstração
+
+Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Corrida Kids de Natal, Corrida da Lagoa, Desafio 10K, Corrida Noturna e Meia Maratona da Serra). Serve para mostrar como o calendário por mês, o filtro de distância, o carrossel das artes e a página completa da prova ficam com várias provas. Há um aviso no topo e o selo "Exemplo" em cada prova fictícia, e a demonstração não é indexada pelo Google. O site normal, sem `?demo=1`, mostra só as provas reais.
 
 ## Depois de editar CSS ou JS
 

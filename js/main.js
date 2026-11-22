@@ -24,13 +24,43 @@
     .sort(function (a, b) { return a.data.localeCompare(b.data); });
 
   var linkPadrao = (typeof SITE !== "undefined" && SITE.linktree) || "#";
+  function linkProva(id) {
+    return "prova.html?id=" + encodeURIComponent(id || "") + (window.DEMO ? "&demo=1" : "");
+  }
+  // Distâncias de uma prova, em km (ex.: ["5", "10"]) a partir dos textos dos percursos
+  function distancias(ev) {
+    var lista = Array.isArray(ev.percursos) ? ev.percursos : [ev.percursos || ""];
+    var out = [];
+    lista.forEach(function (t) {
+      var m = String(t).match(/(\d+(?:[.,]\d+)?)\s*km/i);
+      if (m) out.push(m[1].replace(".", ","));
+    });
+    return out;
+  }
 
-  // ---------- Calendário ----------
+  // ---------- Calendário (agrupado por mês, com filtro por distância) ----------
   var lista = document.getElementById("proximas");
+  var grupos = {};
+  var ordemGrupos = [];
+  var todasDist = {};
+
   proximas.forEach(function (ev) {
     var d = data(ev.data);
+    var chave = d.getFullYear() + "-" + d.getMonth();
+    if (!grupos[chave]) {
+      var g = el("section", "month-group");
+      var nomeMes = MESES[d.getMonth()];
+      g.append(el("h3", "month-title", nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1) + " " + d.getFullYear()));
+      var r = el("div", "races");
+      g.append(r);
+      grupos[chave] = { el: g, races: r };
+      ordemGrupos.push(chave);
+    }
     var item = el("article", "race");
-    var detalhe = "prova.html?id=" + encodeURIComponent(ev.id || "");
+    var dist = distancias(ev);
+    dist.forEach(function (k) { todasDist[k] = true; });
+    item.setAttribute("data-dist", dist.join("|"));
+    var detalhe = linkProva(ev.id);
 
     if (ev.poster) {
       var pl = el("a", "race__poster-link");
@@ -52,7 +82,8 @@
       el("b", null, d.getDate() + " de " + MESES[d.getMonth()]),
       " de " + d.getFullYear()
     );
-    var titulo = el("h3");
+    if (ev.demo) quando.append(" ", el("span", "tag-demo", "Exemplo"));
+    var titulo = el("h4");
     var tl = el("a", null, ev.nome);
     tl.href = detalhe;
     titulo.append(tl);
@@ -79,9 +110,49 @@
     info.append(acoes);
 
     item.append(info);
-    lista.append(item);
+    grupos[chave].races.append(item);
   });
+  ordemGrupos.forEach(function (k) { lista.append(grupos[k].el); });
   document.getElementById("sem-provas").hidden = proximas.length > 0;
+
+  // Filtro por distância (aparece com 3+ provas e 2+ distâncias diferentes)
+  var chavesDist = Object.keys(todasDist).sort(function (a, b) {
+    return parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", "."));
+  });
+  if (proximas.length >= 3 && chavesDist.length >= 2) {
+    var filtro = el("div", "dist-filter");
+    filtro.setAttribute("role", "group");
+    filtro.setAttribute("aria-label", "Filtrar provas por distância");
+    filtro.append(el("span", "dist-filter__label", "Distância:"));
+    var aviso = el("p", "muted dist-filter__empty", "Nenhuma prova com essa distância no momento.");
+    aviso.hidden = true;
+    function aplica(valor) {
+      filtro.querySelectorAll("button").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === valor));
+      });
+      var visiveis = 0;
+      lista.querySelectorAll(".month-group").forEach(function (g) {
+        var algum = false;
+        g.querySelectorAll(".race").forEach(function (r) {
+          var ok = valor === "" || r.getAttribute("data-dist").split("|").indexOf(valor) >= 0;
+          r.hidden = !ok;
+          if (ok) { algum = true; visiveis++; }
+        });
+        g.hidden = !algum;
+      });
+      aviso.hidden = visiveis > 0;
+    }
+    [""].concat(chavesDist).forEach(function (k) {
+      var b = el("button", "dist-chip", k === "" ? "Todas" : k + " km");
+      b.type = "button";
+      b.setAttribute("data-v", k);
+      b.addEventListener("click", function () { aplica(k); });
+      filtro.append(b);
+    });
+    lista.parentNode.insertBefore(filtro, lista);
+    lista.parentNode.insertBefore(aviso, lista.nextSibling);
+    aplica("");
+  }
 
   // ---------- Card "próxima prova" na abertura ----------
   if (proximas.length) {
@@ -90,7 +161,7 @@
     var dias = Math.round((dp - hoje) / 86400000);
     var nomeEl = document.getElementById("next-name");
     var nomeLink = el("a", null, p.nome);
-    nomeLink.href = "prova.html?id=" + encodeURIComponent(p.id || "");
+    nomeLink.href = linkProva(p.id);
     nomeEl.append(nomeLink);
     var nDias = document.getElementById("next-days");
     var lDias = document.getElementById("next-days-label");
@@ -113,7 +184,7 @@
     comArte.forEach(function (ev) {
       var dd = data(ev.data);
       var a = el("a", "banner-slide");
-      a.href = "prova.html?id=" + encodeURIComponent(ev.id || "");
+      a.href = linkProva(ev.id);
       var im = el("img");
       im.src = ev.poster;
       im.alt = "Arte de divulgação: " + ev.nome;
