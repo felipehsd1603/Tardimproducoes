@@ -1,0 +1,16 @@
+{
+  "name": "Tardim Produções",
+  "short_name": "Tardim Produções",
+  "description": "Corridas de rua, eventos esportivos e prevenção contra incêndio em Belo Horizonte e Minas Gerais.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#24325a",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

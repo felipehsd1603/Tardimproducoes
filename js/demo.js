@@ -24,7 +24,7 @@
       local: "Parque Municipal, Centro, BH",
       percursos: ["Kids 1 km", "Kids 2 km", "Kids 3 km"],
       resumo: "Prova fictícia de demonstração: corrida para crianças de 4 a 14 anos, com medalha para todos os participantes.",
-      poster: "assets/demo/poster-kids.jpg",
+      poster: "assets/demo/poster-kids.webp",
       valores: [
         { nome: "1º lote", valor: "R$ 49,90", detalhe: "até 30/11", esgotado: true },
         { nome: "2º lote", valor: "R$ 59,90", detalhe: "até 15/12" },
@@ -43,7 +43,7 @@
       local: "Orla da Lagoa da Pampulha, BH",
       percursos: ["Caminhada 3 km", "Corrida 5 km", "Corrida 10 km"],
       resumo: "Prova fictícia de demonstração na orla da Pampulha, com arena, show e premiação por faixa etária.",
-      poster: "assets/demo/poster-lagoa.jpg",
+      poster: "assets/demo/poster-lagoa.webp",
       valores: [
         { nome: "1º lote", valor: "R$ 89,90", detalhe: "até 15/12", esgotado: true },
         { nome: "2º lote", valor: "R$ 99,90", detalhe: "até 05/01" },
@@ -63,7 +63,7 @@
       local: "Praça da Liberdade, Funcionários, BH",
       percursos: ["Corrida 10 km"],
       resumo: "Prova fictícia de demonstração: 10 km pelas ruas da região central, com percurso homologado.",
-      poster: "assets/demo/poster-10k.jpg",
+      poster: "assets/demo/poster-10k.webp",
       valores: [{ nome: "Lote único", valor: "R$ 119,90" }],
       kit: { itens: ["Camiseta técnica", "Número de peito com chip", "Medalha"], retirada: "" },
       programacao: [["05h30", "Abertura da arena"], ["06h30", "Largada"], ["08h30", "Premiação"]],
@@ -77,7 +77,7 @@
       local: "Mineirão, Pampulha, BH",
       percursos: ["Corrida 5 km", "Corrida 10 km"],
       resumo: "Prova fictícia de demonstração à noite, com kit iluminado e show na chegada.",
-      poster: "assets/demo/poster-noturna.jpg",
+      poster: "assets/demo/poster-noturna.webp",
       valores: [{ nome: "1º lote", valor: "R$ 109,90" }],
       kit: { itens: ["Camiseta", "Pulseira de LED", "Medalha"], retirada: "" },
       programacao: [],
@@ -91,7 +91,7 @@
       local: "Praça do Papa, Mangabeiras, BH",
       percursos: ["Corrida 10 km", "Meia maratona 21 km"],
       resumo: "Prova fictícia de demonstração com subidas e vista da cidade.",
-      poster: "assets/demo/poster-serra.jpg",
+      poster: "assets/demo/poster-serra.webp",
       valores: [],
       kit: { itens: [], retirada: "" },
       programacao: [],
@@ -108,8 +108,8 @@
         nome: "Run Corporativa 2026",
         ano: "2026",
         data: "2026-08-23",
-        logo: "assets/demo/logo-corporativa.jpg",
-        capa: "assets/demo/foto-largada.jpg",
+        logo: "assets/demo/logo-corporativa.webp",
+        capa: "assets/demo/foto-largada.webp",
         tipo: "Empresa",
         cliente: "Empresa Exemplo S.A. (fictícia)",
         local: "Lagoa da Pampulha, Belo Horizonte",
@@ -119,10 +119,10 @@
         descricao: "Caso fictício de demonstração: corrida aberta ao público com a marca da empresa, para celebrar seus 30 anos.",
         destaques: ["2.400 inscritos em 18 dias", "Arena com ativações de 6 marcas parceiras", "Ação social com doação de alimentos", "98% dos participantes avaliaram o evento como ótimo ou bom"],
         fotos: [
-          { foto: "assets/demo/foto-largada.jpg", legenda: "Largada (ilustrativa)" },
-          { foto: "assets/demo/foto-pelotao.jpg", legenda: "Pelotão (ilustrativa)" },
-          { foto: "assets/demo/foto-orla.jpg", legenda: "Percurso na orla (ilustrativa)" },
-          { foto: "assets/demo/foto-chegada.jpg", legenda: "Chegada (ilustrativa)" },
+          { foto: "assets/demo/foto-largada.webp", legenda: "Largada (ilustrativa)" },
+          { foto: "assets/demo/foto-pelotao.webp", legenda: "Pelotão (ilustrativa)" },
+          { foto: "assets/demo/foto-orla.webp", legenda: "Percurso na orla (ilustrativa)" },
+          { foto: "assets/demo/foto-chegada.webp", legenda: "Chegada (ilustrativa)" },
         ],
         depoimento: { texto: "A Tardim Produções cuidou de tudo, das licenças à premiação. Nossos colaboradores pedem a próxima edição.", autor: "Nome Fictício", cargo: "Gerente de Marketing, Empresa Exemplo S.A." },
       },
@@ -130,8 +130,8 @@
         id: "demo-10k-conselho",
         nome: "10K do Conselho 2025",
         ano: "2025",
-        logo: "assets/demo/logo-conselho.jpg",
-        capa: "assets/demo/foto-amanhecer.jpg",
+        logo: "assets/demo/logo-conselho.webp",
+        capa: "assets/demo/foto-amanhecer.webp",
         tipo: "Conselho profissional",
         cliente: "Conselho Regional Exemplo (fictício)",
         local: "Praça da Liberdade, Belo Horizonte",
@@ -141,8 +141,8 @@
         descricao: "Caso fictício de demonstração: corrida anual do conselho, contratada por licitação.",
         destaques: ["Contratação por processo licitatório", "Inscrição com 50% de desconto para profissionais registrados", "Percurso homologado"],
         fotos: [
-          { foto: "assets/demo/foto-amanhecer.jpg", legenda: "Largada ao amanhecer (ilustrativa)" },
-          { foto: "assets/demo/foto-kids.jpg", legenda: "Arena (ilustrativa)" },
+          { foto: "assets/demo/foto-amanhecer.webp", legenda: "Largada ao amanhecer (ilustrativa)" },
+          { foto: "assets/demo/foto-kids.webp", legenda: "Arena (ilustrativa)" },
         ],
         depoimento: { texto: "Equipe organizada e documentação impecável, o que fez toda a diferença no processo de contratação.", autor: "Nome Fictício", cargo: "Assessoria de Comunicação, Conselho Regional Exemplo" },
       },
@@ -150,9 +150,9 @@
   }
 
   if (typeof GALERIA !== "undefined") {
-    [["foto-largada.jpg", "Largada (foto ilustrativa)"], ["foto-pelotao.jpg", "Pelotão (foto ilustrativa)"],
-      ["foto-chegada.jpg", "Chegada (foto ilustrativa)"], ["foto-orla.jpg", "Orla (foto ilustrativa)"],
-      ["foto-kids.jpg", "Corrida kids (foto ilustrativa)"], ["foto-amanhecer.jpg", "Amanhecer (foto ilustrativa)"]]
+    [["foto-largada.webp", "Largada (foto ilustrativa)"], ["foto-pelotao.webp", "Pelotão (foto ilustrativa)"],
+      ["foto-chegada.webp", "Chegada (foto ilustrativa)"], ["foto-orla.webp", "Orla (foto ilustrativa)"],
+      ["foto-kids.webp", "Corrida kids (foto ilustrativa)"], ["foto-amanhecer.webp", "Amanhecer (foto ilustrativa)"]]
       .forEach(function (f) { GALERIA.push({ foto: "assets/demo/" + f[0], legenda: f[1], alt: f[1] }); });
   }
 

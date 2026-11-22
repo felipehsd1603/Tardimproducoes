@@ -4,7 +4,7 @@
  * ============================================================
  *
  *  PROXIMAS: corridas com data marcada. Cada prova ganha uma
- *  página própria (prova.html?id=...). Quando a data passar, a
+ *  página própria (prova-<id>.html, gerada por scripts/gerar-paginas.js). Quando a data passar, a
  *  prova some sozinha do calendário.
  *
  *  Campos principais:
@@ -30,7 +30,7 @@
  *    realizacao  Quem realiza/contrata a prova
  *
  *  REALIZADAS: portfólio de trabalhos realizados (eventos e serviços).
- *  Cada trabalho ganha uma página própria (evento.html?id=...). Campos
+ *  Cada trabalho ganha uma página própria (trabalho-<id>.html). Campos
  *  vazios não aparecem.
  *    area         "Eventos esportivos" (padrão) ou "Prevenção contra incêndio"
  *                 (com icone: "incendio" a área já vira prevenção)
@@ -55,6 +55,9 @@
  */
 
 const SITE = {
+  // Endereço do site. Ao trocar para domínio próprio, mude aqui
+  // (ex.: "https://tardimproducoes.com.br/").
+  urlBase: "https://felipehsd1603.github.io/TesteFelipe/",
   email: "tardimproducoes.corridas@gmail.com",
   instagram: "https://www.instagram.com/tardimproducoes/",
   linktree: "https://linktr.ee/Tardim",
@@ -80,7 +83,7 @@ const PROXIMAS = [
     local: "Praça da Assembleia (Praça Carlos Chagas), Santo Agostinho, BH",
     percursos: ["Corrida de rua"],
     resumo: "A corrida do Conselho Regional de Engenharia e Agronomia de Minas Gerais volta às ruas de BH com kit completo e brindes dos patrocinadores.",
-    poster: "assets/corridas/poster-crea-mg.jpg",
+    poster: "assets/corridas/poster-crea-mg.webp",
     inscricao: "",
     valores: [
       { nome: "Inscrição", valor: "R$ 50,00" },
@@ -109,7 +112,7 @@ const PROXIMAS = [
     local: "Belo Horizonte, MG",
     percursos: ["Caminhada 3 km", "Corrida 5 km", "Corrida 10 km"],
     resumo: "A 15ª edição do Circuito do Fogo, em Belo Horizonte. Novidade desta edição: o Road Runner Challenge.",
-    poster: "assets/corridas/poster-circuito-do-fogo.jpg",
+    poster: "assets/corridas/poster-circuito-do-fogo.webp",
     inscricao: "",
     valores: [],
     kit: { itens: [], retirada: "" },
@@ -129,8 +132,8 @@ const REALIZADAS = [
     nome: "Hulk Run 2026",
     ano: "2026",
     data: "2026-09-27",
-    logo: "assets/corridas/hulk-run.png",
-    capa: "assets/fotos/hulk-run-largada.jpg",
+    logo: "assets/corridas/hulk-run.webp",
+    capa: "assets/fotos/hulk-run-largada.webp",
     tipo: "Evento de marca",
     cliente: "",
     local: "Praça da Pampulha, Belo Horizonte",
@@ -145,19 +148,19 @@ const REALIZADAS = [
       "Programação completa: abertura da arena às 6h, largadas, premiação e show até as 13h",
     ],
     fotos: [
-      { foto: "assets/fotos/hulk-run-largada.jpg", legenda: "Largada" },
-      { foto: "assets/fotos/hulk-run-2.jpg", legenda: "Percurso na Pampulha" },
-      { foto: "assets/fotos/hulk-run-3.jpg", legenda: "Orla da Pampulha" },
-      { foto: "assets/fotos/hulk-run-1.jpg", legenda: "Percurso" },
-      { foto: "assets/fotos/hulk-run-medalha.jpg", legenda: "Medalha" },
+      { foto: "assets/fotos/hulk-run-largada.webp", legenda: "Largada" },
+      { foto: "assets/fotos/hulk-run-2.webp", legenda: "Percurso na Pampulha" },
+      { foto: "assets/fotos/hulk-run-3.webp", legenda: "Orla da Pampulha" },
+      { foto: "assets/fotos/hulk-run-1.webp", legenda: "Percurso" },
+      { foto: "assets/fotos/hulk-run-medalha.webp", legenda: "Medalha" },
     ],
   },
   {
     id: "crefito4-run-2026",
     nome: "Crefito-4 Run 2026",
     ano: "2026",
-    logo: "assets/corridas/crefito4-run.png",
-    capa: "assets/fotos/crefito4-run-bh.jpg",
+    logo: "assets/corridas/crefito4-run.webp",
+    capa: "assets/fotos/crefito4-run-bh.webp",
     tipo: "Conselho profissional",
     cliente: "Crefito-4 (Conselho Regional de Fisioterapia e Terapia Ocupacional de MG)",
     local: "Etapas em cidades de Minas Gerais",
@@ -169,14 +172,14 @@ const REALIZADAS = [
       "Etapas em cidades como Contagem (cerca de 2 mil atletas), Belo Horizonte e Governador Valadares",
       "Inscrição gratuita para fisioterapeutas e terapeutas ocupacionais inscritos no Crefito-4",
     ],
-    fotos: [{ foto: "assets/fotos/crefito4-run-bh.jpg", legenda: "Etapa Belo Horizonte" }],
+    fotos: [{ foto: "assets/fotos/crefito4-run-bh.webp", legenda: "Etapa Belo Horizonte" }],
   },
   {
     id: "corrida-fhemig-2026",
     nome: "Corrida FHEMIG 2026",
     ano: "2026",
     data: "2026-11-14",
-    logo: "assets/corridas/corrida-fhemig.png",
+    logo: "assets/corridas/corrida-fhemig.webp",
     tipo: "Órgão público",
     cliente: "FHEMIG (Fundação Hospitalar do Estado de Minas Gerais)",
     local: "Belo Horizonte",
@@ -225,7 +228,7 @@ const REALIZADAS = [
     nome: "Campeonato Mineiro de Corrida de Rua · 3ª etapa",
     ano: "2025",
     data: "2025-09-28",
-    logo: "assets/corridas/campeonato-mineiro.png",
+    logo: "assets/corridas/campeonato-mineiro.webp",
     tipo: "Federação esportiva",
     cliente: "FMA (Federação Mineira de Atletismo)",
     local: "Av. Juscelino Kubitschek, Coração Eucarístico, Belo Horizonte",
@@ -238,7 +241,7 @@ const REALIZADAS = [
     nome: "1ª Corrida da Guarda Civil Municipal de BH",
     ano: "2025",
     data: "2025-08-31",
-    logo: "assets/corridas/guarda-civil-bh.png",
+    logo: "assets/corridas/guarda-civil-bh.webp",
     tipo: "Órgão público",
     cliente: "Grêmio Recreativo da Guarda Civil Municipal de BH, em parceria com a Prefeitura de Belo Horizonte",
     local: "Av. dos Andradas, Belo Horizonte",
@@ -263,7 +266,7 @@ const REALIZADAS = [
     id: "meia-maratona-liberdade-2025",
     nome: "2ª Meia Maratona da Liberdade",
     ano: "2025",
-    logo: "assets/corridas/meia-maratona-liberdade.png",
+    logo: "assets/corridas/meia-maratona-liberdade.webp",
     tipo: "Empresa",
     cliente: "Rádio Liberdade FM 92,9",
     local: "Praça do Encontro, Betim",
@@ -275,7 +278,7 @@ const REALIZADAS = [
     id: "corrida-administracao-2025",
     nome: "Corrida da Administração 2025",
     ano: "2025",
-    logo: "assets/corridas/corrida-administracao.png",
+    logo: "assets/corridas/corrida-administracao.webp",
     tipo: "Conselho profissional",
     cliente: "CRA-MG (Conselho Regional de Administração de MG)",
   },
@@ -284,7 +287,7 @@ const REALIZADAS = [
     nome: "Circuito do Fogo · 13ª e 14ª edições",
     ano: "2025 e 2026",
     icone: "corrida",
-    capa: "assets/corridas/poster-circuito-do-fogo.jpg",
+    capa: "assets/corridas/poster-circuito-do-fogo.webp",
     tipo: "Evento próprio",
     cliente: "",
     local: "Pampulha, Belo Horizonte",
@@ -370,10 +373,10 @@ const REALIZADAS = [
  *    alt      Descrição da foto para leitores de tela
  */
 const GALERIA = [
-  { foto: "assets/fotos/hulk-run-largada.jpg", legenda: "Largada da Hulk Run 2026 · Pampulha", alt: "Corredores passando pelo pórtico de largada da Hulk Run" },
-  { foto: "assets/fotos/hulk-run-2.jpg", legenda: "Hulk Run 2026", alt: "Corredor fazendo joinha durante a Hulk Run" },
-  { foto: "assets/fotos/crefito4-run-bh.jpg", legenda: "Crefito-4 Run 2026 · Etapa Belo Horizonte", alt: "Corredora sorrindo na arena da Crefito-4 Run" },
-  { foto: "assets/fotos/hulk-run-medalha.jpg", legenda: "Medalha da Hulk Run 2026", alt: "Medalha da Hulk Run 2026 com dados de corrida" },
-  { foto: "assets/fotos/hulk-run-3.jpg", legenda: "Hulk Run 2026 · Orla da Pampulha", alt: "Corredor sorrindo na orla da Pampulha" },
-  { foto: "assets/fotos/hulk-run-1.jpg", legenda: "Hulk Run 2026", alt: "Corredor durante a Hulk Run" },
+  { foto: "assets/fotos/hulk-run-largada.webp", legenda: "Largada da Hulk Run 2026 · Pampulha", alt: "Corredores passando pelo pórtico de largada da Hulk Run" },
+  { foto: "assets/fotos/hulk-run-2.webp", legenda: "Hulk Run 2026", alt: "Corredor fazendo joinha durante a Hulk Run" },
+  { foto: "assets/fotos/crefito4-run-bh.webp", legenda: "Crefito-4 Run 2026 · Etapa Belo Horizonte", alt: "Corredora sorrindo na arena da Crefito-4 Run" },
+  { foto: "assets/fotos/hulk-run-medalha.webp", legenda: "Medalha da Hulk Run 2026", alt: "Medalha da Hulk Run 2026 com dados de corrida" },
+  { foto: "assets/fotos/hulk-run-3.webp", legenda: "Hulk Run 2026 · Orla da Pampulha", alt: "Corredor sorrindo na orla da Pampulha" },
+  { foto: "assets/fotos/hulk-run-1.webp", legenda: "Hulk Run 2026", alt: "Corredor durante a Hulk Run" },
 ];

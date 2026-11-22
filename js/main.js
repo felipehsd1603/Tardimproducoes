@@ -25,7 +25,7 @@
 
   var linkPadrao = (typeof SITE !== "undefined" && SITE.linktree) || "#";
   function linkProva(id) {
-    return "prova.html?id=" + encodeURIComponent(id || "") + (window.DEMO ? "&demo=1" : "");
+    return window.DEMO ? "prova.html?id=" + encodeURIComponent(id || "") + "&demo=1" : "prova-" + id + ".html";
   }
   // Distâncias de uma prova, em km (ex.: ["5", "10"]) a partir dos textos dos percursos
   function distancias(ev) {
@@ -268,7 +268,7 @@
   (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).filter(function (r) { return r.logo; }).forEach(function (r) {
     var li = el("li");
     var a = el("a", "logos__link");
-    a.href = "evento.html?id=" + encodeURIComponent(r.id || "") + (window.DEMO ? "&demo=1" : "");
+    a.href = window.DEMO ? "evento.html?id=" + encodeURIComponent(r.id || "") + "&demo=1" : "trabalho-" + r.id + ".html";
     var img = el("img");
     img.src = r.logo;
     img.alt = "";

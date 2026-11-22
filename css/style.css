@@ -757,3 +757,9 @@ button.btn--white { background-color: transparent; }
 }
 .inst__legal { margin: 20px 0 0; font-size: 0.88rem; color: var(--muted); }
 .inst > div:last-child > .inst__sub:first-child { margin-top: 0.3em; }
+
+/* Página 404 */
+.notfound { min-height: 70vh; display: flex; align-items: center; padding: 80px 0; background: var(--paper); }
+.notfound__code { margin: 0; font: italic 800 clamp(5rem, 22vw, 9rem)/0.9 var(--cond); color: var(--red-btn); }
+.notfound h1 { font-size: clamp(2.2rem, 7vw, 3.6rem); margin: 8px 0 12px; }
+.notfound .actions { margin-top: 24px; }

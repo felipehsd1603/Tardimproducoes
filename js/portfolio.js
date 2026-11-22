@@ -22,7 +22,7 @@
   var eventos = typeof REALIZADAS !== "undefined" ? REALIZADAS : [];
   var demo = window.DEMO ? "&demo=1" : "";
   var demoQ = window.DEMO ? "?demo=1" : "";
-  function linkEvento(id) { return "evento.html?id=" + encodeURIComponent(id || "") + demo; }
+  function linkEvento(id) { return window.DEMO ? "evento.html?id=" + encodeURIComponent(id || "") + demo : "trabalho-" + id + ".html"; }
   function wa(msg) { return "https://wa.me/" + (site.whatsapp || "") + "?text=" + encodeURIComponent(msg); }
 
   function breadcrumb(itens) {
@@ -216,7 +216,7 @@
   // ================= Página: estudo de caso do evento =================
   var raizEvento = document.getElementById("evento");
   if (raizEvento) {
-    var id = new URLSearchParams(location.search).get("id");
+    var id = window.PAGINA_ID || new URLSearchParams(location.search).get("id");
     var ev = eventos.filter(function (e) { return e.id === id; })[0];
 
     if (!ev) {
