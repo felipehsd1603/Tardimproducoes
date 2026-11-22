@@ -293,11 +293,12 @@
     var clientesUnicos = {};
     reais.forEach(function (r) { if (r.cliente) clientesUnicos[r.cliente] = true; });
     var nEventos = reais.filter(function (r) { return r.icone !== "incendio" && r.area !== "Prevenção contra incêndio"; }).length;
-    var fundacao = Number((typeof SITE !== "undefined" && SITE.fundacao) || 0);
+    var orgaos = {};
+    reais.forEach(function (r) { if (r.tipo === "Órgão público" && r.cliente) orgaos[r.cliente] = true; });
     var itens = [];
-    if (fundacao) itens.push([new Date().getFullYear() - fundacao, "anos de estrada"]);
     itens.push([reais.length, "trabalhos no portfólio"]);
     itens.push([nEventos, "eventos esportivos"]);
+    itens.push([Object.keys(orgaos).length, "órgãos públicos atendidos"]);
     itens.push([Object.keys(clientesUnicos).length, "instituições e empresas atendidas"]);
     itens.forEach(function (it) {
       var d = el("div", "trust__stat");
@@ -335,7 +336,7 @@
 
     // Dados da empresa (só mostra o que estiver preenchido)
     var dados = document.getElementById("dados-empresa");
-    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Desde", SITE.fundacao], ["Endereço", SITE.endereco],
+    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Endereço", SITE.endereco],
       ["Cidade", SITE.cidade], ["E-mail", SITE.email]].forEach(function (f) {
       if (!f[1]) return;
       dados.append(el("dt", null, f[0]), el("dd", null, f[1]));
