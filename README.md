@@ -6,15 +6,19 @@ Site estático (HTML + CSS + JS puro) da **Tardim Produções LTDA**, produtora 
 
 ```
 index.html          página única
-css/style.css       estilos (cores da logo: vermelho #d9545e e azul #2f3f6b)
-js/eventos.js       ← LISTA DE CORRIDAS E CONTATOS (edite aqui)
-js/main.js          monta os cards, contagem regressiva e menu
-assets/             logo, favicon
+css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
+js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
+js/main.js          monta o calendário, a faixa "próxima prova" e o menu
+assets/corridas/    logos e artes das provas
+assets/fotos/       fotos dos eventos
 ```
 
 ## Como atualizar as corridas
 
-Abra `js/eventos.js` e edite a lista `EVENTOS`. O site separa sozinho, pela data, o que é **próxima corrida** e o que é **evento realizado**, e a contagem regressiva do topo aponta para a próxima prova.
+Abra `js/eventos.js`:
+
+- `PROXIMAS`: provas com data. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
+- `REALIZADAS`: logos das provas já feitas (imagem quadrada em `assets/corridas/`).
 
 Para ativar o botão de **WhatsApp** (inclusive o botão flutuante), preencha `SITE.whatsapp` com DDI + DDD + número, só dígitos (ex.: `5531999999999`).
 
@@ -30,6 +34,5 @@ O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions →
 
 - Links de inscrição de cada prova (hoje todos apontam para o Linktree).
 - Número de WhatsApp.
-- Fotos reais dos eventos (os cards hoje usam as cores de cada prova).
-- Datas exatas dos eventos já realizados (só o ano aparece no site).
-- Revisar o texto da seção "Sobre nós".
+- Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
+- Conferir o ano da Corrida da Guarda Civil Municipal.

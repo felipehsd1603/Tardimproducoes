@@ -1,111 +1,62 @@
 /*
  * ============================================================
- *  EVENTOS DA TARDIM PRODUÇÕES — edite somente este arquivo
+ *  CONTEÚDO DO SITE — edite somente este arquivo
  * ============================================================
  *
- *  Para adicionar uma corrida, copie um bloco { ... } e altere.
- *  O site separa sozinho, pela data, o que é "próxima corrida"
- *  e o que é "evento realizado".
+ *  PROXIMAS: corridas com data marcada. Quando a data passar,
+ *  a prova some sozinha do calendário.
  *
- *  Campos:
  *    nome        Nome da prova
- *    data        "AAAA-MM-DD"  (deixe "" se ainda não tiver data)
- *    hora        Horário da largada, ex.: "07h00" (opcional)
- *    local       Local / cidade
- *    distancias  Lista de percursos, ex.: ["5 km", "10 km"]
- *    destaque    Frase curta (opcional)
- *    inscricao   Link de inscrição (opcional — se vazio, usa o Linktree)
- *    tema        Cores do card: "fogo", "crea", "hulk", "crefito",
- *                "fhemig", "azul", "vermelho"
+ *    data        "AAAA-MM-DD"
+ *    hora        Largada, ex.: "08h00" (opcional)
+ *    local       Local da largada
+ *    percursos   Ex.: "Caminhada 3 km · 5 km · 10 km"
+ *    info        Linha extra (preço, kit…) (opcional)
+ *    poster      Imagem da arte da prova (pasta assets/corridas)
+ *    inscricao   Link de inscrição (se vazio, usa o Linktree)
+ *
+ *  REALIZADAS: logos das provas que já fizemos.
+ *    nome, ano, logo
  */
 
 const SITE = {
   email: "tardimproducoes.corridas@gmail.com",
   instagram: "https://www.instagram.com/tardimproducoes/",
   linktree: "https://linktr.ee/Tardim",
-  // Coloque o WhatsApp com DDI + DDD, só números. Ex.: "5531999999999"
+  // WhatsApp com DDI + DDD, só números. Ex.: "5531999999999"
   // Enquanto estiver vazio, o botão de WhatsApp não aparece.
   whatsapp: "",
 };
 
-const EVENTOS = [
+const PROXIMAS = [
   {
     nome: "3ª Corrida do Crea-MG",
     data: "2026-12-13",
     hora: "08h00",
-    local: "Praça da Assembleia · Santo Agostinho, BH",
-    distancias: ["Corrida de rua"],
-    destaque: "Kit com camiseta, viseira, pochete e brindes dos patrocinadores.",
+    local: "Praça da Assembleia (Praça Carlos Chagas), Santo Agostinho, BH",
+    percursos: "Corrida de rua",
+    info: "Inscrição R$ 50. Concentração às 6h30. Profissionais do Sistema Crea-MG, 60+ e PcD têm 50% de desconto.",
+    poster: "assets/corridas/poster-crea-mg.jpg",
     inscricao: "",
-    tema: "crea",
   },
   {
-    nome: "Circuito do Fogo — 15ª edição",
+    nome: "Circuito do Fogo · 15ª edição",
     data: "2027-02-21",
     hora: "",
-    local: "Belo Horizonte · MG",
-    distancias: ["Caminhada 3 km", "5 km", "10 km"],
-    destaque: "Inscrições abertas! Novidade: Road Runner Challenge.",
+    local: "Belo Horizonte, MG",
+    percursos: "Caminhada 3 km · 5 km · 10 km",
+    info: "Inscrições abertas. Novidade desta edição: Road Runner Challenge.",
+    poster: "assets/corridas/poster-circuito-do-fogo.jpg",
     inscricao: "",
-    tema: "fogo",
   },
+];
 
-  // ---------- Eventos já realizados ----------
-  {
-    nome: "Crefito-4 Run · Gov. Valadares",
-    data: "2026-11-15",
-    local: "Praça Caparaó · Ilha dos Araújos, Gov. Valadares",
-    distancias: ["Corrida de rua"],
-    tema: "crefito",
-  },
-  {
-    nome: "Corrida FHEMIG",
-    data: "2026-11-14",
-    local: "Belo Horizonte · MG",
-    distancias: ["3,5 km", "10 km"],
-    tema: "fhemig",
-  },
-  {
-    nome: "Hulk Run 2026",
-    data: "2026-09-28",
-    local: "Lagoa da Pampulha · BH",
-    distancias: ["Caminhada 3 km", "5 km", "10 km", "Kids"],
-    destaque: "Corrida com o Hulk + shows beneficentes.",
-    tema: "hulk",
-  },
-  {
-    nome: "Crefito-4 Run · Belo Horizonte",
-    data: "2026-08-01",
-    local: "Belo Horizonte · MG",
-    distancias: ["Corrida de rua"],
-    tema: "crefito",
-  },
-  {
-    nome: "Meia Maratona Liberdade 2025",
-    data: "2025-12-01",
-    local: "Minas Gerais",
-    distancias: ["21 km"],
-    tema: "hulk",
-  },
-  {
-    nome: "Campeonato Mineiro de Corrida de Rua · 3ª etapa",
-    data: "2025-11-01",
-    local: "Minas Gerais",
-    distancias: ["Corrida de rua"],
-    tema: "vermelho",
-  },
-  {
-    nome: "Corrida da Administração · CRA 2025",
-    data: "2025-10-01",
-    local: "Belo Horizonte · MG",
-    distancias: ["Corrida de rua"],
-    tema: "azul",
-  },
-  {
-    nome: "Corrida da Guarda Civil Municipal de BH",
-    data: "2025-09-01",
-    local: "Belo Horizonte · MG",
-    distancias: ["Corrida de rua"],
-    tema: "crea",
-  },
+const REALIZADAS = [
+  { nome: "Hulk Run", ano: "2026", logo: "assets/corridas/hulk-run.png" },
+  { nome: "Crefito-4 Run", ano: "2026", logo: "assets/corridas/crefito4-run.png" },
+  { nome: "Corrida FHEMIG", ano: "2026", logo: "assets/corridas/corrida-fhemig.png" },
+  { nome: "Meia Maratona Liberdade", ano: "2025", logo: "assets/corridas/meia-maratona-liberdade.png" },
+  { nome: "Campeonato Mineiro de Corrida de Rua", ano: "2025", logo: "assets/corridas/campeonato-mineiro.png" },
+  { nome: "Corrida da Administração", ano: "2025", logo: "assets/corridas/corrida-administracao.png" },
+  { nome: "Corrida da Guarda Civil Municipal", ano: "", logo: "assets/corridas/guarda-civil-bh.png" },
 ];
