@@ -188,11 +188,32 @@
     var nomeLink = el("a", null, p.nome);
     nomeLink.href = linkProva(p.id);
     nomeEl.append(nomeLink);
-    var nDias = document.getElementById("next-days");
-    var lDias = document.getElementById("next-days-label");
-    if (dias === 0) { nDias.textContent = "É hoje!"; lDias.textContent = ""; }
-    else if (dias === 1) { nDias.textContent = "Amanhã"; lDias.textContent = ""; }
-    else { nDias.textContent = dias; lDias.textContent = "dias para a largada"; }
+    // Contagem regressiva ao vivo até a largada
+    var caixa = document.getElementById("next-days").parentNode;
+    caixa.className = "next-card__clock";
+    caixa.setAttribute("aria-label", "Tempo até a largada");
+    caixa.innerHTML = "";
+    var alvo = data(p.data);
+    var mh = /(\d{1,2})h(\d{2})?/.exec(p.hora || "");
+    alvo.setHours(mh ? Number(mh[1]) : 7, mh && mh[2] ? Number(mh[2]) : 0, 0, 0);
+    var partes = [["d", "dias"], ["h", "horas"], ["m", "min"], ["s", "seg"]].map(function (u) {
+      var box = el("span", "clock__box");
+      var n = el("b", null, "00");
+      box.append(n, el("small", null, u[1]));
+      caixa.append(box);
+      return n;
+    });
+    var dois = function (n) { return (n < 10 ? "0" : "") + n; };
+    var tique = function () {
+      var t = Math.max(0, Math.floor((alvo - new Date()) / 1000));
+      if (t === 0) { caixa.innerHTML = "<b class=\"clock__hoje\">É hoje!</b>"; return false; }
+      partes[0].textContent = Math.floor(t / 86400);
+      partes[1].textContent = dois(Math.floor(t % 86400 / 3600));
+      partes[2].textContent = dois(Math.floor(t % 3600 / 60));
+      partes[3].textContent = dois(t % 60);
+      return true;
+    };
+    if (tique()) { var relogio = setInterval(function () { if (!tique()) clearInterval(relogio); }, 1000); }
     var poster = document.getElementById("next-poster");
     if (p.poster) { poster.src = p.poster; poster.alt = "Arte de divulgação: " + p.nome; }
     else { poster.remove(); }
