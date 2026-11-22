@@ -725,3 +725,7 @@ button.btn--white { background-color: transparent; }
 .history li:last-child time { background: var(--red-btn); }
 .history span { color: var(--ink); }
 .bento__link { display: inline-flex; align-items: center; min-height: 44px; }
+.creds { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 10px; }
+.creds li { display: grid; gap: 2px; padding: 14px 16px 14px 18px; background: #fff; border: 1px solid var(--rule); border-left: 4px solid var(--red); border-radius: 10px; }
+.creds strong { font-family: var(--cond); font-size: 1.2rem; font-weight: 700; color: var(--navy); }
+.creds span { color: var(--muted); font-size: 0.95rem; }

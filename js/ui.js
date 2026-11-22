@@ -19,7 +19,7 @@
   // ---------- Elementos aparecem ao entrar na tela ----------
   var seletores = [
     ".block__head", ".carousel-head", ".race-card", ".case-card", ".logos li", ".offers article",
-    ".bento__item", ".history li", ".event-sec", ".slide", ".inst > div", ".trust__stat",
+    ".bento__item", ".creds li", ".event-sec", ".slide", ".inst > div", ".trust__stat",
     ".contact__grid > *", ".other-race", ".month-title", ".highlights li", ".testimonial",
   ];
   if (!reduz) {
