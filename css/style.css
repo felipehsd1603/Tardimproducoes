@@ -637,3 +637,6 @@ button.btn--white { background-color: transparent; }
 .case-card__cover { overflow: visible; }
 .case-card__cover > img:first-child { display: block; }
 .case-card__badge { z-index: 2; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+@media (min-width: 860px) { .offers { grid-template-columns: repeat(2, 1fr); gap: 32px 40px; } }
+@media (min-width: 1100px) { .offers { grid-template-columns: repeat(4, 1fr); gap: 32px; } }
+.inst__list li { margin-bottom: 8px; }

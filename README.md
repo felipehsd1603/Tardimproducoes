@@ -51,7 +51,8 @@ O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions →
 
 - Links de inscrição de cada prova (hoje todos apontam para o Linktree).
 - Retirada de kit, mapa do percurso e regulamento de cada prova.
-- CNPJ e endereço (seção Institucional).
+- Endereço (seção Institucional), se for para aparecer no site.
+- Lista completa dos CNAEs pelo Comprovante de Inscrição do CNPJ na Receita Federal.
 - Contratante e número de participantes de cada prova.
 - Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
 - Conferir o ano da Corrida da Guarda Civil Municipal.
