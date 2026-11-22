@@ -20,7 +20,7 @@ Abra `js/eventos.js`:
 - `PROXIMAS`: provas com data. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
 - `REALIZADAS`: logos das provas já feitas (imagem quadrada em `assets/corridas/`).
 
-Para mostrar o **WhatsApp** na seção de contato, preencha `SITE.whatsapp` com DDI + DDD + número, só dígitos (ex.: `5531999999999`).
+No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
 
 ## Ver localmente
 
@@ -33,6 +33,7 @@ O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions →
 ## Pendências de conteúdo
 
 - Links de inscrição de cada prova (hoje todos apontam para o Linktree).
-- Número de WhatsApp.
+- CNPJ e endereço (seção Institucional).
+- Contratante e número de participantes de cada prova.
 - Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
 - Conferir o ano da Corrida da Guarda Civil Municipal.
