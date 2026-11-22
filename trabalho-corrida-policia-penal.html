@@ -28,14 +28,9 @@
     <meta property="og:url" content="https://felipehsd1603.github.io/TesteFelipe/trabalho-corrida-policia-penal.html" />
     <meta name="twitter:card" content="summary_large_image" />
     <!--/og-->
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;1,800&family=Barlow:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="css/style.css?v=20261122-24" />
+    <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/style.css?v=20261122-29" />
   </head>
   <body>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -59,7 +54,7 @@
           <a href="portfolio.html">Portfólio</a>
           <a href="index.html#empresas">Para empresas</a>
           <a href="index.html#institucional">Institucional</a>
-          <a href="index.html#contato">Contato</a>
+          <a href="index.html#orcamento" class="nav__cta">Pedir orçamento</a>
         </nav>
       </div>
     </header>
@@ -69,9 +64,39 @@
     </main>
 
     <footer class="footer">
-      <div class="wrap footer__inner">
-        <span>Tardim Produções e Eventos Ltda · CNPJ 33.787.309/0001-22 · Belo Horizonte, MG</span>
-        <span>Fazendo bem feito! · © <span id="ano"></span></span>
+      <div class="wrap footer__top">
+        <div class="footer__brand">
+          <a href="index.html" class="brand brand--light">
+            <img src="assets/logo-tardim.webp" alt="" width="42" height="42" loading="lazy" />
+            <span>Tardim <b>Produções</b></span>
+          </a>
+          <p>Corridas de rua e eventos esportivos do começo ao fim: planejamento, licenças, prevenção contra incêndio e equipe no dia da prova.</p>
+          <p class="footer__motto">Fazendo bem feito!</p>
+        </div>
+        <nav class="footer__col" aria-label="Mapa do site">
+          <p class="footer__title">Navegue</p>
+          <ul>
+            <li><a href="index.html#calendario">Calendário</a></li>
+            <li><a href="index.html#servicos">Serviços</a></li>
+            <li><a href="portfolio.html">Portfólio</a></li>
+            <li><a href="index.html#empresas">Para empresas</a></li>
+            <li><a href="index.html#institucional">Institucional</a></li>
+            <li><a href="index.html#orcamento">Pedir orçamento</a></li>
+          </ul>
+        </nav>
+        <div class="footer__col">
+          <p class="footer__title">Contato</p>
+          <ul>
+            <li><a href="https://wa.me/5531984289667" target="_blank" rel="noopener">WhatsApp (31) 98428-9667</a></li>
+            <li><a href="mailto:tardimproducoes.corridas@gmail.com">tardimproducoes.corridas@gmail.com</a></li>
+            <li><a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">Instagram @tardimproducoes</a></li>
+            <li>Belo Horizonte, MG</li>
+          </ul>
+        </div>
+      </div>
+      <div class="wrap footer__bottom">
+        <span id="footer-legal">Tardim Produções e Eventos Ltda · CNPJ 33.787.309/0001-22</span>
+        <span><a href="privacidade.html">Política de privacidade</a> · © <span id="ano">2026</span></span>
       </div>
     </footer>
 
@@ -81,9 +106,9 @@
 
     <script>window.PAGINA_ID = "corrida-policia-penal";</script>
 
-    <script src="js/eventos.js?v=20261122-24"></script>
-    <script src="js/demo.js?v=20261122-24"></script>
-    <script src="js/portfolio.js?v=20261122-24"></script>
-    <script src="js/ui.js?v=20261122-24"></script>
+    <script src="js/eventos.js?v=20261122-29"></script>
+    <script src="js/demo.js?v=20261122-29"></script>
+    <script src="js/portfolio.js?v=20261122-29"></script>
+    <script src="js/ui.js?v=20261122-29"></script>
   </body>
 </html>

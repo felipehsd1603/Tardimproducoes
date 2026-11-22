@@ -94,7 +94,8 @@
     var atualiza = function () {
       var max = document.documentElement.scrollHeight - window.innerHeight;
       var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
-      fill.style.width = (p * 100).toFixed(2) + "%";
+      // O corredor nunca passa da borda da tela
+      fill.style.width = "calc(" + (p * 100).toFixed(2) + "% + " + (8 - p * 16).toFixed(1) + "px)";
       barra.classList.toggle("is-on", window.scrollY > 40);
       barra.classList.toggle("is-fim", p > 0.995);
     };

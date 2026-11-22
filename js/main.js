@@ -519,7 +519,7 @@
     if (legal) legal.textContent = [SITE.razaoSocial, SITE.cnpj ? "CNPJ " + SITE.cnpj : ""].filter(Boolean).join(" · ");
     if (SITE.cnpj) {
       document.getElementById("footer-legal").textContent =
-        (SITE.razaoSocial || "Tardim Produções e Eventos Ltda") + " · CNPJ " + SITE.cnpj + " · " + (SITE.cidade || "");
+        (SITE.razaoSocial || "Tardim Produções e Eventos Ltda") + " · CNPJ " + SITE.cnpj;
     }
 
     if (SITE.email) {
