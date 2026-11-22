@@ -78,6 +78,7 @@ const fixas = [
   { arquivo: "index.html", titulo: "Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE },
   { arquivo: "portfolio.html", titulo: "Portfólio · Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE + "portfolio.html" },
   { arquivo: "prova.html", titulo: "Prova · Tardim Produções", descricao: "Calendário de provas da Tardim Produções.", imagem: "", url: BASE + "prova.html" },
+  { arquivo: "assessorias.html", titulo: "Inscrição coletiva para assessorias · Tardim Produções", descricao: "Baixe o modelo, confira a planilha da sua equipe e envie para a Tardim Produções.", imagem: "assets/compartilhar.jpg", url: BASE + "assessorias.html" },
   { arquivo: "privacidade.html", titulo: "Política de privacidade · Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE + "privacidade.html" },
   { arquivo: "evento.html", titulo: "Portfólio · Tardim Produções", descricao: "Trabalho realizado pela Tardim Produções.", imagem: "", url: BASE + "evento.html" },
 ];
