@@ -9,14 +9,17 @@ index.html          página inicial
 prova.html          página de cada prova (prova.html?id=...)
 portfolio.html      portfólio de trabalhos (eventos e serviços)
 evento.html         página de cada trabalho do portfólio (evento.html?id=...)
+privacidade.html    política de privacidade (LGPD)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
 js/prova.js         monta a página de cada prova (com breadcrumb)
 js/portfolio.js     monta o portfólio e a página de cada trabalho
+js/orcamento.js     pedido de orçamento: monta a mensagem e abre o WhatsApp ou o e-mail
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
 js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
 js/demo.js          modo demonstração (só com ?demo=1)
+assets/fonts/       fontes Barlow e Barlow Condensed (hospedadas no próprio site)
 assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas
 assets/fotos/       fotos dos eventos
@@ -33,6 +36,10 @@ Abra `js/eventos.js`:
 - `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
 
 No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
+
+## Pedido de orçamento
+
+A seção "Peça seu orçamento" da página inicial não envia nada para servidor: ela monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
 
 ## Modo demonstração
 

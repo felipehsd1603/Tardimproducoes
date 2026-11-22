@@ -1,6 +1,15 @@
 /* Tardim Produções
    Cores da logo: vermelho #d6505b e azul #24325a */
 
+/* Fontes hospedadas no próprio site (Barlow e Barlow Condensed, licença OFL) */
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 400; font-display: swap; src: url("../assets/fonts/barlow-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 500; font-display: swap; src: url("../assets/fonts/barlow-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 600; font-display: swap; src: url("../assets/fonts/barlow-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-style: normal; font-weight: 700; font-display: swap; src: url("../assets/fonts/barlow-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("../assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 800; font-display: swap; src: url("../assets/fonts/barlow-condensed-latin-800-italic.woff2") format("woff2"); }
+
+
 :root {
   --red: #d6505b;
   --red-dark: #b73e48;
@@ -894,3 +903,120 @@ button.btn--white { background-color: transparent; }
 .race-card--past .race-card__thumb--date span { font-size: 0.72rem; }
 .tag-past { display: inline-block; vertical-align: middle; padding: 2px 8px; border-radius: 4px; background: #e6f2eb; color: #17613a; font: 700 0.72rem/1.4 var(--body); letter-spacing: 0.04em; text-transform: uppercase; }
 .race-card__obs { margin: 4px 0 0; color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
+/* ===== Menu: botão Pedir orçamento ===== */
+.nav a.nav__cta { color: var(--red-btn); }
+@media (min-width: 860px) {
+  .nav { align-items: center; gap: 20px; }
+  .nav a { font-size: 0.94rem; }
+  .nav a.nav__cta { padding: 9px 16px; border-radius: 8px; background: var(--red-btn); color: #fff; box-shadow: none; transition: background-color 0.2s, transform 0.15s; }
+  .nav a.nav__cta:hover, .nav a.nav__cta.is-active { background: var(--red-btn-hover); color: #fff; box-shadow: none; padding-bottom: 9px; }
+}
+@media (min-width: 1100px) { .nav { gap: 28px; } .nav a { font-size: 0.98rem; } }
+
+/* ===== Rótulo pequeno acima dos títulos ===== */
+.eyebrow { margin: 0 0 6px; font: 700 0.8rem/1.2 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--red-btn); }
+
+/* ===== Pedido de orçamento ===== */
+.orc-sec { background: linear-gradient(180deg, #fff 0%, var(--paper) 100%); }
+.orc { display: grid; gap: 32px; align-items: start; }
+@media (min-width: 960px) { .orc { grid-template-columns: 0.8fr 1.2fr; gap: 64px; } .orc__intro { position: sticky; top: 104px; } }
+.orc__intro h2 { margin: 0 0 12px; color: var(--navy); }
+.orc__intro > p { color: var(--muted); margin: 0 0 20px; max-width: 46ch; }
+.orc__points { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.orc__points li { position: relative; padding-left: 32px; font-weight: 600; color: var(--navy); }
+.orc__points li::before { content: ""; position: absolute; left: 0; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--red-btn) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E") no-repeat center / 13px; }
+.orc__form { display: grid; grid-template-columns: 1fr; gap: 18px; padding: 24px; border: 1px solid var(--rule); border-radius: 16px; background: #fff; box-shadow: 0 24px 60px rgba(24, 34, 63, 0.1); }
+@media (min-width: 640px) { .orc__form { grid-template-columns: 1fr 1fr; padding: 32px; gap: 20px 18px; } .orc__field--full { grid-column: 1 / -1; } }
+.orc__field { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.orc__field > span:first-child, .orc__field legend { font-weight: 700; font-size: 0.92rem; color: var(--navy); padding: 0; margin-bottom: 2px; }
+.orc__field small { font-weight: 500; color: var(--muted); }
+.req { color: var(--red-btn); }
+.orc__field input, .orc__field select, .orc__field textarea {
+  width: 100%; min-height: 50px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper);
+  font: 400 1rem var(--body); color: var(--ink); transition: border-color 0.15s, background-color 0.15s;
+}
+.orc__field textarea { min-height: 96px; resize: vertical; }
+.orc__field select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2324325a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px; }
+.orc__field input:focus, .orc__field select:focus, .orc__field textarea:focus { outline: 3px solid var(--red); outline-offset: 1px; background-color: #fff; }
+.orc__field [aria-invalid="true"] { border-color: var(--red-btn); background-color: #fff5f6; }
+.orc__pair { display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px; }
+.orc__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.orc__chip { position: relative; cursor: pointer; }
+.orc__chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.orc__chip span { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 99px; background: #fff; font-weight: 600; font-size: 0.94rem; color: var(--navy); transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+.orc__chip:hover span { border-color: var(--navy); }
+.orc__chip input:checked + span { background: var(--navy); border-color: var(--navy); color: #fff; }
+.orc__chip input:focus-visible + span { outline: 3px solid var(--red); outline-offset: 2px; }
+.orc__chips.is-erro .orc__chip span { border-color: #e8a3aa; }
+.orc__erro { margin: 0; color: var(--red-btn-hover); font-size: 0.86rem; font-weight: 600; }
+.orc__erro[hidden], .orc__ok[hidden] { display: none; }
+.orc__acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 4px; }
+.orc__acoes .btn svg { width: 20px; height: 20px; fill: currentColor; }
+.orc__email { min-height: 44px; padding: 0; border: 0; background: none; color: var(--navy); font: 600 0.95rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.orc__email:hover { color: var(--red-btn); }
+.orc__ok { margin: 0; padding: 12px 14px; border-radius: 10px; background: #e6f2eb; color: #17613a; font-weight: 600; }
+.orc__ok a { color: inherit; }
+.orc__nota { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.orc__nota a { color: var(--navy); }
+
+/* ===== Rodapé completo ===== */
+.footer { padding-bottom: 0; color: #aab3cf; }
+.footer a { color: #dfe4f2; text-decoration: none; }
+.footer a:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.footer__top { display: grid; gap: 32px; padding-top: 56px; padding-bottom: 40px; }
+@media (min-width: 760px) { .footer__top { grid-template-columns: 1.4fr 1fr 1.2fr; gap: 48px; } }
+.brand--light { color: #fff; }
+.brand--light img { border-color: rgba(255, 255, 255, 0.2); background: #fff; }
+.brand--light b { color: #ff8a93; }
+.footer__brand p { margin: 14px 0 0; max-width: 38ch; line-height: 1.6; }
+.footer__motto { font: italic 800 1.25rem/1 var(--cond); color: #fff; }
+.footer__title { margin: 4px 0 14px; font: 700 0.78rem/1.2 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
+.footer__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.footer__col li { min-height: 32px; display: flex; align-items: center; overflow-wrap: anywhere; }
+.footer__bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-top: 18px; padding-bottom: 88px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.85rem; }
+@media (min-width: 860px) { .footer__bottom { padding-bottom: 22px; } }
+
+/* ===== Página de texto (política de privacidade) ===== */
+.legal { background: linear-gradient(180deg, var(--paper) 0, #fff 320px); }
+.legal__wrap { max-width: 760px; padding-top: 40px; padding-bottom: 80px; }
+.legal__crumb { font-size: 0.88rem; color: var(--muted); margin-bottom: 24px; }
+.legal__crumb a { color: var(--navy); font-weight: 600; }
+.legal h1 { margin: 0 0 16px; color: var(--navy); font-size: clamp(2.4rem, 7vw, 3.4rem); line-height: 1; }
+.legal__lead { font-size: 1.1rem; color: var(--ink); margin: 0 0 8px; }
+.legal__data { font-size: 0.88rem; color: var(--muted); margin: 0 0 40px; }
+.legal h2 { margin: 40px 0 10px; font-size: 1.6rem; color: var(--navy); }
+.legal p { margin: 0 0 14px; }
+.legal a:not(.btn) { color: var(--navy); font-weight: 600; text-underline-offset: 3px; }
+.legal__voltar { margin-top: 48px !important; }
+@media (min-width: 860px) and (max-width: 1023px) {
+  .nav { gap: 14px; }
+  .nav a { font-size: 0.88rem; }
+  .nav a.nav__cta { padding: 8px 12px; }
+  .brand { font-size: 1.3rem; }
+}
+.footer__bottom { position: relative; border-top: 0; }
+.footer__bottom::before { content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 1px; background: rgba(255, 255, 255, 0.1); }
+.orc__intro > p.eyebrow { color: var(--red-btn); margin-bottom: 6px; }
+@media (max-width: 959px) { .orc__points li { font-size: 0.95rem; } .orc__intro > p { margin-bottom: 16px; } }
+
+/* Barra do calendário no computador: abas e filtros na mesma linha, distâncias e contagem abaixo */
+@media (min-width: 860px) {
+  .cal-tools { grid-template-columns: auto 1fr; column-gap: 24px; row-gap: 14px; }
+  .cal-tools .dist-filter, .cal-count { grid-column: 1 / -1; }
+  .cal-tools .dist-filter { flex-wrap: wrap; }
+}
+@media (min-width: 860px) and (max-width: 1099px) {
+  .cal-tools { grid-template-columns: 1fr; }
+  .cal-tabs { justify-self: start; }
+}
+
+/* Botões <button> mantêm a cor do tipo de botão */
+button.btn--wa { background-color: var(--wa); }
+button.btn--wa:hover { background-color: var(--wa-hover); }
+button.btn--red { background-color: var(--red-btn); }
+
+/* Botão claro sobre a faixa vermelha do passo a passo */
+.steps__cta .btn--red { background: #fff; color: var(--red-btn); }
+.steps__cta .btn--red:hover { background: #fff4f5; color: var(--red-btn-hover); }
+.menu-open .percurso { opacity: 0; }
