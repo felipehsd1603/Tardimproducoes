@@ -292,12 +292,16 @@
     var reais = (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).filter(function (r) { return !r.demo; });
     var clientesUnicos = {};
     reais.forEach(function (r) { if (r.cliente) clientesUnicos[r.cliente] = true; });
-    var nEventos = reais.filter(function (r) { return r.icone !== "incendio" && r.area !== "Prevenção contra incêndio"; }).length;
     var orgaos = {};
     reais.forEach(function (r) { if (r.tipo === "Órgão público" && r.cliente) orgaos[r.cliente] = true; });
+    var nCorridas = 0, cidades = {};
+    reais.forEach(function (r) {
+      if (r.icone === "incendio" || r.area === "Prevenção contra incêndio") return;
+      (r.edicoes || []).forEach(function (ed) { nCorridas++; if (ed.cidade) cidades[ed.cidade] = true; });
+    });
     var itens = [];
-    itens.push([reais.length, "trabalhos no portfólio"]);
-    itens.push([nEventos, "eventos esportivos"]);
+    itens.push([nCorridas, "corridas organizadas"]);
+    itens.push([Object.keys(cidades).length, "cidades de Minas Gerais"]);
     itens.push([Object.keys(orgaos).length, "órgãos públicos atendidos"]);
     itens.push([Object.keys(clientesUnicos).length, "instituições e empresas atendidas"]);
     itens.forEach(function (it) {
