@@ -17,6 +17,16 @@
     return a;
   }
   function numero(n) { return Number(n).toLocaleString("pt-BR"); }
+  function participantes(n) {
+    n = Number(n);
+    return (n >= 1000 && n % 1000 === 0 ? "mais de " + n / 1000 + " mil" : numero(n)) + " participantes";
+  }
+  function qtdEdicoes(ev) { return ev.edicoes ? ev.edicoes.length : 0; }
+  function rotuloEdicoes(ev) {
+    var n = qtdEdicoes(ev);
+    if (n > 1) return n + " " + (ev.unidade || "edições");
+    return ev.ano || "";
+  }
 
   var site = typeof SITE !== "undefined" ? SITE : {};
   var eventos = typeof REALIZADAS !== "undefined" ? REALIZADAS : [];
@@ -98,11 +108,11 @@
     capa.append(el("span", "case-card__area" + (ehEvento(ev) ? "" : " case-card__area--alt"), area(ev)));
     a.append(capa);
     var corpo = el("div", "case-card__body");
-    var meta = el("p", "case-card__meta", [ev.ano, ev.tipo].filter(Boolean).join(" · "));
+    var meta = el("p", "case-card__meta", [rotuloEdicoes(ev), ev.tipo].filter(Boolean).join(" · "));
     if (ev.demo) meta.append(" ", el("span", "tag-demo", "Exemplo"));
     corpo.append(meta, el("h3", null, ev.nome));
     if (ev.cliente) corpo.append(el("p", "case-card__client", ev.cliente));
-    if (ev.participantes) corpo.append(el("p", "case-card__num", numero(ev.participantes) + " participantes"));
+    if (ev.participantes) corpo.append(el("p", "case-card__num", participantes(ev.participantes)));
     corpo.append(el("span", "case-card__more", "Ver detalhes →"));
     a.append(corpo);
     return a;
@@ -149,16 +159,18 @@
       d.append(el("b", null, valor), el("span", null, rotulo));
       stats.append(d);
     }
-    stat(String(eventos.length), "trabalhos realizados");
-    var nEv = eventos.filter(ehEvento).length;
-    var nOut = eventos.length - nEv;
-    if (nEv && nOut) {
-      stat(String(nEv), nEv === 1 ? "evento esportivo" : "eventos esportivos");
-      stat(String(nOut), nOut === 1 ? "serviço de prevenção contra incêndio" : "serviços e projetos de prevenção contra incêndio");
-    }
+    var nCorridas = 0, cidades = {};
+    eventos.forEach(function (e) {
+      if (!ehEvento(e)) return;
+      (e.edicoes || []).forEach(function (ed) { nCorridas++; if (ed.cidade) cidades[ed.cidade] = true; });
+    });
+    var nServ = eventos.filter(function (e) { return !ehEvento(e); }).length;
     var nCli = Object.keys(clientes).length;
+    if (nCorridas) stat(String(nCorridas), "corridas organizadas");
+    var nCid = Object.keys(cidades).length;
+    if (nCid) stat(String(nCid), nCid === 1 ? "cidade de Minas Gerais" : "cidades de Minas Gerais");
     if (nCli) stat(String(nCli), nCli === 1 ? "instituição atendida" : "instituições e empresas atendidas");
-    if (totalPart) stat(numero(totalPart), "participantes nos eventos listados");
+    if (nServ) stat(String(nServ), nServ === 1 ? "serviço de prevenção contra incêndio" : "serviços de prevenção contra incêndio");
     tw.append(stats);
     topo.append(tw);
     raizLista.append(topo);
@@ -241,7 +253,7 @@
       if (ev.logo) { var lg = el("img", "case-title__logo"); lg.src = ev.logo; lg.alt = "Logo " + ev.nome; linha.append(lg); }
       else linha.append(iconeEvento(ev, "case-title__logo case-title__icon"));
       var tt = el("div");
-      var sub = el("p", "event-hero__date", [ev.ano, area(ev)].filter(Boolean).join(" · "));
+      var sub = el("p", "event-hero__date", [rotuloEdicoes(ev), area(ev)].filter(Boolean).join(" · "));
       if (ev.demo) sub.append(" ", el("span", "tag-demo", "Exemplo"));
       tt.append(sub, el("h1", null, ev.nome));
       linha.append(tt);
@@ -271,10 +283,29 @@
       var dl = el("dl", "facts");
       var quando = ev.data ? (function () { var p = ev.data.split("-").map(Number); return p[2] + " de " + MESES[p[1] - 1] + " de " + p[0]; })() : ev.ano;
       var percursos = Array.isArray(ev.percursos) ? ev.percursos.join(" · ") : ev.percursos;
-      [["Área", area(ev)], ["Cliente", ev.cliente], ["Tipo de cliente", ev.tipo], [ev.data ? "Data" : "Ano", quando], ["Local", ev.local],
-        ["Percursos", percursos], ["Participantes", ev.participantes ? numero(ev.participantes) : ""]]
+      var nEd = qtdEdicoes(ev);
+      [["Área", area(ev)], ["Cliente", ev.cliente], ["Tipo de cliente", ev.tipo],
+        nEd > 1 ? [ev.unidade === "etapas" ? "Etapas" : "Edições", String(nEd)] : [ev.data ? "Data" : "Ano", quando],
+        ["Local", ev.local], ["Percursos", percursos], ["Participantes", ev.participantes ? participantes(ev.participantes).replace(/ participantes$/, "") : ""]]
         .forEach(function (f) { if (f[1]) dl.append(el("dt", null, f[0]), el("dd", null, f[1])); });
       secao("Ficha técnica", dl);
+
+      // Lista de edições / etapas
+      if (nEd > 1 || (nEd === 1 && !ev.data)) {
+        var lista = el("ol", "editions");
+        ev.edicoes.slice().sort(function (a, b) { return String(b.data).localeCompare(String(a.data)); }).forEach(function (ed) {
+          var li = el("li");
+          var dt = ed.data && ed.data.length === 10 ? ed.data.split("-").reverse().join("/") : (ed.data || "—");
+          li.append(el("time", null, dt));
+          var tx = el("div");
+          tx.append(el("strong", null, ed.rotulo));
+          var onde = [ed.local, ed.cidade].filter(Boolean).join(", ");
+          if (onde || ed.obs) tx.append(el("span", null, [onde, ed.obs].filter(Boolean).join(" · ")));
+          li.append(tx);
+          lista.append(li);
+        });
+        secao(ev.unidade === "etapas" ? "Etapas realizadas" : "Edições realizadas", lista);
+      }
 
       if (ev.servicos && ev.servicos.length) {
         var ul = el("ul", "checklist checklist--grid");
