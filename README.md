@@ -1,0 +1,38 @@
+# Tardim Produções — site
+
+Site estático (HTML + CSS + JS puro) da **Tardim Produções LTDA**, produtora de corridas de rua e eventos esportivos em Minas Gerais.
+
+## Estrutura
+
+```
+index.html          página única
+css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
+js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
+js/main.js          monta o calendário, a faixa "próxima prova" e o menu
+assets/corridas/    logos e artes das provas
+assets/fotos/       fotos dos eventos
+```
+
+## Como atualizar as corridas
+
+Abra `js/eventos.js`:
+
+- `PROXIMAS`: provas com data. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
+- `REALIZADAS`: logos das provas já feitas (imagem quadrada em `assets/corridas/`).
+
+Para mostrar o **WhatsApp** na seção de contato, preencha `SITE.whatsapp` com DDI + DDD + número, só dígitos (ex.: `5531999999999`).
+
+## Ver localmente
+
+É só abrir o `index.html` no navegador.
+
+## Publicar (GitHub Pages)
+
+O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions → Deploy static content to Pages → Run workflow**. O endereço fica em `https://felipehsd1603.github.io/TesteFelipe/`.
+
+## Pendências de conteúdo
+
+- Links de inscrição de cada prova (hoje todos apontam para o Linktree).
+- Número de WhatsApp.
+- Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
+- Conferir o ano da Corrida da Guarda Civil Municipal.

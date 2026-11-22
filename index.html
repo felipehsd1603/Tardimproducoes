@@ -1,51 +1,183 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Backstage - Template Demo</title>
-    <link rel="stylesheet" type="text/css" href="index.css" />
-    <script>
-      document.documentElement.setAttribute('data-theme', 'dark');
-    </script>
+    <title>Tardim Produções · Corridas de rua em Belo Horizonte</title>
+    <meta
+      name="description"
+      content="Tardim Produções: produção e promoção de corridas de rua e eventos esportivos e culturais em Belo Horizonte e Minas Gerais. Regularização e licenciamento de eventos."
+    />
+    <meta name="theme-color" content="#24325a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Tardim Produções · Fazendo bem feito!" />
+    <meta property="og:description" content="Corridas de rua e eventos esportivos em Minas Gerais. Veja o calendário de provas." />
+    <meta property="og:image" content="assets/fotos/hulk-run-largada.jpg" />
+
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;1,800&family=Barlow:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <div id="root">
-      <div class="row">
-        <div>
-          <img
-            class="rocket"
-            src="rocket.gif"
-            alt="Software Template Rocket Animation"
-          />
-        </div>
-        <div class="column right">
-          <h1>Boosters are a go FelipeTeste!</h1>
-          <h2>
-            This is the results of the demo Software Template you just
-            completed.
-          </h2>
-          <h3>
-            Based on the topics you indicated interest in, here's what to check
-            out next:
-          </h3>
+    <header class="topbar">
+      <div class="wrap topbar__inner">
+        <a href="#" class="brand">
+          <img src="assets/logo-tardim.png" alt="" width="42" height="42" />
+          <span>Tardim <b>Produções</b></span>
+        </a>
+        <button class="menu-btn" aria-expanded="false" aria-controls="menu">Menu</button>
+        <nav id="menu" class="nav">
+          <a href="#calendario">Calendário</a>
+          <a href="#provas">Provas realizadas</a>
+          <a href="#servicos">Serviços</a>
+          <a href="#contato">Contato</a>
+        </nav>
+      </div>
+    </header>
 
-          <ul>
-            
-            <li>
-              <a
-                href="https://backstage.io/docs/features/software-templates/writing-templates"
-                target="_blank"
-              >
-                Writing Templates
-              </a>
-            </li>
-                 
-          </ul>
+    <main>
+      <!-- Abertura -->
+      <section class="intro">
+        <div class="wrap intro__grid">
+          <div class="intro__text">
+            <p class="kicker">Belo Horizonte · Minas Gerais</p>
+            <h1>Corridas de rua e eventos esportivos em Minas.</h1>
+            <p class="lead">
+              Organizamos a prova inteira: licenças, percurso, arena, kit, cronometragem e premiação.
+              Se o seu conselho, empresa ou órgão público quer fazer uma corrida, a gente resolve.
+            </p>
+            <div class="actions">
+              <a class="btn btn--red" href="#calendario">Ver calendário de provas</a>
+              <a class="btn btn--line" href="#contato">Pedir orçamento</a>
+            </div>
+          </div>
+          <figure class="intro__photo">
+            <img src="assets/fotos/hulk-run-largada.jpg" alt="Largada da Hulk Run 2026 com corredores passando pelo pórtico" width="399" height="462" />
+            <figcaption>Largada da Hulk Run 2026, Pampulha</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- Próxima prova -->
+      <div class="next" id="next" hidden>
+        <div class="wrap next__inner">
+          <span class="next__label">Próxima prova</span>
+          <strong id="next-name"></strong>
+          <span id="next-when"></span>
+          <span class="next__count" id="next-count"></span>
+          <a class="next__link" id="next-link" href="#calendario">Inscrição →</a>
         </div>
       </div>
-    </div>
+
+      <!-- Calendário -->
+      <section class="block" id="calendario">
+        <div class="wrap">
+          <h2>Calendário</h2>
+          <div id="proximas" class="races"></div>
+          <p id="sem-provas" class="muted" hidden>
+            Estamos fechando as próximas datas. Acompanhe no
+            <a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">@tardimproducoes</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Provas realizadas -->
+      <section class="block block--paper" id="provas">
+        <div class="wrap">
+          <div class="block__head">
+            <h2>Provas que já realizamos</h2>
+            <p>Algumas das corridas produzidas e promovidas pela Tardim.</p>
+          </div>
+          <ul class="logos" id="realizadas"></ul>
+        </div>
+      </section>
+
+      <!-- Fotos -->
+      <section class="photos" aria-label="Fotos dos eventos">
+        <figure><img src="assets/fotos/hulk-run-2.jpg" alt="Corredor fazendo joinha durante a Hulk Run" loading="lazy" width="399" height="462" /></figure>
+        <figure><img src="assets/fotos/crefito4-run-bh.jpg" alt="Corredora sorrindo na arena da Crefito-4 Run em Belo Horizonte" loading="lazy" width="399" height="462" /></figure>
+        <figure><img src="assets/fotos/hulk-run-medalha.jpg" alt="Medalha da Hulk Run 2026" loading="lazy" width="399" height="462" /></figure>
+        <figure><img src="assets/fotos/hulk-run-3.jpg" alt="Corredor sorrindo na orla da Pampulha" loading="lazy" width="399" height="462" /></figure>
+      </section>
+
+      <!-- Serviços -->
+      <section class="block" id="servicos">
+        <div class="wrap services">
+          <div>
+            <h2>O que a Tardim faz</h2>
+            <p class="muted">
+              Produção e promoção de eventos esportivos e culturais, com a parte legal resolvida antes
+              do primeiro corredor chegar.
+            </p>
+          </div>
+          <ol class="service-list">
+            <li>
+              <h3>Produção da prova</h3>
+              <p>Percurso, arena, largada e chegada, staff, hidratação, kits, medalhas, premiação e programação do dia.</p>
+            </li>
+            <li>
+              <h3>Regularização e licenciamento</h3>
+              <p>Alvarás, autorizações de trânsito e de órgãos públicos, e o que mais a prova precisar para sair do papel.</p>
+            </li>
+            <li>
+              <h3>Divulgação</h3>
+              <p>Artes da prova, campanha nas redes, comunicação com os inscritos e retirada de kit.</p>
+            </li>
+            <li>
+              <h3>Shows e ações</h3>
+              <p>Palco, atrações e ações beneficentes junto da corrida, como na Hulk Run.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Contato -->
+      <section class="contact" id="contato">
+        <div class="wrap contact__grid">
+          <div>
+            <h2>Fale com a gente</h2>
+            <p>
+              Quer organizar uma corrida ou tirar dúvida sobre inscrição? Mande um e-mail ou chame no
+              Instagram.
+            </p>
+          </div>
+          <ul class="contact__list">
+            <li id="li-whatsapp" hidden>
+              <span>WhatsApp</span>
+              <a id="whatsapp-link" href="#" target="_blank" rel="noopener"></a>
+            </li>
+            <li>
+              <span>E-mail</span>
+              <a id="email-link" href="mailto:tardimproducoes.corridas@gmail.com">tardimproducoes.corridas@gmail.com</a>
+            </li>
+            <li>
+              <span>Instagram</span>
+              <a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">@tardimproducoes</a>
+            </li>
+            <li>
+              <span>Inscrições</span>
+              <a href="https://linktr.ee/Tardim" target="_blank" rel="noopener">linktr.ee/Tardim</a>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer__inner">
+        <span>Tardim Produções LTDA · Belo Horizonte, MG</span>
+        <span>Fazendo bem feito! · © <span id="ano"></span></span>
+      </div>
+    </footer>
+
+    <script src="js/eventos.js"></script>
+    <script src="js/main.js"></script>
   </body>
 </html>
