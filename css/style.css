@@ -724,3 +724,4 @@ button.btn--white { background-color: transparent; }
 .history time { position: relative; z-index: 1; display: inline-grid; place-items: center; height: 30px; border-radius: 999px; background: var(--navy); color: #fff; font: italic 800 1rem/1 var(--cond); }
 .history li:last-child time { background: var(--red-btn); }
 .history span { color: var(--ink); }
+.bento__link { display: inline-flex; align-items: center; min-height: 44px; }
