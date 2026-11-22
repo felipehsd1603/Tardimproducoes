@@ -38,43 +38,60 @@
     return out;
   }
 
-  // ---------- Calendário (agrupado por mês, com filtro por distância) ----------
+  // ---------- Calendário: próximas provas e edições anteriores, com filtros ----------
   var lista = document.getElementById("proximas");
-  var grupos = {};
-  var ordemGrupos = [];
-  var todasDist = {};
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function semAcento(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function linkTrabalho(id) {
+    return window.DEMO ? "evento.html?id=" + encodeURIComponent(id || "") + "&demo=1" : "trabalho-" + id + ".html";
+  }
+  function dataLonga(d) {
+    var dia = DIAS[d.getDay()];
+    return cap(dia.slice(0, 3)) + ", " + d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear();
+  }
 
-  proximas.forEach(function (ev) {
+  // Próximas provas
+  var itensProx = proximas.map(function (ev) {
     var d = data(ev.data);
-    var chave = d.getFullYear() + "-" + d.getMonth();
-    if (!grupos[chave]) {
-      var g = el("section", "month-group");
-      var nomeMes = MESES[d.getMonth()];
-      g.append(el("h3", "month-title", nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1) + " " + d.getFullYear()));
-      var r = el("div", "races");
-      g.append(r);
-      grupos[chave] = { el: g, races: r };
-      ordemGrupos.push(chave);
-    }
-    var item = el("article", "race");
-    var dist = distancias(ev);
-    dist.forEach(function (k) { todasDist[k] = true; });
-    item.setAttribute("data-dist", dist.join("|"));
+    return { tipo: "prox", ev: ev, nome: ev.nome, d: d, ano: d.getFullYear(), mes: d.getMonth(),
+      dist: distancias(ev), busca: ev.nome + " " + (ev.local || "") };
+  });
+
+  // Edições anteriores: cada edição/etapa das corridas do portfólio (serviços de incêndio ficam de fora)
+  var itensReal = [];
+  (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).forEach(function (r) {
+    if (r.icone === "incendio" || (r.area && r.area !== "Eventos esportivos")) return;
+    var eds = r.edicoes && r.edicoes.length ? r.edicoes : [{ rotulo: r.nome, data: r.data || r.ano || "", local: r.local }];
+    eds.forEach(function (ed) {
+      var s = String(ed.data || "");
+      var m = /^(\d{4})(?:-(\d{2})-(\d{2}))?$/.exec(s);
+      var d = m && m[2] ? data(s) : null;
+      if (d && d > hoje) return;
+      var local = ed.local || "";
+      if (ed.cidade && semAcento(local.toLowerCase()).indexOf(semAcento(ed.cidade.toLowerCase())) < 0) local = local ? local + ", " + ed.cidade : ed.cidade;
+      // "Etapa Contagem", "3ª edição"... ganham o nome da corrida no título
+      var rot = ed.rotulo || "";
+      var parcial = !rot || /^(etapa\b|\d+\s*[ªºa°o]?\s*(edição|etapa|campeonato))/i.test(rot);
+      var nome = parcial ? r.nome : rot;
+      var sub = parcial && rot ? rot : "";
+      itensReal.push({ tipo: "real", r: r, ed: ed, nome: nome, sub: sub, d: d, chave: s,
+        ano: m ? Number(m[1]) : null, mes: d ? d.getMonth() : null, local: local, dist: [],
+        busca: nome + " " + r.nome + " " + local + " " + (r.cliente || "") });
+    });
+  });
+  itensReal.sort(function (a, b) { return b.chave.localeCompare(a.chave); });
+
+  function cardProx(it) {
+    var ev = it.ev, d = it.d;
+    var item = el("article", "race race-card");
     var detalhe = linkProva(ev.id);
-
-    item.className = "race race-card";
-    item.setAttribute("data-busca", (ev.nome + " " + (ev.local || "")).toLowerCase());
-
-    // Miniatura da arte (ou bloco com a data, se não houver arte)
     var thumb = el("a", "race-card__thumb");
     thumb.href = detalhe;
     thumb.setAttribute("aria-label", "Ver detalhes: " + ev.nome);
     thumb.tabIndex = -1;
     if (ev.poster) {
       var img = el("img");
-      img.src = ev.poster;
-      img.alt = "";
-      img.loading = "lazy";
+      img.src = ev.poster; img.alt = ""; img.loading = "lazy";
       thumb.append(img);
     } else {
       thumb.classList.add("race-card__thumb--date");
@@ -88,13 +105,9 @@
     tl.href = detalhe;
     titulo.append(tl);
     corpo.append(titulo);
-
-    var dia = DIAS[d.getDay()];
-    var quando = el("p", "race-card__date", dia.charAt(0).toUpperCase() + dia.slice(1, 3) + ", " +
-      d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear() + (ev.hora ? " · " + ev.hora : ""));
+    var quando = el("p", "race-card__date", dataLonga(d) + (ev.hora ? " · " + ev.hora : ""));
     if (ev.demo) quando.append(" ", el("span", "tag-demo", "Exemplo"));
     corpo.append(quando);
-
     var percursos = Array.isArray(ev.percursos) ? ev.percursos : (ev.percursos ? [ev.percursos] : []);
     if (percursos.length) corpo.append(el("p", "race-card__dist", percursos.join(" • ")));
     if (ev.local) corpo.append(el("p", "race-card__place", ev.local));
@@ -110,74 +123,215 @@
     ver.setAttribute("aria-label", "Saber mais sobre a " + ev.nome);
     acoes.append(a, ver);
     corpo.append(acoes);
-
     item.append(corpo);
-    grupos[chave].races.append(item);
-  });
-  ordemGrupos.forEach(function (k) { lista.append(grupos[k].el); });
-  document.getElementById("sem-provas").hidden = proximas.length > 0;
-
-  // Filtro por distância (aparece com 3+ provas e 2+ distâncias diferentes)
-  var chavesDist = Object.keys(todasDist).sort(function (a, b) {
-    return parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", "."));
-  });
-  // Busca + filtro por distância (aparecem com 3 ou mais provas)
-  if (proximas.length >= 3) {
-    var barra = el("div", "cal-tools");
-    var estado = { q: "", dist: "" };
-
-    var busca = el("label", "cal-search");
-    busca.append(el("span", "sr-only", "Buscar provas por nome ou local"));
-    var campo = el("input");
-    campo.type = "search";
-    campo.placeholder = "Buscar provas por nome ou local…";
-    campo.autocomplete = "off";
-    busca.append(campo);
-    barra.append(busca);
-
-    var filtro = null;
-    if (chavesDist.length >= 2) {
-      filtro = el("div", "dist-filter");
-      filtro.setAttribute("role", "group");
-      filtro.setAttribute("aria-label", "Filtrar provas por distância");
-      [""].concat(chavesDist).forEach(function (k) {
-        var b = el("button", "dist-chip", k === "" ? "Todas" : k + " km");
-        b.type = "button";
-        b.setAttribute("data-v", k);
-        b.addEventListener("click", function () { estado.dist = k; aplica(); });
-        filtro.append(b);
-      });
-      barra.append(filtro);
-    }
-
-    var aviso = el("p", "muted dist-filter__empty", "Nenhuma prova encontrada com esses filtros.");
-    aviso.hidden = true;
-
-    function semAcento(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, ""); }
-    function aplica() {
-      if (filtro) filtro.querySelectorAll("button").forEach(function (b) {
-        b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === estado.dist));
-      });
-      var termo = semAcento(estado.q.trim().toLowerCase());
-      var visiveis = 0;
-      lista.querySelectorAll(".month-group").forEach(function (g) {
-        var algum = false;
-        g.querySelectorAll(".race").forEach(function (r) {
-          var okDist = estado.dist === "" || r.getAttribute("data-dist").split("|").indexOf(estado.dist) >= 0;
-          var okBusca = !termo || semAcento(r.getAttribute("data-busca")).indexOf(termo) >= 0;
-          r.hidden = !(okDist && okBusca);
-          if (!r.hidden) { algum = true; visiveis++; }
-        });
-        g.hidden = !algum;
-      });
-      aviso.hidden = visiveis > 0;
-    }
-    campo.addEventListener("input", function () { estado.q = campo.value; aplica(); });
-
-    lista.parentNode.insertBefore(barra, lista);
-    lista.parentNode.insertBefore(aviso, lista.nextSibling);
-    aplica();
+    return item;
   }
+
+  function cardReal(it) {
+    var r = it.r, d = it.d;
+    var item = el("article", "race race-card race-card--past");
+    var detalhe = linkTrabalho(r.id);
+    var thumb = el("a", "race-card__thumb");
+    thumb.href = detalhe;
+    thumb.setAttribute("aria-label", "Ver no portfólio: " + it.nome);
+    thumb.tabIndex = -1;
+    if (r.logo) {
+      thumb.classList.add("race-card__thumb--logo");
+      var img = el("img");
+      img.src = r.logo; img.alt = ""; img.loading = "lazy";
+      thumb.append(img);
+    } else {
+      thumb.classList.add("race-card__thumb--date");
+      if (d) thumb.append(el("b", null, String(d.getDate())), el("span", null, MESES[d.getMonth()].slice(0, 3) + " " + d.getFullYear()));
+      else thumb.append(el("b", null, it.ano ? String(it.ano) : "—"));
+    }
+    item.append(thumb);
+
+    var corpo = el("div", "race-card__body");
+    var titulo = el("h4", "race-card__name");
+    var tl = el("a", null, it.nome);
+    tl.href = detalhe;
+    titulo.append(tl);
+    corpo.append(titulo);
+    var quando = el("p", "race-card__date");
+    quando.append(el("span", "tag-past", "Realizada"), " ", d ? dataLonga(d) : (it.ano ? "Em " + it.ano : "Data não informada"));
+    if (r.demo) quando.append(" ", el("span", "tag-demo", "Exemplo"));
+    if (it.sub) corpo.append(el("p", "race-card__dist", it.sub));
+    corpo.append(quando);
+    if (it.local) corpo.append(el("p", "race-card__place", it.local));
+    if (it.ed && it.ed.obs) corpo.append(el("p", "race-card__obs", it.ed.obs));
+    var acoes = el("div", "race-card__actions");
+    var ver = el("a", "race-card__more", "Ver no portfólio →");
+    ver.href = detalhe;
+    ver.setAttribute("aria-label", "Ver " + r.nome + " no portfólio");
+    acoes.append(ver);
+    corpo.append(acoes);
+    item.append(corpo);
+    return item;
+  }
+
+  // Barra de filtros
+  var POR_PAGINA = 12;
+  var estado = { aba: itensProx.length ? "prox" : "real", q: "", ano: "", mes: "", dist: "", limite: POR_PAGINA };
+  var barra = el("div", "cal-tools");
+
+  var abas = el("div", "cal-tabs");
+  abas.setAttribute("role", "group");
+  abas.setAttribute("aria-label", "Mostrar provas");
+  [["prox", "Próximas", itensProx.length], ["real", "Edições anteriores", itensReal.length]].forEach(function (t) {
+    var b = el("button", "cal-tab");
+    b.type = "button";
+    b.setAttribute("data-v", t[0]);
+    b.append(t[1] + " ", el("span", "cal-tab__n", String(t[2])));
+    b.addEventListener("click", function () {
+      if (estado.aba === t[0]) return;
+      estado.aba = t[0]; estado.ano = ""; estado.mes = ""; estado.dist = ""; estado.limite = POR_PAGINA;
+      render();
+    });
+    abas.append(b);
+  });
+  barra.append(abas);
+
+  var linha = el("div", "cal-filters");
+  var busca = el("label", "cal-search");
+  busca.append(el("span", "sr-only", "Buscar provas por nome ou local"));
+  var campo = el("input");
+  campo.type = "search";
+  campo.placeholder = "Buscar por nome ou local…";
+  campo.autocomplete = "off";
+  busca.append(campo);
+  linha.append(busca);
+
+  function seletor(rotulo) {
+    var w = el("label", "cal-select");
+    w.append(el("span", "sr-only", rotulo));
+    var s = el("select");
+    w.append(s);
+    linha.append(w);
+    return s;
+  }
+  var selAno = seletor("Filtrar por ano");
+  var selMes = seletor("Filtrar por mês");
+  var limpar = el("button", "cal-clear", "Limpar filtros");
+  limpar.type = "button";
+  linha.append(limpar);
+  barra.append(linha);
+
+  var filtroDist = el("div", "dist-filter");
+  filtroDist.setAttribute("role", "group");
+  filtroDist.setAttribute("aria-label", "Filtrar provas por distância");
+  barra.append(filtroDist);
+
+  var resumo = el("p", "cal-count");
+  resumo.setAttribute("aria-live", "polite");
+  barra.append(resumo);
+
+  var aviso = el("p", "muted dist-filter__empty", "Nenhuma prova encontrada com esses filtros.");
+  var mais = el("button", "btn btn--ghost cal-more");
+  mais.type = "button";
+  mais.addEventListener("click", function () { estado.limite += POR_PAGINA; render(); });
+
+  lista.parentNode.insertBefore(barra, lista);
+  lista.parentNode.insertBefore(aviso, lista.nextSibling);
+  lista.parentNode.insertBefore(mais, aviso.nextSibling);
+
+  function opcoes(sel, valores, todos, atual) {
+    sel.innerHTML = "";
+    var o = el("option", null, todos);
+    o.value = "";
+    sel.append(o);
+    valores.forEach(function (v) {
+      var op = el("option", null, v[1]);
+      op.value = v[0];
+      sel.append(op);
+    });
+    sel.value = atual;
+  }
+
+  function render() {
+    var itens = estado.aba === "prox" ? itensProx : itensReal;
+    abas.querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === estado.aba));
+    });
+
+    // Anos e meses disponíveis na aba (meses dentro do ano escolhido)
+    var anos = {};
+    itens.forEach(function (it) { if (it.ano) anos[it.ano] = true; });
+    var listaAnos = Object.keys(anos).sort(function (a, b) { return estado.aba === "prox" ? a - b : b - a; });
+    if (estado.ano && !anos[estado.ano]) estado.ano = "";
+    opcoes(selAno, listaAnos.map(function (a) { return [a, a]; }), "Todos os anos", estado.ano);
+    var meses = {};
+    itens.forEach(function (it) { if (it.mes !== null && (!estado.ano || String(it.ano) === estado.ano)) meses[it.mes] = true; });
+    if (estado.mes !== "" && !meses[estado.mes]) estado.mes = "";
+    opcoes(selMes, Object.keys(meses).sort(function (a, b) { return a - b; }).map(function (m) { return [m, cap(MESES[m])]; }), "Todos os meses", estado.mes);
+    selAno.parentNode.hidden = listaAnos.length < 2;
+    selMes.parentNode.hidden = Object.keys(meses).length < 2;
+
+    // Distâncias (só nas próximas, com 2 ou mais distâncias diferentes)
+    var todas = {};
+    itens.forEach(function (it) { it.dist.forEach(function (k) { todas[k] = true; }); });
+    var chaves = Object.keys(todas).sort(function (a, b) { return parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", ".")); });
+    filtroDist.innerHTML = "";
+    filtroDist.hidden = chaves.length < 2;
+    if (chaves.length >= 2) {
+      [""].concat(chaves).forEach(function (k) {
+        var b = el("button", "dist-chip", k === "" ? "Todas as distâncias" : k + " km");
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(k === estado.dist));
+        b.addEventListener("click", function () { estado.dist = k; estado.limite = POR_PAGINA; render(); });
+        filtroDist.append(b);
+      });
+    }
+
+    var termo = semAcento(estado.q.trim().toLowerCase());
+    var filtrados = itens.filter(function (it) {
+      if (estado.ano && String(it.ano) !== estado.ano) return false;
+      if (estado.mes !== "" && String(it.mes) !== estado.mes) return false;
+      if (estado.dist && it.dist.indexOf(estado.dist) < 0) return false;
+      if (termo && semAcento(it.busca.toLowerCase()).indexOf(termo) < 0) return false;
+      return true;
+    });
+    var algumFiltro = !!(termo || estado.ano || estado.mes !== "" || estado.dist);
+    limpar.hidden = !algumFiltro;
+
+    // Lista agrupada por mês
+    lista.innerHTML = "";
+    var grupos = {};
+    filtrados.slice(0, estado.limite).forEach(function (it) {
+      var chave, titulo;
+      if (it.mes !== null) { chave = it.ano + "-" + it.mes; titulo = cap(MESES[it.mes]) + " " + it.ano; }
+      else if (it.ano) { chave = it.ano + "-x"; titulo = it.ano + " · mês não informado"; }
+      else { chave = "x"; titulo = "Data não informada"; }
+      if (!grupos[chave]) {
+        var g = el("section", "month-group");
+        g.append(el("h3", "month-title", titulo));
+        var rr = el("div", "races");
+        g.append(rr);
+        grupos[chave] = rr;
+        lista.append(g);
+      }
+      grupos[chave].append(it.tipo === "prox" ? cardProx(it) : cardReal(it));
+    });
+
+    var vazioProx = estado.aba === "prox" && !itensProx.length;
+    document.getElementById("sem-provas").hidden = !vazioProx;
+    aviso.hidden = filtrados.length > 0 || vazioProx;
+    var n = filtrados.length;
+    var palavra = estado.aba === "prox" ? (n === 1 ? "prova aberta" : "provas abertas") : (n === 1 ? "edição realizada" : "edições realizadas");
+    resumo.textContent = n ? n + " " + palavra + (n > estado.limite ? " · mostrando " + estado.limite : "") : "";
+    var resta = n - estado.limite;
+    mais.hidden = resta <= 0;
+    mais.textContent = "Ver mais edições (" + resta + ")";
+  }
+
+  campo.addEventListener("input", function () { estado.q = campo.value; estado.limite = POR_PAGINA; render(); });
+  selAno.addEventListener("change", function () { estado.ano = selAno.value; estado.limite = POR_PAGINA; render(); });
+  selMes.addEventListener("change", function () { estado.mes = selMes.value; estado.limite = POR_PAGINA; render(); });
+  limpar.addEventListener("click", function () {
+    estado.q = ""; campo.value = ""; estado.ano = ""; estado.mes = ""; estado.dist = ""; estado.limite = POR_PAGINA;
+    render();
+  });
+  render();
 
   // ---------- Card "próxima prova" na abertura ----------
   if (proximas.length) {
