@@ -188,13 +188,13 @@ h3 { font-weight: 700; font-size: 1.5rem; }
 .race__poster { width: 100%; max-width: 340px; border-radius: 4px; box-shadow: 0 1px 0 var(--rule); }
 .race__date { font-size: 1.05rem; color: var(--muted); margin-bottom: 0.3em; }
 .race__date b { color: var(--red); }
-.race h3 { font-size: clamp(1.45rem, 5vw, 2.4rem); font-style: italic; font-weight: 800; }
+.race h3, .race h4 { font-family: var(--cond); line-height: 1; margin: 0 0 0.45em; color: var(--navy); font-size: clamp(1.45rem, 5vw, 2.4rem); font-style: italic; font-weight: 800; }
 .race__facts { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0 0 16px; }
 .race__facts dd { margin-bottom: 8px; }
 .race__actions { display: flex; flex-wrap: wrap; gap: 10px; }
 @media (max-width: 759px) {
   .race__info { display: contents; }
-  .race__date, .race h3 { grid-column: 2; }
+  .race__date, .race h3, .race h4 { grid-column: 2; }
   .race__poster { grid-row: 1 / span 2; }
   .race__facts, .race__note, .race__actions { grid-column: 1 / -1; }
   .race__actions .btn { flex: 1 1 140px; white-space: nowrap; padding-left: 0.9em; padding-right: 0.9em; }
@@ -306,8 +306,8 @@ h3 { font-weight: 700; font-size: 1.5rem; }
 /* ===== Calendário: links para a página da prova ===== */
 .race__poster-link { display: block; }
 .race__poster-link:hover .race__poster { opacity: 0.9; }
-.race h3 a { color: inherit; text-decoration: none; }
-.race h3 a:hover { color: var(--red-btn); }
+.race h3 a, .race h4 a { color: inherit; text-decoration: none; }
+.race h3 a:hover, .race h4 a:hover { color: var(--red-btn); }
 .next-card__name a { color: inherit; text-decoration: none; }
 .next-card__name a:hover { color: var(--red-btn); }
 
@@ -453,3 +453,50 @@ button.btn--white { background-color: transparent; }
 .banner-slide__cap b { color: var(--red-btn); font-size: 0.92rem; }
 .banner-slide__cap span { font: italic 800 1.25rem/1.1 var(--cond); color: var(--navy); }
 .carousel--banners { padding-left: 4px !important; padding-right: 4px !important; scroll-padding: 0 4px !important; }
+
+/* ===== Calendário por mês + filtro ===== */
+.month-group { margin-top: 8px; }
+.month-group + .month-group { margin-top: 48px; }
+.month-group[hidden] { display: none; }
+.month-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 1.15rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red-btn);
+  margin: 0 0 24px;
+}
+.month-title::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.race[hidden] { display: none; }
+.dist-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 32px; }
+.dist-filter__label { font-weight: 700; color: var(--navy); margin-right: 4px; }
+.dist-chip {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: #fff;
+  font: 600 0.95rem var(--body);
+  color: var(--ink);
+  cursor: pointer;
+}
+.dist-chip:hover { border-color: var(--navy); }
+.dist-chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.dist-filter__empty[hidden] { display: none; }
+
+/* ===== Breadcrumb ===== */
+.breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; margin: 0; padding: 0; font-size: 0.95rem; }
+.breadcrumb li { display: inline-flex; align-items: center; color: #c3cbe3; }
+.breadcrumb li + li::before { content: "›"; margin: 0 10px; color: #8e99bd; }
+.breadcrumb a { display: inline-flex; align-items: center; min-height: 44px; color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,0.4); }
+.breadcrumb a:hover { text-decoration-color: #fff; }
+.breadcrumb [aria-current] { color: #c3cbe3; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Modo demonstração ===== */
+.demo-bar { position: relative; z-index: 25; padding: 10px 16px; background: #fff4c2; color: #4a3b00; font-size: 0.92rem; text-align: center; border-bottom: 1px solid #e8d77a; }
+.demo-bar a { color: #4a3b00; font-weight: 700; }
+.tag-demo { display: inline-block; vertical-align: middle; padding: 2px 8px; border-radius: 4px; background: #fff4c2; color: #4a3b00; font: 700 0.75rem/1.4 var(--body); letter-spacing: 0.04em; text-transform: uppercase; }

@@ -28,6 +28,7 @@
   var id = new URLSearchParams(location.search).get("id");
   var ev = provas.filter(function (p) { return p.id === id; })[0];
   var raiz = document.getElementById("prova");
+  var demoQ = window.DEMO ? "?demo=1" : "";
 
   function wa(msg) {
     return "https://wa.me/" + (site.whatsapp || "") + "?text=" + encodeURIComponent(msg);
@@ -40,7 +41,7 @@
     w.append(
       el("h1", "page-title", "Prova não encontrada"),
       el("p", "muted", "Essa prova pode ter sido encerrada ou o link mudou."),
-      link("Ver calendário de provas", "index.html#calendario", "btn btn--red")
+      link("Ver calendário de provas", "index.html" + demoQ + "#calendario", "btn btn--red")
     );
     vazio.append(w);
     raiz.append(vazio);
@@ -64,8 +65,22 @@
   var topo = el("section", "event-hero");
   var tw = el("div", "wrap event-hero__grid");
   var txt = el("div", "event-hero__text");
-  txt.append(link("← Calendário de provas", "index.html#calendario", "event-hero__back"));
-  txt.append(el("p", "event-hero__date", quando + (ev.hora ? " · largada às " + ev.hora : "")));
+
+  // Breadcrumb: Início › Calendário › Prova
+  var inicio = "index.html" + demoQ;
+  var bc = el("nav", "breadcrumb");
+  bc.setAttribute("aria-label", "Você está em");
+  var ol = el("ol");
+  var li1 = el("li"); li1.append(link("Início", inicio));
+  var li2 = el("li"); li2.append(link("Calendário", inicio + "#calendario"));
+  var li3 = el("li"); var atual = el("span", null, ev.nome); atual.setAttribute("aria-current", "page"); li3.append(atual);
+  ol.append(li1, li2, li3);
+  bc.append(ol);
+  txt.append(bc);
+
+  var dataLinha = el("p", "event-hero__date", quando + (ev.hora ? " · largada às " + ev.hora : ""));
+  if (ev.demo) dataLinha.append(" ", el("span", "tag-demo", "Exemplo"));
+  txt.append(dataLinha);
   txt.append(el("h1", null, ev.nome));
   if (ev.local) txt.append(el("p", "event-hero__place", ev.local));
 
@@ -245,7 +260,7 @@
     outras.forEach(function (p) {
       var pd = data(p.data);
       var a = el("a", "other-race");
-      a.href = "prova.html?id=" + encodeURIComponent(p.id);
+      a.href = "prova.html?id=" + encodeURIComponent(p.id) + (window.DEMO ? "&demo=1" : "");
       if (p.poster) { var im = el("img"); im.src = p.poster; im.alt = ""; im.loading = "lazy"; a.append(im); }
       var t = el("div");
       t.append(el("span", null, pd.getDate() + " de " + MESES[pd.getMonth()] + " de " + pd.getFullYear()), el("strong", null, p.nome));
@@ -256,6 +271,21 @@
     os.append(ow);
     raiz.append(os);
   }
+
+  // Dados estruturados do breadcrumb
+  var base = location.href.replace(/[^/]*$/, "");
+  var bld = document.createElement("script");
+  bld.type = "application/ld+json";
+  bld.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Início", item: base + "index.html" },
+      { "@type": "ListItem", position: 2, name: "Calendário", item: base + "index.html#calendario" },
+      { "@type": "ListItem", position: 3, name: ev.nome },
+    ],
+  });
+  document.head.append(bld);
 
   // Dados estruturados
   var ld = document.createElement("script");
