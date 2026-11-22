@@ -100,6 +100,55 @@
   ];
   exemplos.forEach(function (e) { e.demo = true; PROXIMAS.push(e); });
 
+  // Casos fictícios no portfólio, com todos os campos preenchidos
+  if (typeof REALIZADAS !== "undefined") {
+    [
+      {
+        id: "demo-run-corporativa",
+        nome: "Run Corporativa 2026",
+        ano: "2026",
+        data: "2026-08-23",
+        logo: "assets/demo/logo-corporativa.jpg",
+        capa: "assets/demo/foto-largada.jpg",
+        tipo: "Empresa",
+        cliente: "Empresa Exemplo S.A. (fictícia)",
+        local: "Lagoa da Pampulha, Belo Horizonte",
+        percursos: ["Caminhada 3 km", "Corrida 5 km", "Corrida 10 km"],
+        participantes: 2400,
+        servicos: ["Planejamento e conceito da prova", "Regularização e licenciamento", "Percurso, arena e cronometragem", "Kits e medalhas personalizados", "Divulgação para colaboradores", "Shows e ativações dos patrocinadores"],
+        descricao: "Caso fictício de demonstração: corrida aberta ao público com a marca da empresa, para celebrar seus 30 anos.",
+        destaques: ["2.400 inscritos em 18 dias", "Arena com ativações de 6 marcas parceiras", "Ação social com doação de alimentos", "98% dos participantes avaliaram o evento como ótimo ou bom"],
+        fotos: [
+          { foto: "assets/demo/foto-largada.jpg", legenda: "Largada (ilustrativa)" },
+          { foto: "assets/demo/foto-pelotao.jpg", legenda: "Pelotão (ilustrativa)" },
+          { foto: "assets/demo/foto-orla.jpg", legenda: "Percurso na orla (ilustrativa)" },
+          { foto: "assets/demo/foto-chegada.jpg", legenda: "Chegada (ilustrativa)" },
+        ],
+        depoimento: { texto: "A Tardim Produções cuidou de tudo, das licenças à premiação. Nossos colaboradores pedem a próxima edição.", autor: "Nome Fictício", cargo: "Gerente de Marketing, Empresa Exemplo S.A." },
+      },
+      {
+        id: "demo-10k-conselho",
+        nome: "10K do Conselho 2025",
+        ano: "2025",
+        logo: "assets/demo/logo-conselho.jpg",
+        capa: "assets/demo/foto-amanhecer.jpg",
+        tipo: "Conselho profissional",
+        cliente: "Conselho Regional Exemplo (fictício)",
+        local: "Praça da Liberdade, Belo Horizonte",
+        percursos: ["Corrida 5 km", "Corrida 10 km"],
+        participantes: 1200,
+        servicos: ["Produção da prova", "Regularização e licenciamento", "Inscrições com desconto para profissionais", "Retirada de kit"],
+        descricao: "Caso fictício de demonstração: corrida anual do conselho, contratada por licitação.",
+        destaques: ["Contratação por processo licitatório", "Inscrição com 50% de desconto para profissionais registrados", "Percurso homologado"],
+        fotos: [
+          { foto: "assets/demo/foto-amanhecer.jpg", legenda: "Largada ao amanhecer (ilustrativa)" },
+          { foto: "assets/demo/foto-kids.jpg", legenda: "Arena (ilustrativa)" },
+        ],
+        depoimento: { texto: "Equipe organizada e documentação impecável, o que fez toda a diferença no processo de contratação.", autor: "Nome Fictício", cargo: "Assessoria de Comunicação, Conselho Regional Exemplo" },
+      },
+    ].forEach(function (e) { e.demo = true; REALIZADAS.unshift(e); });
+  }
+
   if (typeof GALERIA !== "undefined") {
     [["foto-largada.jpg", "Largada (foto ilustrativa)"], ["foto-pelotao.jpg", "Pelotão (foto ilustrativa)"],
       ["foto-chegada.jpg", "Chegada (foto ilustrativa)"], ["foto-orla.jpg", "Orla (foto ilustrativa)"],

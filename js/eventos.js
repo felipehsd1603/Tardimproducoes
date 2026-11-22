@@ -29,8 +29,25 @@
  *    fotos       Link das fotos
  *    realizacao  Quem realiza/contrata a prova
  *
- *  REALIZADAS: logos das provas que já fizemos.
- *    nome, ano, logo
+ *  REALIZADAS: portfólio de eventos já realizados. Cada evento ganha
+ *  uma página de estudo de caso (evento.html?id=...). Campos vazios
+ *  não aparecem.
+ *    id           Identificador curto, sem espaços (vai no link)
+ *    nome, ano    Nome do evento e ano
+ *    data         "AAAA-MM-DD" (opcional)
+ *    logo         Logo do evento (imagem quadrada em assets/corridas)
+ *    capa         Foto principal (assets/fotos)
+ *    tipo         "Conselho profissional", "Órgão público", "Empresa",
+ *                 "Federação esportiva" ou "Evento próprio"
+ *    cliente      Quem contratou / realizou
+ *    local        Onde aconteceu
+ *    percursos    Lista de percursos
+ *    participantes Número de participantes (ex.: 2000)
+ *    servicos     O que a Tardim Produções fez (lista)
+ *    descricao    Texto curto sobre o evento
+ *    destaques    Lista de pontos fortes do evento
+ *    fotos        [{ foto, legenda }]
+ *    depoimento   { texto, autor, cargo }
  */
 
 const SITE = {
@@ -102,13 +119,104 @@ const PROXIMAS = [
 ];
 
 const REALIZADAS = [
-  { nome: "Hulk Run", ano: "2026", logo: "assets/corridas/hulk-run.png" },
-  { nome: "Crefito-4 Run", ano: "2026", logo: "assets/corridas/crefito4-run.png" },
-  { nome: "Corrida FHEMIG", ano: "2026", logo: "assets/corridas/corrida-fhemig.png" },
-  { nome: "Meia Maratona Liberdade", ano: "2025", logo: "assets/corridas/meia-maratona-liberdade.png" },
-  { nome: "Campeonato Mineiro de Corrida de Rua", ano: "2025", logo: "assets/corridas/campeonato-mineiro.png" },
-  { nome: "Corrida da Administração", ano: "2025", logo: "assets/corridas/corrida-administracao.png" },
-  { nome: "Corrida da Guarda Civil Municipal", ano: "", logo: "assets/corridas/guarda-civil-bh.png" },
+  {
+    id: "hulk-run-2026",
+    nome: "Hulk Run 2026",
+    ano: "2026",
+    logo: "assets/corridas/hulk-run.png",
+    capa: "assets/fotos/hulk-run-largada.jpg",
+    tipo: "Evento de marca",
+    cliente: "",
+    local: "Lagoa da Pampulha, Belo Horizonte",
+    percursos: ["Caminhada 3 km", "Corrida 5 km", "Corrida 10 km", "Caminhada Kids 1.000 m"],
+    participantes: "",
+    servicos: ["Produção da prova", "Arena e programação do dia", "Divulgação nas redes", "Retirada de kit"],
+    descricao: "Corrida com o jogador Hulk na orla da Pampulha, com arena, largadas por distância, premiação e shows beneficentes.",
+    destaques: [
+      "Shows beneficentes com Bruno & Denner e Panda, com doação de todo o valor arrecadado",
+      "Patrocínio master da Gerdau",
+      "Retirada de kit na Decathlon BH Sul",
+      "Programação completa: abertura da arena às 6h, largadas, premiação e show até as 13h",
+    ],
+    fotos: [
+      { foto: "assets/fotos/hulk-run-largada.jpg", legenda: "Largada" },
+      { foto: "assets/fotos/hulk-run-2.jpg", legenda: "Percurso na Pampulha" },
+      { foto: "assets/fotos/hulk-run-3.jpg", legenda: "Orla da Pampulha" },
+      { foto: "assets/fotos/hulk-run-1.jpg", legenda: "Percurso" },
+      { foto: "assets/fotos/hulk-run-medalha.jpg", legenda: "Medalha" },
+    ],
+  },
+  {
+    id: "crefito4-run-2026",
+    nome: "Crefito-4 Run 2026",
+    ano: "2026",
+    logo: "assets/corridas/crefito4-run.png",
+    capa: "assets/fotos/crefito4-run-bh.jpg",
+    tipo: "Conselho profissional",
+    cliente: "Crefito-4 (Conselho Regional de Fisioterapia e Terapia Ocupacional de MG)",
+    local: "Belo Horizonte e Governador Valadares",
+    percursos: [],
+    participantes: "",
+    servicos: ["Produção das etapas", "Retirada de kit", "Divulgação"],
+    descricao: "Circuito de corridas do Crefito-4 com etapas em diferentes cidades de Minas Gerais.",
+    destaques: [
+      "Etapas em Belo Horizonte e em Governador Valadares (Praça Caparaó, Ilha dos Araújos)",
+      "Inscrição gratuita para fisioterapeutas e terapeutas ocupacionais inscritos no Crefito-4",
+    ],
+    fotos: [{ foto: "assets/fotos/crefito4-run-bh.jpg", legenda: "Etapa Belo Horizonte" }],
+  },
+  {
+    id: "corrida-fhemig-2026",
+    nome: "Corrida FHEMIG 2026",
+    ano: "2026",
+    data: "2026-11-14",
+    logo: "assets/corridas/corrida-fhemig.png",
+    tipo: "Órgão público",
+    cliente: "FHEMIG (Fundação Hospitalar do Estado de Minas Gerais)",
+    local: "Belo Horizonte",
+    percursos: ["3,5 km", "10 km"],
+    participantes: "",
+    servicos: ["Produção da prova", "Retirada de kit", "Premiação"],
+    descricao: "Corrida da Fundação Hospitalar do Estado de Minas Gerais, com premiação em dinheiro.",
+    destaques: [
+      "Premiação em dinheiro para os primeiros colocados da classificação geral",
+      "Retirada de kit na Decathlon (13 e 14 de novembro)",
+    ],
+    fotos: [],
+  },
+  {
+    id: "meia-maratona-liberdade-2025",
+    nome: "Meia Maratona Liberdade 2025",
+    ano: "2025",
+    logo: "assets/corridas/meia-maratona-liberdade.png",
+    tipo: "Evento próprio",
+    percursos: ["21 km"],
+  },
+  {
+    id: "campeonato-mineiro-2025",
+    nome: "Campeonato Mineiro de Corrida de Rua · 3ª etapa",
+    ano: "2025",
+    logo: "assets/corridas/campeonato-mineiro.png",
+    tipo: "Federação esportiva",
+    cliente: "FMA (Federação Mineira de Atletismo)",
+  },
+  {
+    id: "corrida-administracao-2025",
+    nome: "Corrida da Administração 2025",
+    ano: "2025",
+    logo: "assets/corridas/corrida-administracao.png",
+    tipo: "Conselho profissional",
+    cliente: "CRA-MG (Conselho Regional de Administração de MG)",
+  },
+  {
+    id: "corrida-guarda-civil-bh",
+    nome: "Corrida da Guarda Civil Municipal",
+    ano: "",
+    logo: "assets/corridas/guarda-civil-bh.png",
+    tipo: "Órgão público",
+    cliente: "Guarda Civil Municipal de Belo Horizonte",
+    local: "Belo Horizonte",
+  },
 ];
 
 /*

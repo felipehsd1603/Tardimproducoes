@@ -267,16 +267,24 @@
   var logos = document.getElementById("realizadas");
   (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).forEach(function (r) {
     var li = el("li");
+    var a = el("a", "logos__link");
+    a.href = "evento.html?id=" + encodeURIComponent(r.id || "") + (window.DEMO ? "&demo=1" : "");
     var img = el("img");
     img.src = r.logo;
-    img.alt = "Logo " + r.nome;
+    img.alt = "";
     img.loading = "lazy";
     img.width = 300;
     img.height = 300;
-    li.append(img, el("span", null, r.nome));
-    if (r.ano) li.append(el("small", null, r.ano));
+    a.append(img, el("span", null, r.nome));
+    if (r.ano || r.demo) {
+      var sm = el("small", null, r.ano || "");
+      if (r.demo) sm.append(" ", el("span", "tag-demo", "Exemplo"));
+      a.append(sm);
+    }
+    li.append(a);
     logos.append(li);
   });
+  if (window.DEMO) document.getElementById("ver-portfolio").href = "portfolio.html?demo=1";
 
   // ---------- Contatos ----------
   if (typeof SITE !== "undefined") {
