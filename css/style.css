@@ -500,3 +500,75 @@ button.btn--white { background-color: transparent; }
 .demo-bar { position: relative; z-index: 25; padding: 10px 16px; background: #fff4c2; color: #4a3b00; font-size: 0.92rem; text-align: center; border-bottom: 1px solid #e8d77a; }
 .demo-bar a { color: #4a3b00; font-weight: 700; }
 .tag-demo { display: inline-block; vertical-align: middle; padding: 2px 8px; border-radius: 4px; background: #fff4c2; color: #4a3b00; font: 700 0.75rem/1.4 var(--body); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ===== Calendário em cards compactos ===== */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.month-group .races { display: grid; gap: 14px; margin-top: 0; }
+@media (min-width: 900px) { .month-group .races { grid-template-columns: repeat(2, 1fr); gap: 18px; } }
+.month-title { margin-bottom: 16px; }
+.month-group + .month-group { margin-top: 36px; }
+
+.race.race-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(29, 40, 71, 0.06);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.race.race-card:hover { border-color: #e8b4b9; box-shadow: 0 6px 18px rgba(29, 40, 71, 0.1); }
+.race.race-card[hidden] { display: none; }
+@media (min-width: 600px) { .race.race-card { grid-template-columns: 120px 1fr; padding: 16px; } }
+
+.race-card__thumb { display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--paper); }
+.race-card__thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center top; transition: transform 0.2s; }
+.race-card:hover .race-card__thumb img { transform: scale(1.04); }
+.race-card__thumb--date { display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--navy); color: #fff; text-decoration: none; }
+.race-card__thumb--date b { font: italic 800 2.4rem/1 var(--cond); }
+.race-card__thumb--date span { text-transform: uppercase; font-weight: 700; letter-spacing: 0.08em; font-size: 0.85rem; }
+
+.race-card__body { min-width: 0; }
+.race-card .race-card__name { font: italic 800 1.35rem/1.08 var(--cond); margin: 0 0 4px; color: var(--navy); }
+.race-card__name a { color: inherit; text-decoration: none; }
+.race-card__name a:hover { color: var(--red-btn); }
+.race-card__date { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.race-card__dist { margin: 2px 0 0; font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+.race-card__place { margin: 2px 0 0; color: var(--muted); font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.race-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; margin-top: 10px; }
+.btn--sm { padding: 0.55em 1em; font-size: 0.92rem; }
+.race-card__more { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; color: var(--navy); text-underline-offset: 3px; }
+.race-card__more:hover { color: var(--red-btn); }
+
+/* Busca + filtro */
+.cal-tools { display: grid; gap: 14px; margin: 0 0 32px; }
+.cal-search input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 16px 0 46px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6275' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 15px center / 20px;
+  font: 400 1rem var(--body);
+  color: var(--ink);
+}
+.cal-search input:focus { outline: 3px solid var(--red); outline-offset: 2px; background-color: #fff; }
+.cal-tools .dist-filter { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.cal-tools .dist-filter::-webkit-scrollbar { display: none; }
+.cal-tools .dist-chip { flex: none; min-height: 44px; }
+@media (min-width: 900px) {
+  .cal-tools { grid-template-columns: minmax(280px, 380px) 1fr; align-items: center; }
+  .cal-tools .dist-filter { flex-wrap: wrap; }
+}
+.cal-search input { -webkit-appearance: none; appearance: none; }
+.cal-search input::-webkit-search-decoration { -webkit-appearance: none; }
+@media (max-width: 599px) {
+  .race-card__actions { gap: 4px 12px; }
+  .race-card .btn--sm { padding: 0.5em 0.85em; }
+  .banner-slide { flex-basis: 44%; }
+  .banner-slide__cap span { font-size: 1.05rem; }
+}
