@@ -75,8 +75,8 @@ const urls = [];
 
 // Páginas fixas: só atualiza a prévia
 const fixas = [
-  { arquivo: "index.html", titulo: "Tardim Produções · Fazendo bem feito!", descricao: "Corridas de rua, eventos esportivos e prevenção contra incêndio em Belo Horizonte e Minas Gerais. Veja o calendário de provas.", imagem: "assets/compartilhar.jpg", url: BASE },
-  { arquivo: "portfolio.html", titulo: "Portfólio · Tardim Produções", descricao: "Eventos esportivos e serviços de prevenção contra incêndio para tribunais, prefeituras, conselhos e empresas em Minas Gerais.", imagem: "assets/compartilhar.jpg", url: BASE + "portfolio.html" },
+  { arquivo: "index.html", titulo: "Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE },
+  { arquivo: "portfolio.html", titulo: "Portfólio · Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE + "portfolio.html" },
   { arquivo: "prova.html", titulo: "Prova · Tardim Produções", descricao: "Calendário de provas da Tardim Produções.", imagem: "", url: BASE + "prova.html" },
   { arquivo: "evento.html", titulo: "Portfólio · Tardim Produções", descricao: "Trabalho realizado pela Tardim Produções.", imagem: "", url: BASE + "evento.html" },
 ];
