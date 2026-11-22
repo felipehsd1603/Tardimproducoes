@@ -31,7 +31,7 @@ const dataBR = (iso) => { const p = iso.split("-").map(Number); return p[2] + " 
 
 // Para a prévia, usa JPG/PNG (o WhatsApp lê melhor que WebP)
 function imagemPrevia(img) {
-  if (!img) return BASE + "assets/logo-tardim.png";
+  if (!img) return BASE + "assets/compartilhar.jpg";
   const semExt = img.replace(/\.(webp|jpg|jpeg|png)$/i, "");
   for (const ext of [".jpg", ".png", ".jpeg"]) {
     if (fs.existsSync(path.join(RAIZ, semExt + ext))) return BASE + semExt + ext;
@@ -49,6 +49,13 @@ function blocoOG({ titulo, descricao, imagem, url, tipo }) {
     `    <meta property="og:title" content="${esc(titulo)}" />`,
     `    <meta property="og:description" content="${esc(descricao)}" />`,
     `    <meta property="og:image" content="${esc(imagem)}" />`,
+    `    <meta property="og:image:secure_url" content="${esc(imagem)}" />`,
+    ...(/compartilhar\.jpg$/.test(imagem) ? [
+      `    <meta property="og:image:type" content="image/jpeg" />`,
+      `    <meta property="og:image:width" content="1200" />`,
+      `    <meta property="og:image:height" content="630" />`,
+    ] : []),
+    `    <meta property="og:image:alt" content="${esc(titulo)}" />`,
     `    <meta property="og:url" content="${esc(url)}" />`,
     `    <meta name="twitter:card" content="summary_large_image" />`,
     "    <!--/og-->",
@@ -68,8 +75,8 @@ const urls = [];
 
 // Páginas fixas: só atualiza a prévia
 const fixas = [
-  { arquivo: "index.html", titulo: "Tardim Produções · Fazendo bem feito!", descricao: "Corridas de rua, eventos esportivos e prevenção contra incêndio em Belo Horizonte e Minas Gerais. Veja o calendário de provas.", imagem: "assets/fotos/hulk-run-largada.jpg", url: BASE },
-  { arquivo: "portfolio.html", titulo: "Portfólio · Tardim Produções", descricao: "Eventos esportivos e serviços de prevenção contra incêndio para tribunais, prefeituras, conselhos e empresas em Minas Gerais.", imagem: "assets/fotos/hulk-run-largada.jpg", url: BASE + "portfolio.html" },
+  { arquivo: "index.html", titulo: "Tardim Produções · Fazendo bem feito!", descricao: "Corridas de rua, eventos esportivos e prevenção contra incêndio em Belo Horizonte e Minas Gerais. Veja o calendário de provas.", imagem: "assets/compartilhar.jpg", url: BASE },
+  { arquivo: "portfolio.html", titulo: "Portfólio · Tardim Produções", descricao: "Eventos esportivos e serviços de prevenção contra incêndio para tribunais, prefeituras, conselhos e empresas em Minas Gerais.", imagem: "assets/compartilhar.jpg", url: BASE + "portfolio.html" },
   { arquivo: "prova.html", titulo: "Prova · Tardim Produções", descricao: "Calendário de provas da Tardim Produções.", imagem: "", url: BASE + "prova.html" },
   { arquivo: "evento.html", titulo: "Portfólio · Tardim Produções", descricao: "Trabalho realizado pela Tardim Produções.", imagem: "", url: BASE + "evento.html" },
 ];
