@@ -334,13 +334,9 @@
       });
     }
 
-    // Dados da empresa (só mostra o que estiver preenchido)
-    var dados = document.getElementById("dados-empresa");
-    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Endereço", SITE.endereco],
-      ["Cidade", SITE.cidade], ["E-mail", SITE.email]].forEach(function (f) {
-      if (!f[1]) return;
-      dados.append(el("dt", null, f[0]), el("dd", null, f[1]));
-    });
+    // Linha discreta com razão social e CNPJ
+    var legal = document.getElementById("inst-legal");
+    if (legal) legal.textContent = [SITE.razaoSocial, SITE.cnpj ? "CNPJ " + SITE.cnpj : ""].filter(Boolean).join(" · ");
     if (SITE.cnpj) {
       document.getElementById("footer-legal").textContent =
         (SITE.razaoSocial || "Tardim Produções e Eventos Ltda") + " · CNPJ " + SITE.cnpj + " · " + (SITE.cidade || "");

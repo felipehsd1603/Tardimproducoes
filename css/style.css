@@ -755,3 +755,5 @@ button.btn--white { background-color: transparent; }
   .bento__item:not(.bento__item--hero):not(.bento__item--fire) .bento__icon { grid-row: span 2; }
   .bento__item:not(.bento__item--hero):not(.bento__item--fire) h3 { margin: 0; }
 }
+.inst__legal { margin: 20px 0 0; font-size: 0.88rem; color: var(--muted); }
+.inst > div:last-child > .inst__sub:first-child { margin-top: 0.3em; }
