@@ -24,8 +24,12 @@ const SITE = {
   instagram: "https://www.instagram.com/tardimproducoes/",
   linktree: "https://linktr.ee/Tardim",
   // WhatsApp com DDI + DDD, só números. Ex.: "5531999999999"
-  // Enquanto estiver vazio, o botão de WhatsApp não aparece.
-  whatsapp: "",
+  whatsapp: "5531984289667",
+  // Dados institucionais. Campos vazios não aparecem no site.
+  razaoSocial: "Tardim Produções LTDA",
+  cnpj: "",
+  endereco: "",
+  cidade: "Belo Horizonte, MG",
 };
 
 const PROXIMAS = [

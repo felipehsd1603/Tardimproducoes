@@ -94,13 +94,33 @@
 
   // ---------- Contatos ----------
   if (typeof SITE !== "undefined") {
+    // WhatsApp: todos os links com data-wa usam o número e a mensagem pronta
+    var waLinks = document.querySelectorAll("[data-wa]");
     if (SITE.whatsapp) {
-      var w = document.getElementById("whatsapp-link");
-      w.href = "https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent("Olá! Vim pelo site da Tardim Produções.");
+      waLinks.forEach(function (a) {
+        a.href = "https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent(a.getAttribute("data-wa"));
+      });
       var n = SITE.whatsapp.replace(/^55/, "");
-      w.textContent = "(" + n.slice(0, 2) + ") " + n.slice(2, -4) + "-" + n.slice(-4);
-      document.getElementById("li-whatsapp").hidden = false;
+      document.getElementById("wa-number").textContent =
+        "(" + n.slice(0, 2) + ") " + n.slice(2, -4) + "-" + n.slice(-4);
+    } else {
+      waLinks.forEach(function (a) {
+        (a.closest("li") || a).hidden = true;
+      });
     }
+
+    // Dados da empresa (só mostra o que estiver preenchido)
+    var dados = document.getElementById("dados-empresa");
+    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Endereço", SITE.endereco],
+      ["Cidade", SITE.cidade], ["E-mail", SITE.email]].forEach(function (f) {
+      if (!f[1]) return;
+      dados.append(el("dt", null, f[0]), el("dd", null, f[1]));
+    });
+    if (SITE.cnpj) {
+      document.getElementById("footer-legal").textContent =
+        (SITE.razaoSocial || "Tardim Produções LTDA") + " · CNPJ " + SITE.cnpj + " · " + (SITE.cidade || "");
+    }
+
     if (SITE.email) {
       var m = document.getElementById("email-link");
       m.href = "mailto:" + SITE.email;
