@@ -84,15 +84,24 @@
   });
   document.getElementById("sem-provas").hidden = proximas.length > 0;
 
-  // ---------- Faixa "próxima prova" ----------
+  // ---------- Card "próxima prova" na abertura ----------
   if (proximas.length) {
     var p = proximas[0];
     var dp = data(p.data);
     var dias = Math.round((dp - hoje) / 86400000);
+    var diaSemana = DIAS[dp.getDay()];
     document.getElementById("next-name").textContent = p.nome;
-    document.getElementById("next-when").textContent = dp.getDate() + " de " + MESES[dp.getMonth()];
-    document.getElementById("next-count").textContent =
-      dias === 0 ? "é hoje!" : dias === 1 ? "é amanhã" : "faltam " + dias + " dias";
+    document.getElementById("next-when").textContent =
+      diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1) + ", " + dp.getDate() + " de " + MESES[dp.getMonth()] +
+      (p.hora ? " · largada " + p.hora : "");
+    var nDias = document.getElementById("next-days");
+    var lDias = document.getElementById("next-days-label");
+    if (dias === 0) { nDias.textContent = "É hoje!"; lDias.textContent = ""; }
+    else if (dias === 1) { nDias.textContent = "Amanhã"; lDias.textContent = ""; }
+    else { nDias.textContent = dias; lDias.textContent = "dias para a largada"; }
+    var poster = document.getElementById("next-poster");
+    if (p.poster) { poster.src = p.poster; poster.alt = "Arte de divulgação: " + p.nome; }
+    else { poster.remove(); }
     document.getElementById("next-link").href = p.inscricao || linkPadrao;
     document.getElementById("next-link").target = "_blank";
     document.getElementById("next").hidden = false;
