@@ -16,6 +16,8 @@ js/main.js          monta a página inicial (calendário, próxima prova, menu)
 js/prova.js         monta a página de cada prova (com breadcrumb)
 js/portfolio.js     monta o portfólio e a página de cada trabalho
 js/orcamento.js     pedido de orçamento: monta a mensagem e abre o WhatsApp ou o e-mail
+js/monte.js         simulador "Monte sua corrida" (leva a configuração para o orçamento)
+js/extras.js        previsão do tempo, card "Eu vou correr!" e calculadora de ritmo
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
 js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
 js/demo.js          modo demonstração (só com ?demo=1)
@@ -40,6 +42,10 @@ No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, s�
 ## Pedido de orçamento
 
 A seção "Peça seu orçamento" da página inicial não envia nada para servidor: ela monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
+
+## Previsão do tempo
+
+Até 15 dias antes de cada prova, o card da próxima prova e a página da prova mostram a previsão para a hora da largada (serviço gratuito Open-Meteo, sem chave). A localização vem da cidade citada no `local` da prova (Belo Horizonte se nenhuma for reconhecida). Para informar o ponto exato, use `coords: [latitude, longitude]` na prova em `PROXIMAS`.
 
 ## Modo demonstração
 
