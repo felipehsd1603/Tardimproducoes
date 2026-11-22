@@ -19,6 +19,8 @@ js/orcamento.js     pedido de orçamento: monta a mensagem e abre o WhatsApp ou 
 js/monte.js         simulador "Monte sua corrida" (leva a configuração para o orçamento)
 js/extras.js        previsão do tempo, card "Eu vou correr!" e calculadora de ritmo
 js/assessorias.js   inscrição coletiva: modelo de planilha, conferência e envio (assessorias.html)
+js/convite.js       gera e lê o código do link de convite de cada assessoria
+js/gerar-convite.js página interna que gera os links (link-assessoria.html)
 js/vendor/          biblioteca SheetJS (lê e gera planilhas Excel na página de assessorias)
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
 js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
@@ -47,7 +49,9 @@ A seção "Peça seu orçamento" da página inicial não envia nada para servido
 
 ## Inscrição coletiva (assessorias)
 
-A página `assessorias.html` deixa a assessoria escolher a prova, baixar o modelo de planilha (Excel ou CSV), conferir a planilha preenchida (CPF, data de nascimento, sexo, distância, camiseta, e-mail, telefone e repetidos) e enviar o arquivo padronizado por WhatsApp ou e-mail. Tudo acontece no aparelho de quem usa; nenhum dado é guardado no site. As distâncias vêm dos `percursos` da prova e os tamanhos de camiseta do campo opcional `tamanhos` (padrão: PP, P, M, G, GG, XG, XGG).
+A página `assessorias.html` só funciona pelo link de convite que a Tardim Produções gera em `link-assessoria.html` (página interna, fora do menu e do Google): escolhe a prova, digita o nome da assessoria e, se quiser, um prazo e um limite de atletas, e manda o link pelo WhatsApp. Sem link válido, a página mostra só um aviso. Como o site não tem servidor, o convite evita acesso casual, mas não é uma proteção forte; cancelar links e receber os envios num só lugar fica para o painel de administração.
+
+Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a planilha preenchida (CPF, data de nascimento, sexo, distância, camiseta, e-mail, telefone e repetidos) e envia o arquivo padronizado por WhatsApp ou e-mail. Tudo acontece no aparelho de quem usa; nenhum dado é guardado no site. As distâncias vêm dos `percursos` da prova e os tamanhos de camiseta do campo opcional `tamanhos` (padrão: PP, P, M, G, GG, XG, XGG).
 
 ## Previsão do tempo
 

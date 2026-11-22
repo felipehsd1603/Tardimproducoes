@@ -85,7 +85,7 @@ const fixas = [
 for (const p of fixas) {
   gravar(p.arquivo, trocaOG(ler(p.arquivo), blocoOG({ titulo: p.titulo, descricao: p.descricao, imagem: imagemPrevia(p.imagem), url: p.url })));
 }
-urls.push(BASE, BASE + "portfolio.html", BASE + "assessorias.html", BASE + "privacidade.html");
+urls.push(BASE, BASE + "portfolio.html", BASE + "privacidade.html");
 
 // Uma página por prova
 const modeloProva = ler("prova.html");

@@ -128,17 +128,6 @@
   var d = data(ev.data);
   var quando = DIAS[d.getDay()].charAt(0).toUpperCase() + DIAS[d.getDay()].slice(1) + ", " + d.getDate() + " de " + MESES[d.getMonth()] + (ev.hora ? " · " + ev.hora : "");
 
-  // ---------- Atalho para a inscrição coletiva ----------
-  if (futura && corpo && ajuda) {
-    var asb = el("div", "event-assess");
-    var ast = el("p");
-    ast.append(el("b", null, "É assessoria ou equipe?"), " Inscreva todo o grupo de uma vez, com a planilha conferida pelo site.");
-    var asl = el("a", "btn btn--line", "Inscrição coletiva");
-    asl.href = "assessorias.html?prova=" + encodeURIComponent(ev.id) + (window.DEMO ? "&demo=1" : "");
-    asb.append(ast, asl);
-    corpo.insertBefore(asb, ajuda);
-  }
-
   // ---------- Card "Eu vou correr!" ----------
   if (futura && corpo && window.HTMLCanvasElement) {
     var sc = novaSecao("card", "Eu vou correr!");

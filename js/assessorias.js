@@ -74,25 +74,55 @@
   function quando(ev) { var d = data(ev.data); return d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear(); }
 
   // ---------- Interface ----------
-  var pedida = new URLSearchParams(location.search).get("prova");
-  var iInicial = Math.max(0, provas.findIndex(function (p) { return p.id === pedida; }));
-  var estado = { prova: provas[iInicial] || null, linhas: [], erros: 0, avisos: 0, arquivo: "" };
-
-  if (!provas.length) {
-    var vazio = el("div", "assess-card");
-    vazio.append(el("h2", null, "Nenhuma prova com inscrições abertas agora"));
-    vazio.append(el("p", "muted", "Fale com a Tardim Produções para saber das próximas datas e da inscrição da sua equipe."));
-    var wa0 = el("a", "btn btn--wa", "Falar no WhatsApp");
-    wa0.href = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent("Olá! Sou de uma assessoria e quero inscrever minha equipe nas próximas provas.");
-    wa0.target = "_blank"; wa0.rel = "noopener";
-    vazio.append(wa0);
-    app.append(vazio);
+  // ---------- Convite: a página só funciona com o link gerado pela Tardim Produções ----------
+  function fimDoDia(str) { var d = data(str); d.setHours(23, 59, 59, 999); return d; }
+  function bloqueia(titulo, texto, msgWa) {
+    var c = el("div", "assess-card assess-card--fechado");
+    c.append(el("h2", null, titulo), el("p", "muted", texto));
+    var w = el("a", "btn btn--wa", "Falar com a Tardim Produções");
+    w.href = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msgWa);
+    w.target = "_blank"; w.rel = "noopener";
+    c.append(w);
+    app.append(c);
+    var passos = document.querySelector(".assess-steps");
+    if (passos) passos.hidden = true;
+  }
+  var convite = window.CONVITE ? CONVITE.le(new URLSearchParams(location.search).get("c")) : null;
+  if (!convite) {
+    bloqueia("Página exclusiva para assessorias convidadas",
+      "A inscrição coletiva é feita por um link que a Tardim Produções envia para cada assessoria. Se a sua equipe quer participar, peça o seu link.",
+      "Olá! Sou de uma assessoria e gostaria do link para a inscrição coletiva da minha equipe.");
     return;
   }
+  var provaConv = provas.filter(function (p) { return p.id === convite.p; })[0];
+  if (!provaConv) {
+    bloqueia("Este link não está mais ativo",
+      "A prova deste convite já aconteceu ou não está com inscrições abertas. Fale com a Tardim Produções.",
+      "Olá! Sou da equipe " + convite.e + " e o link da inscrição coletiva não está mais ativo.");
+    return;
+  }
+  if (convite.d && new Date() > fimDoDia(convite.d)) {
+    var dp = data(convite.d);
+    bloqueia("O prazo deste link terminou",
+      "A inscrição coletiva da equipe " + convite.e + " ia até " + dp.getDate() + " de " + MESES[dp.getMonth()] + ". Fale com a Tardim Produções para ver se ainda é possível.",
+      "Olá! Sou da equipe " + convite.e + " e o prazo da inscrição coletiva da " + provaConv.nome + " terminou. Ainda é possível inscrever?");
+    return;
+  }
+  var estado = { prova: provaConv, linhas: [], erros: 0, avisos: 0, arquivo: "" };
+  var limite = Number(convite.m) || 0;
 
   // Passo 1: prova, equipe e modelo
   var p1 = el("section", "assess-card");
-  p1.append(el("p", "assess-card__step", "Passo 1"), el("h2", null, "Escolha a prova e baixe o modelo"));
+  p1.append(el("p", "assess-card__step", "Passo 1"), el("h2", null, "Baixe o modelo da planilha"));
+  var conv = el("div", "assess-convite");
+  conv.append(el("span", "assess-convite__t", "Convite da Tardim Produções"));
+  conv.append(el("b", null, convite.e));
+  conv.append(el("span", null, estado.prova.nome + " · " + quando(estado.prova)));
+  var extras = [];
+  if (convite.d) { var dz = data(convite.d); extras.push("Envie até " + dz.getDate() + " de " + MESES[dz.getMonth()]); }
+  if (limite) extras.push("Até " + limite + " atletas");
+  if (extras.length) conv.append(el("small", null, extras.join(" · ")));
+  p1.append(conv);
   var g1 = el("div", "assess-grid");
   function campo(rotulo, input, dica) {
     var l = el("label", "orc__field");
@@ -100,17 +130,10 @@
     if (dica) l.append(el("small", "assess-dica", dica));
     return l;
   }
-  var selProva = el("select");
-  provas.forEach(function (p, i) {
-    var o = el("option", null, p.nome + " · " + quando(p));
-    o.value = String(i);
-    selProva.append(o);
-  });
-  selProva.value = String(iInicial);
-  var inEquipe = el("input"); inEquipe.placeholder = "Nome da assessoria ou equipe"; inEquipe.autocomplete = "organization";
+  var inEquipe = el("input"); inEquipe.value = convite.e; inEquipe.readOnly = true;
   var inResp = el("input"); inResp.placeholder = "Quem está enviando"; inResp.autocomplete = "name";
   var inTel = el("input"); inTel.placeholder = "(31) 90000-0000"; inTel.type = "tel"; inTel.autocomplete = "tel";
-  g1.append(campo("Prova", selProva), campo("Assessoria ou equipe", inEquipe), campo("Responsável", inResp), campo("WhatsApp do responsável", inTel));
+  g1.append(campo("Responsável", inResp), campo("WhatsApp do responsável", inTel));
   var info = el("div", "assess-info");
   var acoes1 = el("div", "assess-acoes");
   var bModelo = el("button", "btn btn--red", "Baixar modelo (Excel)");
@@ -129,14 +152,10 @@
     var a = el("li"); a.append(el("b", null, "Distâncias: "), ds.length ? ds.map(function (d) { return d.rotulo; }).join(", ") : "informe a distância como aparece no regulamento");
     var b = el("li"); b.append(el("b", null, "Camisetas: "), tamanhos(ev).join(", "));
     var c = el("li"); c.append(el("b", null, "Obrigatórios: "), "nome, CPF, nascimento, sexo, distância, camiseta, e-mail e telefone");
-    li.append(a, b, c);
+    var d = el("li"); d.append(el("b", null, "Dica: "), "se a sua equipe já tem uma planilha própria, pode enviar ela mesma. O site reconhece as colunas.");
+    li.append(a, b, c, d);
     info.append(li);
   }
-  selProva.addEventListener("change", function () {
-    estado.prova = provas[Number(selProva.value)];
-    mostraInfo();
-    if (estado.linhas.length) { valida(); desenha(); }
-  });
   mostraInfo();
 
   function linhaExemplo(ev) {
@@ -392,6 +411,7 @@
     p3.append(el("p", "assess-card__step", "Resultado"));
     var total = estado.linhas.length;
     var comErro = estado.linhas.filter(function (l) { return l.erros.length; }).length;
+    var passou = limite && total > limite;
     if (faltando.length) {
       p3.append(el("h2", null, "Faltam colunas na planilha"));
       p3.append(el("p", "assess-alerta", "Não encontramos: " + faltando.join(", ") + ". Baixe o modelo no passo 1 e copie os dados para ele."));
@@ -402,7 +422,8 @@
       p3.append(el("p", "muted", "Preencha a partir da linha 2 do modelo e envie de novo."));
       return;
     }
-    p3.append(el("h2", null, comErro ? "Quase lá: corrija " + comErro + (comErro === 1 ? " linha" : " linhas") : "Tudo certo com a sua planilha"));
+    p3.append(el("h2", null, comErro ? "Quase lá: corrija " + comErro + (comErro === 1 ? " linha" : " linhas") : passou ? "Passou do limite de atletas" : "Tudo certo com a sua planilha"));
+    if (passou) p3.append(el("p", "assess-alerta", "O convite da sua equipe é para até " + limite + " atletas, e a planilha tem " + total + ". Tire " + (total - limite) + " ou fale com a Tardim Produções."));
 
     // Números
     var nums = el("div", "assess-nums");
@@ -489,14 +510,13 @@
     aviso.setAttribute("role", "status");
     envio.append(ok, bt, aviso);
     p3.append(envio);
-    var bloqueado = !!comErro;
+    var bloqueado = !!comErro || !!passou;
     [bBaixar, bWa, bMail].forEach(function (b) { b.disabled = bloqueado; });
-    if (bloqueado) aviso.textContent = "O envio libera quando não houver erros.";
+    if (bloqueado) aviso.textContent = passou && !comErro ? "O envio libera quando a planilha estiver dentro do limite." : "O envio libera quando não houver erros.";
 
     aut.addEventListener("change", function () { if (aut.checked && /autoriza/.test(aviso.textContent)) aviso.textContent = ""; });
     function confere() {
       if (!aut.checked) { aviso.textContent = "Marque a confirmação de autorização dos atletas."; aut.focus(); return false; }
-      if (!inEquipe.value.trim()) { aviso.textContent = "Informe o nome da assessoria ou equipe no passo 1."; inEquipe.focus(); return false; }
       return true;
     }
     bBaixar.addEventListener("click", function () { if (confere()) geraArquivo().then(function (f) { baixa(f); aviso.textContent = "Planilha baixada: " + f.name; }); });
@@ -563,6 +583,4 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   }
 
-  // Mudou o nome da equipe: atualiza a coluna Equipe das linhas sem equipe
-  inEquipe.addEventListener("change", function () { if (estado.linhas.length) { valida(); desenha(); } });
 })();
