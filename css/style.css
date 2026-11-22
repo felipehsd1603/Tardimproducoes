@@ -224,12 +224,6 @@ h3 { font-weight: 700; font-size: 1.5rem; }
 .logos span { font-weight: 700; line-height: 1.25; }
 .logos small { color: var(--muted); font-size: 0.9rem; }
 
-/* Fotos */
-.photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; background: #fff; }
-@media (min-width: 860px) { .photos { grid-template-columns: repeat(4, 1fr); } }
-.photos figure { margin: 0; }
-.photos img { width: 100%; aspect-ratio: 1; object-fit: cover; }
-
 /* Para empresas */
 .offers { display: grid; gap: 0; margin-bottom: 28px; border-top: 1px solid var(--rule); }
 .offers article { padding: 22px 0; border-bottom: 1px solid var(--rule); }
@@ -401,3 +395,61 @@ button.btn--white { background-color: transparent; }
   .event-hero .actions .btn--white { flex: 1 1 0; padding-left: 0.6em; padding-right: 0.6em; white-space: nowrap; }
   .event-hero__poster { width: 190px; }
 }
+
+/* ===== Carrosséis (galeria e artes das provas) ===== */
+.carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding: 4px 16px 8px;
+  scroll-padding: 0 16px;
+}
+.carousel::-webkit-scrollbar { display: none; }
+.carousel:focus-visible { outline-offset: -3px; }
+@media (min-width: 760px) {
+  .carousel { padding-left: max(32px, calc((100vw - 1120px) / 2 + 32px)); padding-right: 32px; scroll-padding: 0 max(32px, calc((100vw - 1120px) / 2 + 32px)); }
+}
+
+.carousel-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+.carousel-head h2 { margin-bottom: 0.2em; }
+.carousel-head p { margin: 0; }
+.carousel-nav { display: none; gap: 8px; flex: none; }
+@media (min-width: 760px) { .carousel-nav { display: flex; } }
+.carousel-nav[hidden] { display: none; }
+.carousel-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--navy);
+  background: #fff;
+  color: var(--navy);
+  font: 700 1.2rem/1 var(--body);
+  cursor: pointer;
+}
+.carousel-btn:hover:not(:disabled) { background: var(--navy); color: #fff; }
+.carousel-btn:disabled { opacity: 0.3; cursor: default; }
+
+.gallery { padding-bottom: 56px; }
+.slide { flex: 0 0 78%; margin: 0; scroll-snap-align: start; }
+@media (min-width: 600px) { .slide { flex-basis: 44%; } }
+@media (min-width: 960px) { .slide { flex-basis: 320px; } }
+.slide img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 4px; }
+.slide figcaption { margin-top: 10px; font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+
+.banners { position: relative; margin-bottom: 40px; }
+.banners[hidden] { display: none; }
+.carousel-nav--float { justify-content: flex-end; margin-bottom: 12px; }
+.carousel--banners { padding-left: 0; padding-right: 0; scroll-padding: 0; }
+@media (min-width: 760px) { .carousel--banners { padding-left: 0; padding-right: 0; scroll-padding: 0; } }
+.banner-slide { flex: 0 0 62%; scroll-snap-align: start; display: block; text-decoration: none; color: var(--ink); }
+@media (min-width: 600px) { .banner-slide { flex-basis: 36%; } }
+@media (min-width: 960px) { .banner-slide { flex-basis: 250px; } }
+.banner-slide img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 4px; transition: transform 0.2s; }
+.banner-slide:hover img { transform: translateY(-3px); }
+.banner-slide__cap { display: flex; flex-direction: column; margin-top: 10px; }
+.banner-slide__cap b { color: var(--red-btn); font-size: 0.92rem; }
+.banner-slide__cap span { font: italic 800 1.25rem/1.1 var(--cond); color: var(--navy); }
+.carousel--banners { padding-left: 4px !important; padding-right: 4px !important; scroll-padding: 0 4px !important; }

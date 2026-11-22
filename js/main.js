@@ -105,6 +105,68 @@
     document.getElementById("next").hidden = false;
   }
 
+  // ---------- Carrossel das artes das provas (a partir de N provas) ----------
+  var minimo = (typeof SITE !== "undefined" && SITE.carrosselMinimo) || 3;
+  var comArte = proximas.filter(function (e) { return e.poster; });
+  if (comArte.length >= minimo) {
+    var trilho = document.getElementById("banners");
+    comArte.forEach(function (ev) {
+      var dd = data(ev.data);
+      var a = el("a", "banner-slide");
+      a.href = "prova.html?id=" + encodeURIComponent(ev.id || "");
+      var im = el("img");
+      im.src = ev.poster;
+      im.alt = "Arte de divulgação: " + ev.nome;
+      im.loading = "lazy";
+      var cap = el("span", "banner-slide__cap");
+      cap.append(el("b", null, dd.getDate() + " de " + MESES[dd.getMonth()]), el("span", null, ev.nome));
+      a.append(im, cap);
+      trilho.append(a);
+    });
+    document.getElementById("banners-wrap").hidden = false;
+  }
+
+  // ---------- Galeria de fotos ----------
+  var galeria = document.getElementById("galeria");
+  (typeof GALERIA !== "undefined" ? GALERIA : []).forEach(function (g) {
+    var f = el("figure", "slide");
+    var im = el("img");
+    im.src = g.foto;
+    im.alt = g.alt || g.legenda || "";
+    im.loading = "lazy";
+    im.width = 399;
+    im.height = 462;
+    f.append(im);
+    if (g.legenda) f.append(el("figcaption", null, g.legenda));
+    galeria.append(f);
+  });
+
+  // ---------- Setas dos carrosséis (sem rotação automática) ----------
+  document.querySelectorAll(".carousel-nav").forEach(function (nav) {
+    var trilhoAlvo = document.getElementById(nav.getAttribute("data-for"));
+    if (!trilhoAlvo) return;
+    var botoes = nav.querySelectorAll(".carousel-btn");
+    function atualizaSetas() {
+      var max = trilhoAlvo.scrollWidth - trilhoAlvo.clientWidth - 2;
+      botoes[0].disabled = trilhoAlvo.scrollLeft <= 2;
+      botoes[1].disabled = trilhoAlvo.scrollLeft >= max;
+      nav.hidden = trilhoAlvo.scrollWidth <= trilhoAlvo.clientWidth + 2;
+    }
+    botoes.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var dir = Number(b.getAttribute("data-dir"));
+        var slide = trilhoAlvo.firstElementChild;
+        var passo = slide ? slide.getBoundingClientRect().width + 16 : trilhoAlvo.clientWidth * 0.8;
+        var visiveis = Math.max(1, Math.floor(trilhoAlvo.clientWidth / passo));
+        trilhoAlvo.scrollBy({ left: dir * passo * visiveis, behavior: "smooth" });
+      });
+    });
+    trilhoAlvo.addEventListener("scroll", atualizaSetas, { passive: true });
+    window.addEventListener("resize", atualizaSetas);
+    window.addEventListener("load", atualizaSetas);
+    atualizaSetas();
+  });
+
   // ---------- Provas realizadas ----------
   var logos = document.getElementById("realizadas");
   (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).forEach(function (r) {

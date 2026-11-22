@@ -44,6 +44,9 @@ const SITE = {
   cnpj: "",
   endereco: "",
   cidade: "Belo Horizonte, MG",
+  // Carrossel com as artes das provas no calendário: aparece a partir
+  // desta quantidade de provas abertas.
+  carrosselMinimo: 3,
 };
 
 const PROXIMAS = [
@@ -106,4 +109,19 @@ const REALIZADAS = [
   { nome: "Campeonato Mineiro de Corrida de Rua", ano: "2025", logo: "assets/corridas/campeonato-mineiro.png" },
   { nome: "Corrida da Administração", ano: "2025", logo: "assets/corridas/corrida-administracao.png" },
   { nome: "Corrida da Guarda Civil Municipal", ano: "", logo: "assets/corridas/guarda-civil-bh.png" },
+];
+
+/*
+ *  GALERIA: fotos do carrossel "Na rua com a Tardim Produções".
+ *    foto     Imagem (pasta assets/fotos)
+ *    legenda  Texto que aparece embaixo da foto
+ *    alt      Descrição da foto para leitores de tela
+ */
+const GALERIA = [
+  { foto: "assets/fotos/hulk-run-largada.jpg", legenda: "Largada da Hulk Run 2026 · Pampulha", alt: "Corredores passando pelo pórtico de largada da Hulk Run" },
+  { foto: "assets/fotos/hulk-run-2.jpg", legenda: "Hulk Run 2026", alt: "Corredor fazendo joinha durante a Hulk Run" },
+  { foto: "assets/fotos/crefito4-run-bh.jpg", legenda: "Crefito-4 Run 2026 · Etapa Belo Horizonte", alt: "Corredora sorrindo na arena da Crefito-4 Run" },
+  { foto: "assets/fotos/hulk-run-medalha.jpg", legenda: "Medalha da Hulk Run 2026", alt: "Medalha da Hulk Run 2026 com dados de corrida" },
+  { foto: "assets/fotos/hulk-run-3.jpg", legenda: "Hulk Run 2026 · Orla da Pampulha", alt: "Corredor sorrindo na orla da Pampulha" },
+  { foto: "assets/fotos/hulk-run-1.jpg", legenda: "Hulk Run 2026", alt: "Corredor durante a Hulk Run" },
 ];

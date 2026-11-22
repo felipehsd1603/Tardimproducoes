@@ -23,7 +23,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;1,800&family=Barlow:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/style.css?v=20261122-2" />
+    <link rel="stylesheet" href="css/style.css?v=20261122-3" />
   </head>
   <body>
     <!-- Ícone do WhatsApp, reutilizado nos botões -->
@@ -89,6 +89,14 @@
             <h2>Calendário</h2>
             <p>Inscrições sempre pelo link oficial de cada prova.</p>
           </div>
+          <!-- Carrossel das artes: aparece sozinho com 3 ou mais provas abertas -->
+          <div class="banners" id="banners-wrap" hidden>
+            <div class="carousel-nav carousel-nav--float" data-for="banners">
+              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Provas anteriores">←</button>
+              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas provas">→</button>
+            </div>
+            <div class="carousel carousel--banners" id="banners" tabindex="0" role="region" aria-label="Artes das próximas provas"></div>
+          </div>
           <div id="proximas" class="races"></div>
           <p id="sem-provas" class="muted" hidden>
             Estamos fechando as próximas datas. Acompanhe no
@@ -108,12 +116,21 @@
         </div>
       </section>
 
-      <!-- Fotos -->
-      <section class="photos" aria-label="Fotos dos eventos">
-        <figure><img src="assets/fotos/hulk-run-2.jpg" alt="Corredor fazendo joinha durante a Hulk Run" loading="lazy" width="399" height="462" /></figure>
-        <figure><img src="assets/fotos/crefito4-run-bh.jpg" alt="Corredora sorrindo na arena da Crefito-4 Run em Belo Horizonte" loading="lazy" width="399" height="462" /></figure>
-        <figure><img src="assets/fotos/hulk-run-medalha.jpg" alt="Medalha da Hulk Run 2026" loading="lazy" width="399" height="462" /></figure>
-        <figure><img src="assets/fotos/hulk-run-3.jpg" alt="Corredor sorrindo na orla da Pampulha" loading="lazy" width="399" height="462" /></figure>
+      <!-- Galeria de fotos (carrossel) -->
+      <section class="block gallery" aria-labelledby="galeria-titulo">
+        <div class="wrap">
+          <div class="carousel-head">
+            <div>
+              <h2 id="galeria-titulo">Na rua com a Tardim Produções</h2>
+              <p class="muted">Momentos das provas que produzimos.</p>
+            </div>
+            <div class="carousel-nav" data-for="galeria">
+              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Fotos anteriores">←</button>
+              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas fotos">→</button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel" id="galeria" tabindex="0" role="region" aria-label="Galeria de fotos dos eventos"></div>
       </section>
 
       <!-- Para empresas -->
@@ -233,7 +250,7 @@
       <svg aria-hidden="true"><use href="#i-whatsapp" /></svg>
     </a>
 
-    <script src="js/eventos.js?v=20261122-2"></script>
-    <script src="js/main.js?v=20261122-2"></script>
+    <script src="js/eventos.js?v=20261122-3"></script>
+    <script src="js/main.js?v=20261122-3"></script>
   </body>
 </html>
