@@ -41,7 +41,12 @@
 
     var info = el("div", "race__info");
     var quando = el("p", "race__date");
-    quando.append(el("b", null, d.getDate() + " de " + MESES[d.getMonth()]), " " + d.getFullYear() + " · " + DIAS[d.getDay()]);
+    var dia = DIAS[d.getDay()];
+    quando.append(
+      dia.charAt(0).toUpperCase() + dia.slice(1) + ", ",
+      el("b", null, d.getDate() + " de " + MESES[d.getMonth()]),
+      " de " + d.getFullYear()
+    );
     info.append(quando, el("h3", null, ev.nome));
 
     var dl = el("dl", "race__facts");
@@ -52,11 +57,27 @@
     info.append(dl);
     if (ev.info) info.append(el("p", "race__note", ev.info));
 
+    var acoes = el("div", "race__actions");
     var a = el("a", "btn btn--red", "Fazer inscrição");
     a.href = ev.inscricao || linkPadrao;
     a.target = "_blank";
     a.rel = "noopener";
-    info.append(a);
+
+    // "Salvar na agenda" (Google Agenda)
+    var ymd = ev.data.replace(/-/g, "");
+    var fim = new Date(d.getTime() + 86400000);
+    var ymdFim = fim.getFullYear() + String(fim.getMonth() + 1).padStart(2, "0") + String(fim.getDate()).padStart(2, "0");
+    var cal = el("a", "btn btn--line", "Salvar na agenda");
+    cal.href = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+      "&text=" + encodeURIComponent(ev.nome) +
+      "&dates=" + ymd + "/" + ymdFim +
+      "&location=" + encodeURIComponent(ev.local || "") +
+      "&details=" + encodeURIComponent((ev.hora ? "Largada " + ev.hora + ". " : "") + "Inscrições: " + (ev.inscricao || linkPadrao));
+    cal.target = "_blank";
+    cal.rel = "noopener";
+
+    acoes.append(a, cal);
+    info.append(acoes);
 
     item.append(info);
     lista.append(item);
@@ -142,6 +163,53 @@
       btn.textContent = "Menu";
     }
   });
+
+  // ---------- Dados estruturados (Google mostra as provas na busca) ----------
+  if (proximas.length) {
+    var ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.textContent = JSON.stringify(proximas.map(function (ev) {
+      return {
+        "@context": "https://schema.org",
+        "@type": "SportsEvent",
+        name: ev.nome,
+        startDate: ev.data,
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        location: { "@type": "Place", name: ev.local, address: ev.local },
+        image: ev.poster ? new URL(ev.poster, location.href).href : undefined,
+        organizer: { "@type": "Organization", name: "Tardim Produções", url: location.origin + location.pathname },
+        url: ev.inscricao || linkPadrao,
+      };
+    }));
+    document.head.append(ld);
+  }
+
+  // ---------- Menu destaca a seção atual ----------
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav a"));
+  if ("IntersectionObserver" in window) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (l) {
+          l.classList.toggle("is-active", l.getAttribute("href") === "#" + en.target.id);
+        });
+      });
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    links.forEach(function (l) {
+      var s = document.querySelector(l.getAttribute("href"));
+      if (s) spy.observe(s);
+    });
+
+    // Botão flutuante some quando a seção de contato está na tela
+    var flutuante = document.querySelector(".wa-float");
+    var contato = document.getElementById("contato");
+    if (flutuante && contato) {
+      new IntersectionObserver(function (en) {
+        flutuante.classList.toggle("is-hidden", en[0].isIntersecting);
+      }).observe(contato);
+    }
+  }
 
   document.getElementById("ano").textContent = new Date().getFullYear();
 })();
