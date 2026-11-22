@@ -29,9 +29,11 @@
  *    fotos       Link das fotos
  *    realizacao  Quem realiza/contrata a prova
  *
- *  REALIZADAS: portfólio de eventos já realizados. Cada evento ganha
- *  uma página de estudo de caso (evento.html?id=...). Campos vazios
- *  não aparecem.
+ *  REALIZADAS: portfólio de trabalhos realizados (eventos e serviços).
+ *  Cada trabalho ganha uma página própria (evento.html?id=...). Campos
+ *  vazios não aparecem.
+ *    area         "Eventos esportivos" (padrão) ou "Prevenção contra incêndio"
+ *                 (com icone: "incendio" a área já vira prevenção)
  *    id           Identificador curto, sem espaços (vai no link)
  *    nome, ano    Nome do evento e ano
  *    data         "AAAA-MM-DD" (opcional)

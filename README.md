@@ -7,8 +7,8 @@ Site estático (HTML + CSS + JS puro) da **Tardim Produções LTDA**, produtora 
 ```
 index.html          página inicial
 prova.html          página de cada prova (prova.html?id=...)
-portfolio.html      portfólio de eventos realizados
-evento.html         estudo de caso de cada evento (evento.html?id=...)
+portfolio.html      portfólio de trabalhos (eventos e serviços)
+evento.html         página de cada trabalho do portfólio (evento.html?id=...)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
@@ -25,7 +25,7 @@ assets/fotos/       fotos dos eventos
 Abra `js/eventos.js`:
 
 - `PROXIMAS`: provas com data. Cada prova tem um `id` e ganha uma página própria (`prova.html?id=...`) com informações, valores, kit, programação, percurso, regulamento e resultados. Campos vazios não aparecem, e a página avisa o que ainda vai ser publicado. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
-- `REALIZADAS`: portfólio de eventos já realizados. Cada evento ganha uma página de estudo de caso (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (eventos, instituições atendidas e participantes) são calculados sozinhos.
+- `REALIZADAS`: portfólio de trabalhos realizados, separados por área (eventos esportivos ou prevenção contra incêndio). Cada trabalho ganha uma página (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (trabalhos, eventos, serviços de prevenção, instituições atendidas e participantes) são calculados sozinhos.
 - `GALERIA`: fotos do carrossel "Na rua com a Tardim Produções" (foto, legenda e descrição). Coloque as fotos em `assets/fotos/`.
 - `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
 
