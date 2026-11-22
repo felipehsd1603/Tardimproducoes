@@ -14,7 +14,8 @@ js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
 js/prova.js         monta a página de cada prova (com breadcrumb)
 js/portfolio.js     monta o portfólio e a página de cada trabalho
-js/ui.js            animações ao rolar, contagem dos números e menu
+js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
+js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
 js/demo.js          modo demonstração (só com ?demo=1)
 assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas
@@ -38,7 +39,7 @@ Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Co
 
 ## Depois de editar CSS ou JS
 
-No `index.html`, troque o número `?v=...` dos arquivos `css/style.css`, `js/eventos.js` e `js/main.js` (por exemplo, `?v=20261122-1` para `?v=20261122-2`). Assim o navegador dos visitantes baixa a versão nova em vez de usar a cópia antiga em cache.
+Em todas as páginas (`index.html`, `prova.html`, `portfolio.html`, `evento.html` e `scripts/404-modelo.html`), troque o número `?v=...` dos arquivos CSS e JS (por exemplo, `?v=20261122-1` para `?v=20261122-2`). Assim o navegador dos visitantes baixa a versão nova em vez de usar a cópia antiga em cache.
 
 ## Páginas geradas automaticamente
 
@@ -52,6 +53,10 @@ O script `scripts/gerar-paginas.js` cria, a partir do `js/eventos.js`:
 Ele roda sozinho a cada publicação (workflow do GitHub Pages). Para ver localmente depois de editar o `eventos.js`, rode `node scripts/gerar-paginas.js`.
 
 Ao trocar para domínio próprio, mude `SITE.urlBase` no `js/eventos.js`.
+
+## Mapa "Onde já corremos"
+
+O mapa conta as corridas de cada cidade a partir das edições em `REALIZADAS`. Belo Horizonte, Contagem, Betim e Nova Lima aparecem juntas como "Grande BH". Para uma cidade nova aparecer no mapa, coloque a posição dela em `CIDADES_MAPA` no `js/mapa.js` (e, se o nome encostar em outro, o lado do nome em `LADO`).
 
 ## Ver localmente
 
