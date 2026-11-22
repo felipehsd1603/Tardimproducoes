@@ -265,7 +265,7 @@
 
   // ---------- Provas realizadas ----------
   var logos = document.getElementById("realizadas");
-  (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).forEach(function (r) {
+  (typeof REALIZADAS !== "undefined" ? REALIZADAS : []).filter(function (r) { return r.logo; }).forEach(function (r) {
     var li = el("li");
     var a = el("a", "logos__link");
     a.href = "evento.html?id=" + encodeURIComponent(r.id || "") + (window.DEMO ? "&demo=1" : "");
