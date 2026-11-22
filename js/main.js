@@ -305,14 +305,14 @@
 
     // Dados da empresa (só mostra o que estiver preenchido)
     var dados = document.getElementById("dados-empresa");
-    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Endereço", SITE.endereco],
+    [["Razão social", SITE.razaoSocial], ["CNPJ", SITE.cnpj], ["Desde", SITE.fundacao], ["Endereço", SITE.endereco],
       ["Cidade", SITE.cidade], ["E-mail", SITE.email]].forEach(function (f) {
       if (!f[1]) return;
       dados.append(el("dt", null, f[0]), el("dd", null, f[1]));
     });
     if (SITE.cnpj) {
       document.getElementById("footer-legal").textContent =
-        (SITE.razaoSocial || "Tardim Produções LTDA") + " · CNPJ " + SITE.cnpj + " · " + (SITE.cidade || "");
+        (SITE.razaoSocial || "Tardim Produções e Eventos Ltda") + " · CNPJ " + SITE.cnpj + " · " + (SITE.cidade || "");
     }
 
     if (SITE.email) {

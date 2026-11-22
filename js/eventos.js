@@ -57,8 +57,9 @@ const SITE = {
   // WhatsApp com DDI + DDD, só números. Ex.: "5531999999999"
   whatsapp: "5531984289667",
   // Dados institucionais. Campos vazios não aparecem no site.
-  razaoSocial: "Tardim Produções LTDA",
-  cnpj: "",
+  razaoSocial: "Tardim Produções e Eventos Ltda",
+  cnpj: "33.787.309/0001-22",
+  fundacao: "2019",
   endereco: "",
   cidade: "Belo Horizonte, MG",
   // Carrossel com as artes das provas no calendário: aparece a partir
