@@ -169,8 +169,11 @@
     if (nCorridas) stat(String(nCorridas), "corridas organizadas");
     var nCid = Object.keys(cidades).length;
     if (nCid) stat(String(nCid), nCid === 1 ? "cidade de Minas Gerais" : "cidades de Minas Gerais");
-    if (nCli) stat(String(nCli), nCli === 1 ? "instituição atendida" : "instituições e empresas atendidas");
-    if (nServ) stat(String(nServ), nServ === 1 ? "serviço de prevenção contra incêndio" : "serviços de prevenção contra incêndio");
+    var orgaos = {};
+    eventos.forEach(function (e) { if (e.tipo === "Órgão público" && e.cliente) orgaos[e.cliente] = true; });
+    var nOrg = Object.keys(orgaos).length;
+    if (nOrg >= 3) stat(String(nOrg), "órgãos públicos atendidos");
+    if (nCli) stat(String(nCli), "instituições e empresas atendidas");
     tw.append(stats);
     topo.append(tw);
     raizLista.append(topo);
