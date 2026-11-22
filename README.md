@@ -20,7 +20,7 @@ Abra `js/eventos.js`:
 - `PROXIMAS`: provas com data. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
 - `REALIZADAS`: logos das provas já feitas (imagem quadrada em `assets/corridas/`).
 
-Para ativar o botão de **WhatsApp** (inclusive o botão flutuante), preencha `SITE.whatsapp` com DDI + DDD + número, só dígitos (ex.: `5531999999999`).
+Para mostrar o **WhatsApp** na seção de contato, preencha `SITE.whatsapp` com DDI + DDD + número, só dígitos (ex.: `5531999999999`).
 
 ## Ver localmente
 
