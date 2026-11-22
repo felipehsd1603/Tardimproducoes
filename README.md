@@ -5,10 +5,12 @@ Site estático (HTML + CSS + JS puro) da **Tardim Produções LTDA**, produtora 
 ## Estrutura
 
 ```
-index.html          página única
+index.html          página inicial
+prova.html          página de cada prova (prova.html?id=...)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
-js/main.js          monta o calendário, a faixa "próxima prova" e o menu
+js/main.js          monta a página inicial (calendário, próxima prova, menu)
+js/prova.js         monta a página de cada prova
 assets/corridas/    logos e artes das provas
 assets/fotos/       fotos dos eventos
 ```
@@ -17,7 +19,7 @@ assets/fotos/       fotos dos eventos
 
 Abra `js/eventos.js`:
 
-- `PROXIMAS`: provas com data. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
+- `PROXIMAS`: provas com data. Cada prova tem um `id` e ganha uma página própria (`prova.html?id=...`) com informações, valores, kit, programação, percurso, regulamento e resultados. Campos vazios não aparecem, e a página avisa o que ainda vai ser publicado. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
 - `REALIZADAS`: logos das provas já feitas (imagem quadrada em `assets/corridas/`).
 
 No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
@@ -37,6 +39,7 @@ O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions →
 ## Pendências de conteúdo
 
 - Links de inscrição de cada prova (hoje todos apontam para o Linktree).
+- Retirada de kit, mapa do percurso e regulamento de cada prova.
 - CNPJ e endereço (seção Institucional).
 - Contratante e número de participantes de cada prova.
 - Logos e fotos em alta resolução (as atuais foram recortadas de prints do Instagram).
