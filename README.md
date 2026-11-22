@@ -22,6 +22,10 @@ Abra `js/eventos.js`:
 
 No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
 
+## Depois de editar CSS ou JS
+
+No `index.html`, troque o número `?v=...` dos arquivos `css/style.css`, `js/eventos.js` e `js/main.js` (por exemplo, `?v=20261122-1` para `?v=20261122-2`). Assim o navegador dos visitantes baixa a versão nova em vez de usar a cópia antiga em cache.
+
 ## Ver localmente
 
 É só abrir o `index.html` no navegador.
