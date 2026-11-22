@@ -203,3 +203,166 @@
     x0 = null;
   });
 })();
+
+/*
+ * Percurso desenhado no passo a passo, chegada no fim da página,
+ * micro-interações e moldura das fotos da galeria.
+ */
+(function () {
+  "use strict";
+  var reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var CORREDOR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 19 13v-2a5.1 5.1 0 0 1-4.4-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5 0-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>';
+
+  // ---------- Percurso: a linha avança pelas etapas enquanto a página rola ----------
+  var lista = document.querySelector(".steps");
+  if (lista) {
+    var caixa = document.createElement("div");
+    caixa.className = "steps-route";
+    lista.parentNode.insertBefore(caixa, lista);
+    caixa.append(lista);
+    var estrada = document.createElement("div");
+    estrada.className = "steps-route__road";
+    estrada.setAttribute("aria-hidden", "true");
+    estrada.innerHTML = '<span class="steps-route__fill"><span class="steps-route__runner">' + CORREDOR + "</span></span>";
+    caixa.prepend(estrada);
+    var largada = document.createElement("span");
+    largada.className = "steps-route__tag steps-route__tag--start";
+    largada.setAttribute("aria-hidden", "true");
+    largada.textContent = "Largada";
+    var chegada = document.createElement("span");
+    chegada.className = "steps-route__tag steps-route__tag--end";
+    chegada.setAttribute("aria-hidden", "true");
+    chegada.textContent = "Chegada";
+    caixa.append(largada, chegada);
+
+    var fill = estrada.firstChild;
+    var etapas = Array.prototype.slice.call(lista.children);
+    if (reduz) {
+      caixa.classList.add("is-done");
+    } else {
+      caixa.classList.add("is-js");
+      var anda = function () {
+        var r = estrada.getBoundingClientRect();
+        var alvo = window.innerHeight * 0.62;
+        var p = Math.max(0, Math.min(1, (alvo - r.top) / r.height));
+        fill.style.height = (p * 100).toFixed(2) + "%";
+        var ponta = r.top + r.height * p;
+        etapas.forEach(function (li) {
+          var b = li.getBoundingClientRect();
+          li.classList.toggle("is-on", b.top + 41 <= ponta + 1);
+        });
+        caixa.classList.toggle("is-done", p >= 0.999);
+      };
+      anda();
+      window.addEventListener("scroll", anda, { passive: true });
+      window.addEventListener("resize", anda);
+    }
+  }
+
+  // ---------- Chegada: confete e recado ao chegar ao fim da página ----------
+  var comemorou = false;
+  function comemora() {
+    if (comemorou || reduz) return;
+    comemorou = true;
+    var aviso = document.createElement("div");
+    aviso.className = "finish-toast";
+    aviso.setAttribute("role", "status");
+    aviso.innerHTML = '<span class="finish-toast__flag" aria-hidden="true"></span><span><b>Você chegou!</b> Fazendo bem feito!</span>';
+    document.body.append(aviso);
+    var chuva = document.createElement("div");
+    chuva.className = "confete";
+    chuva.setAttribute("aria-hidden", "true");
+    var cores = ["#d6505b", "#24325a", "#ffd166", "#ffffff", "#ff8a93"];
+    for (var i = 0; i < 42; i++) {
+      var c = document.createElement("i");
+      var ang = (Math.random() * 70 + 190) * Math.PI / 180; // para a esquerda e para baixo
+      var dist = 120 + Math.random() * 260;
+      c.style.setProperty("--x", (Math.cos(ang) * dist).toFixed(0) + "px");
+      c.style.setProperty("--y", (-Math.sin(ang) * dist * 0.9 + 120).toFixed(0) + "px");
+      c.style.setProperty("--r", (Math.random() * 720 - 360).toFixed(0) + "deg");
+      c.style.setProperty("--d", (Math.random() * 0.15).toFixed(2) + "s");
+      c.style.background = cores[i % cores.length];
+      chuva.append(c);
+    }
+    document.body.append(chuva);
+    requestAnimationFrame(function () { aviso.classList.add("is-on"); });
+    setTimeout(function () { aviso.classList.remove("is-on"); }, 2800);
+    setTimeout(function () { aviso.remove(); chuva.remove(); }, 3400);
+  }
+  var noFim = function () {
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    if (max > 400 && window.scrollY >= max - 4) comemora();
+  };
+  window.addEventListener("scroll", noFim, { passive: true });
+
+  // ---------- Setas que deslizam nos links "… →" ----------
+  function setas(raiz) {
+    (raiz.querySelectorAll ? raiz.querySelectorAll("a, span.case-card__more") : []).forEach(function (a) {
+      if (a.querySelector(".seta")) return;
+      var t = a.lastChild;
+      if (!t || t.nodeType !== 3 || !/\s→\s*$/.test(t.textContent)) return;
+      t.textContent = t.textContent.replace(/\s→\s*$/, " ");
+      var s = document.createElement("span");
+      s.className = "seta";
+      s.setAttribute("aria-hidden", "true");
+      s.textContent = "→";
+      a.append(s);
+    });
+  }
+  setas(document);
+  if ("MutationObserver" in window) {
+    new MutationObserver(function (lista) {
+      lista.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) setas(n.parentNode || n); }); });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  // ---------- Moldura das fotos da galeria (zoom suave sem vazar) ----------
+  document.querySelectorAll(".gallery .slide img").forEach(function (img) {
+    var m = document.createElement("span");
+    m.className = "slide__frame";
+    img.parentNode.insertBefore(m, img);
+    m.append(img);
+  });
+
+  // ---------- Só no computador: brilho que segue o mouse e botões "magnéticos" ----------
+  var mouse = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!mouse || reduz) return;
+
+  function brilho(el) {
+    if (el.classList.contains("spot")) return;
+    el.classList.add("spot");
+    var g = document.createElement("span");
+    g.className = "spot__glow";
+    g.setAttribute("aria-hidden", "true");
+    el.append(g);
+    el.addEventListener("pointermove", function (e) {
+      var r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", (e.clientX - r.left).toFixed(0) + "px");
+      el.style.setProperty("--my", (e.clientY - r.top).toFixed(0) + "px");
+    });
+  }
+  var SPOT = ".bento__item:not(.bento__item--hero), .steps li, .case-card, .race-card, .trust__stat";
+  document.querySelectorAll(SPOT).forEach(brilho);
+  if ("MutationObserver" in window) {
+    new MutationObserver(function (lista) {
+      lista.forEach(function (m) {
+        m.addedNodes.forEach(function (n) {
+          if (n.nodeType !== 1) return;
+          if (n.matches && n.matches(SPOT)) brilho(n);
+          if (n.querySelectorAll) n.querySelectorAll(SPOT).forEach(brilho);
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  document.querySelectorAll(".btn--lg, .nav__cta, .wa-float, .carousel-btn").forEach(function (b) {
+    b.classList.add("magnet");
+    b.addEventListener("pointermove", function (e) {
+      var r = b.getBoundingClientRect();
+      var dx = (e.clientX - (r.left + r.width / 2)) * 0.18;
+      var dy = (e.clientY - (r.top + r.height / 2)) * 0.25;
+      b.style.translate = Math.max(-6, Math.min(6, dx)).toFixed(1) + "px " + Math.max(-4, Math.min(4, dy)).toFixed(1) + "px";
+    });
+    b.addEventListener("pointerleave", function () { b.style.translate = ""; });
+  });
+})();
