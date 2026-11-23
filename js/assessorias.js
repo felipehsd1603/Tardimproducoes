@@ -56,6 +56,38 @@
     });
     return xlsxPronto;
   }
+  // ExcelJS: só para o modelo com a cara da Tardim Produções (cores, logos e listas)
+  var exceljsPronto = null;
+  function exceljs() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    if (exceljsPronto) return exceljsPronto;
+    exceljsPronto = new Promise(function (ok, erro) {
+      var s = document.createElement("script");
+      s.src = "js/vendor/exceljs-4.4.0.min.js";
+      s.onload = function () { ok(window.ExcelJS); };
+      s.onerror = function () { exceljsPronto = null; erro(new Error("exceljs")); };
+      document.head.append(s);
+    });
+    return exceljsPronto;
+  }
+  // Imagem -> PNG em base64 (o Excel não aceita webp), com a proporção original.
+  // Se a imagem não carregar, devolve null e o modelo sai sem ela.
+  function imagemPng(src) {
+    if (!src) return Promise.resolve(null);
+    return new Promise(function (ok) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement("canvas");
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext("2d").drawImage(img, 0, 0);
+          ok({ base64: c.toDataURL("image/png"), w: img.naturalWidth, h: img.naturalHeight });
+        } catch (e) { ok(null); }
+      };
+      img.onerror = function () { ok(null); };
+      img.src = src;
+    });
+  }
 
   // Provas abertas
   var provas = (typeof PROXIMAS !== "undefined" ? PROXIMAS : [])
@@ -295,34 +327,121 @@
   bModelo.addEventListener("click", function () {
     var ev = estado.prova;
     bModelo.disabled = true;
-    xlsx().then(function (X) {
-      var wb = X.utils.book_new();
-      var cab = COLS.map(function (c) { return c.titulo; });
-      // Coluna "Equipe" já preenchida nas linhas dos atletas
-      var vagas = limite || 50, prontas = [];
-      for (var k = 0; k < vagas; k++) prontas.push(["", "", "", "", "", "", "", "", convite.e]);
-      var ws = X.utils.aoa_to_sheet([cab, linhaExemplo(ev)].concat(prontas));
-      ws["!cols"] = [{ wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 8 }, { wch: 18 }, { wch: 11 }, { wch: 28 }, { wch: 17 }, { wch: 22 }];
-      X.utils.book_append_sheet(wb, ws, "Atletas");
-      var ds = distancias(ev);
-      var instr = [
-        ["Inscrição coletiva · " + ev.nome],
-        [quando(ev)],
-        ["Equipe: " + convite.e + (convite.d ? " · enviar até " + dataCurta(convite.d) : "") + (limite ? " · até " + atletasTxt(limite) : "")],
-        [""],
-        ["Como preencher"],
-        ["1. Uma linha por atleta, a partir da linha 3. A linha 2 é só um exemplo (o site ignora). A coluna Equipe já vem preenchida."],
-        ["2. Não mude a ordem nem o nome das colunas."],
-        ["3. Data de nascimento no formato dd/mm/aaaa."],
-        ["4. Sexo: F ou M."],
-        ["5. Distância: " + (ds.length ? ds.map(function (d) { return d.rotulo; }).join(" / ") : "como aparece no regulamento")],
-        ["6. Camiseta: " + tamanhos(ev).join(" / ")],
-        ["7. Quando terminar, confira o arquivo no site antes de enviar: " + location.href.split("?")[0]],
+    Promise.all([exceljs(), imagemPng("assets/logo-tardim.png"), imagemPng(logoEquipe)]).then(function (r) {
+      var E = r[0], logoT = r[1], logoE = r[2];
+      var NAVY = "FF24325A", RED = "FFD6505B", PAPER = "FFF5F3EE", RULE = "FFDCDFE6", MUTED = "FF5B6275", BRANCO = "FFFFFFFF";
+      var destaque = corEquipe ? "FF" + corEquipe.slice(1).toUpperCase() : RED;
+      var fundo = function (c) { return { type: "pattern", pattern: "solid", fgColor: { argb: c } }; };
+      var fino = { style: "thin", color: { argb: RULE } };
+      var borda = { top: fino, left: fino, bottom: fino, right: fino };
+      var ds = distancias(ev), nCols = COLS.length;
+      var subtitulo = ev.nome + " · " + quando(ev);
+      var condicoes = (convite.d ? "Enviar até " + dataCurta(convite.d) : "") + (convite.d && limite ? " · " : "") + (limite ? "Até " + atletasTxt(limite) : "");
+
+      var wb = new E.Workbook();
+      wb.creator = "Tardim Produções";
+      // Logos no cabeçalho: Tardim à esquerda, assessoria à direita (altura de 64 px, proporção mantida)
+      function poeLogo(ws, img, col) {
+        if (!img) return;
+        var h = 64, w = Math.round(img.w * h / img.h);
+        if (w > 160) { w = 160; h = Math.round(img.h * w / img.w); }
+        ws.addImage(wb.addImage({ base64: img.base64, extension: "png" }), { tl: { col: col, row: 0.15 }, ext: { width: w, height: h }, editAs: "oneCell" });
+      }
+      // Cabeçalho comum às duas abas: linhas 1 a 3 brancas com título, linha 4 faixa na cor de destaque
+      function cabecalho(ws, ultimaCol, colLogoE) {
+        ws.views = [{ showGridLines: false }];
+        for (var lin = 1; lin <= 4; lin++) for (var col = 1; col <= ultimaCol; col++) ws.getCell(lin, col).fill = fundo(lin === 4 ? destaque : BRANCO);
+        ws.getRow(1).height = 26; ws.getRow(2).height = 20; ws.getRow(3).height = 20; ws.getRow(4).height = 6;
+        var ini = logoT ? 2 : 1;
+        if (ultimaCol - 1 > ini) for (var m = 1; m <= 3; m++) ws.mergeCells(m, ini, m, ultimaCol - 1);
+        var t = ws.getCell(1, ini); t.value = "Inscrição coletiva · " + convite.e;
+        t.font = { name: "Calibri", size: 18, bold: true, color: { argb: NAVY } }; t.alignment = { vertical: "middle" };
+        var s = ws.getCell(2, ini); s.value = subtitulo;
+        s.font = { name: "Calibri", size: 12, bold: true, color: { argb: RED } }; s.alignment = { vertical: "middle" };
+        var c = ws.getCell(3, ini); c.value = condicoes || "Tardim Produções";
+        c.font = { name: "Calibri", size: 11, color: { argb: MUTED } }; c.alignment = { vertical: "middle" };
+        poeLogo(ws, logoT, 0.15);
+        poeLogo(ws, logoE, colLogoE);
+      }
+
+      // Aba Atletas: cabeçalho (1 a 4), títulos (5), exemplo (6) e linhas dos atletas a partir da 7
+      var ws = wb.addWorksheet("Atletas", { properties: { tabColor: { argb: RED } } });
+      ws.columns = [32, 16, 18, 8, 18, 11, 28, 17, 22].map(function (w) { return { width: w }; });
+      cabecalho(ws, nCols, nCols - 1 + 0.15);
+      var LIN_TIT = 5, LIN_EX = 6, LIN_1 = 7;
+      var tit = ws.getRow(LIN_TIT);
+      tit.values = COLS.map(function (c) { return c.titulo; });
+      tit.height = 24;
+      tit.eachCell(function (cel) {
+        cel.fill = fundo(NAVY); cel.border = borda;
+        cel.font = { name: "Calibri", size: 11, bold: true, color: { argb: BRANCO } };
+        cel.alignment = { vertical: "middle", horizontal: "center" };
+      });
+      var ex = ws.getRow(LIN_EX);
+      ex.values = linhaExemplo(ev);
+      ex.eachCell(function (cel) {
+        cel.fill = fundo(PAPER); cel.border = borda;
+        cel.font = { name: "Calibri", size: 10, italic: true, color: { argb: MUTED } };
+      });
+      ws.getCell(LIN_EX, nCols + 1).value = "← exemplo (pode deixar, o site ignora)";
+      ws.getCell(LIN_EX, nCols + 1).font = { name: "Calibri", size: 10, italic: true, color: { argb: MUTED } };
+      ws.getColumn(nCols + 1).width = 36;
+      var vagas = limite || 50;
+      var lista = function (itens) { return { type: "list", allowBlank: true, showErrorMessage: true, errorTitle: "Valor fora da lista", error: "Escolha um valor da lista.", formulae: ['"' + itens.join(",").replace(/"/g, "") + '"'] }; };
+      var distTxt = ds.map(function (d) { return d.rotulo; });
+      var distOk = distTxt.length && distTxt.join(",").length < 250 && distTxt.every(function (d) { return d.indexOf(",") < 0; });
+      for (var k = 0; k < vagas; k++) {
+        var lin = LIN_1 + k, row = ws.getRow(lin);
+        row.getCell(nCols).value = convite.e;
+        for (var col = 1; col <= nCols; col++) {
+          var cel = row.getCell(col);
+          cel.border = borda;
+          cel.font = { name: "Calibri", size: 11, color: { argb: col === nCols ? MUTED : "FF1C2233" } };
+          if (k % 2) cel.fill = fundo("FFFAF9F6");
+        }
+        // CPF e telefone como texto (não perdem o zero da frente)
+        row.getCell(2).numFmt = "@"; row.getCell(8).numFmt = "@";
+        row.getCell(4).dataValidation = lista(["F", "M"]);
+        if (distOk) row.getCell(5).dataValidation = lista(distTxt);
+        row.getCell(6).dataValidation = lista(tamanhos(ev));
+      }
+      ws.views = [{ state: "frozen", ySplit: LIN_TIT, showGridLines: false }];
+      ws.autoFilter = { from: { row: LIN_TIT, column: 1 }, to: { row: LIN_TIT, column: nCols } };
+      ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "5:5" };
+
+      // Aba Como preencher
+      var wi = wb.addWorksheet("Como preencher", { properties: { tabColor: { argb: NAVY } } });
+      wi.columns = [{ width: 14 }, { width: 70 }, { width: 22 }];
+      cabecalho(wi, 3, 2.15);
+      var passos = [
+        "Uma linha por atleta, a partir da linha " + LIN_1 + " da aba Atletas. A linha " + LIN_EX + " é só um exemplo (o site ignora). A coluna Equipe já vem preenchida.",
+        "Não mude a ordem nem o nome das colunas.",
+        "Data de nascimento no formato dd/mm/aaaa.",
+        "Sexo: F ou M (escolha na lista).",
+        "Distância: " + (distTxt.length ? distTxt.join(" / ") : "como aparece no regulamento") + (distOk ? " (escolha na lista)." : "."),
+        "Camiseta: " + tamanhos(ev).join(" / ") + " (escolha na lista).",
+        "Quando terminar, confira o arquivo no site antes de enviar: " + location.href.split("?")[0],
       ];
-      var wi = X.utils.aoa_to_sheet(instr);
-      wi["!cols"] = [{ wch: 90 }];
-      X.utils.book_append_sheet(wb, wi, "Como preencher");
-      X.writeFile(wb, "Modelo-inscricao-coletiva_" + slug(convite.e) + "_" + slug(ev.nome) + ".xlsx");
+      var h = wi.getCell(6, 1); h.value = "Como preencher";
+      h.font = { name: "Calibri", size: 14, bold: true, color: { argb: NAVY } };
+      passos.forEach(function (txt, i) {
+        var n = wi.getCell(7 + i, 1), t = wi.getCell(7 + i, 2);
+        wi.mergeCells(7 + i, 2, 7 + i, 3);
+        n.value = i + 1; n.font = { name: "Calibri", size: 14, bold: true, color: { argb: RED } };
+        n.alignment = { horizontal: "center", vertical: "top" };
+        t.value = txt; t.font = { name: "Calibri", size: 11, color: { argb: "FF1C2233" } };
+        t.alignment = { wrapText: true, vertical: "top" };
+        wi.getRow(7 + i).height = txt.length > 80 ? 32 : 18;
+      });
+      var rod = wi.getCell(8 + passos.length, 1);
+      wi.mergeCells(8 + passos.length, 1, 8 + passos.length, 3);
+      rod.value = "Dúvidas? Fale com a Tardim Produções pelo WhatsApp (" + WHATSAPP.replace(/^55(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3") + ") ou " + EMAIL + ".";
+      rod.font = { name: "Calibri", size: 10, italic: true, color: { argb: MUTED } };
+
+      return wb.xlsx.writeBuffer().then(function (buf) {
+        baixa(new File([buf], "Modelo-inscricao-coletiva_" + slug(convite.e) + "_" + slug(ev.nome) + ".xlsx",
+          { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      });
     }).catch(function () { alert("Não foi possível gerar o modelo agora. Tente o modelo em CSV."); })
       .then(function () { bModelo.disabled = false; });
   });
@@ -557,7 +676,7 @@
     }
     if (!total) {
       p3.append(el("h2", null, "Nenhum atleta na planilha"));
-      p3.append(el("p", "muted", "Preencha a partir da linha 3 do modelo e envie de novo."));
+      p3.append(el("p", "muted", "Preencha a partir da linha 7 do modelo e envie de novo."));
       return;
     }
     p3.append(el("h2", null, comErro ? "Quase lá: corrija " + comErro + (comErro === 1 ? " linha" : " linhas") : passou ? "Passou do limite de atletas" : "Tudo certo com a sua planilha"));
