@@ -81,12 +81,7 @@ CREATE TABLE IF NOT EXISTS login_erros (
 );
 CREATE INDEX IF NOT EXISTS login_erros_ip ON login_erros (ip, quando);
 
--- Envios do pré-cadastro público de embaixadores (pre-cadastro.html): 5 por IP por hora
-CREATE TABLE IF NOT EXISTS pre_cadastro_tentativas (
-  ip        TEXT NOT NULL,
-  quando    INTEGER NOT NULL                   -- epoch em segundos
-);
-CREATE INDEX IF NOT EXISTS pre_cadastro_tentativas_ip ON pre_cadastro_tentativas (ip, quando);
+-- Busca de parceiro pelo registro profissional
 CREATE INDEX IF NOT EXISTS parceiros_registro ON parceiros (registro);
 
 -- Imagens enviadas pelo painel (artes das provas e logos das equipes),

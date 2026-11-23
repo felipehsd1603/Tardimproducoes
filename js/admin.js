@@ -490,7 +490,7 @@
         if (p.instagram) { if (p.whatsapp) contato.append(" "); contato.append(linkExt("@" + p.instagram.replace(/^@/, ""), "https://www.instagram.com/" + p.instagram.replace(/^@/, "") + "/")); }
         return [nome, TIPOS[p.tipo], contato,
           String(S.convites.filter(function (x) { return x.parceiro_id === p.id; }).length),
-          !p.ativo && /^Pré-cadastro pelo site/.test(p.observacoes || "") ? situacao("Pré-cadastro: aprovar", "is-rasc") : situacao(p.ativo ? "Ativo" : "Inativo", p.ativo ? "is-pub" : "is-off"),
+          situacao(p.ativo ? "Ativo" : "Inativo", p.ativo ? "is-pub" : "is-off"),
           acoes(botao("Editar", null, function () { formParceiro(p); }), p.ativo ? botao("Novo convite", null, function () { formConvite(null, { parceiro_id: p.id }); }) : null)];
       })));
     }

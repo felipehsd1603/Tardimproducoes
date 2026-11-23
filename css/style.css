@@ -1345,9 +1345,3 @@ a:hover .seta, .case-card:hover .seta { translate: 5px 0; }
 .convite-link-btn { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--navy); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .convite-banco a { color: var(--navy); font-weight: 600; text-underline-offset: 3px; }
 
-/* ===== Pré-cadastro de embaixadores (pre-cadastro.html) ===== */
-.pc__aceite { display: flex; gap: 12px; align-items: flex-start; font-size: 0.92rem; line-height: 1.5; color: var(--ink); cursor: pointer; }
-.pc__aceite input { flex: none; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--navy); cursor: pointer; }
-.pc__aceite a { color: var(--navy); }
-.pc__escondido { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-#pc-form { margin-top: 28px; }
