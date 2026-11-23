@@ -1,4 +1,7 @@
 // POST /api/orcamento — guarda o pedido de orçamento no D1 (binding DB).
+// Limite: 10 pedidos por IP por hora.
+
+import { dentroDoLimite } from "../_limite.js";
 
 const LIMITES = { servico: 60, nome: 120, contratante: 60, empresa: 120, cidade: 120, quando: 40, publico: 40, detalhes: 2000 };
 
@@ -26,6 +29,7 @@ export async function onRequestPost({ request, env }) {
   }
   if (!v.servico || !v.nome || !v.cidade) return json({ erro: "obrigatorio" }, 400);
   const canal = d.canal === "email" ? "email" : "whatsapp";
+  if (!(await dentroDoLimite(env, request, "orcamento", 10, 3600))) return json({ erro: "limite" }, 429);
 
   await env.DB.prepare(
     "INSERT INTO orcamentos (canal, servico, nome, contratante, empresa, cidade, quando, publico, detalhes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"

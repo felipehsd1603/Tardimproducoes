@@ -43,5 +43,13 @@ CREATE TABLE IF NOT EXISTS atletas (
   equipe       TEXT NOT NULL DEFAULT ''
 );
 
+-- Envios por IP das funções públicas (functions/_limite.js): 10 por rota por hora
+CREATE TABLE IF NOT EXISTS envios_tentativas (
+  rota   TEXT NOT NULL,                   -- orcamento | inscricao
+  ip     TEXT NOT NULL,
+  quando INTEGER NOT NULL                 -- epoch em segundos
+);
+CREATE INDEX IF NOT EXISTS envios_tentativas_ip ON envios_tentativas (rota, ip, quando);
+
 CREATE INDEX IF NOT EXISTS atletas_inscricao ON atletas (inscricao_id);
 CREATE INDEX IF NOT EXISTS inscricoes_prova ON inscricoes (prova_id, criado_em);

@@ -227,7 +227,7 @@ Também dá para ver os dados no painel da Cloudflare, em **Storage & Databases 
 
 A tabela `atletas` tem dados pessoais (CPF, e-mail, telefone). O acesso é só pela conta da Cloudflare e pelo painel do site. O que o site diz aos visitantes sobre isso está em `privacidade.html`; se mudar o que é guardado, mude o texto de lá também.
 
-As funções só aceitam pedidos vindos do próprio site (conferem o cabeçalho `Origin`) e limitam o tamanho de cada campo. Não há limite de envios por visitante.
+As funções só aceitam pedidos vindos do próprio site (conferem o cabeçalho `Origin`) e limitam o tamanho de cada campo. `/api/orcamento` e `/api/inscricao` aceitam até 10 envios por IP por hora cada uma (`functions/_limite.js`, tabela `envios_tentativas`); acima disso respondem 429 e o site segue abrindo o WhatsApp ou o e-mail normalmente.
 
 ## Domínio
 
