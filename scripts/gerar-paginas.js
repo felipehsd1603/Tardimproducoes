@@ -89,6 +89,7 @@ const fixas = [
   { arquivo: "institucional.html", titulo: "Institucional · Tardim Produções", descricao: "Corridas, eventos e prevenção contra incêndio para órgãos públicos, conselhos e instituições.", imagem: "assets/compartilhar.jpg", url: BASE + "institucional.html" },
   { arquivo: "privacidade.html", titulo: "Política de privacidade · Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE + "privacidade.html" },
   { arquivo: "programa-embaixadores.html", titulo: "Programa de embaixadores · Tardim Produções", descricao: "Regras para quem divulga as provas da Tardim Produções com cupom e link próprios.", imagem: "assets/compartilhar.jpg", url: BASE + "programa-embaixadores.html" },
+  { arquivo: "parceiro.html", titulo: "Área do parceiro · Tardim Produções", descricao: "Assessorias, influenciadores e embaixadores: cadastre-se e acompanhe seus convites, cupons e links.", imagem: "assets/compartilhar.jpg", url: BASE + "parceiro.html" },
   { arquivo: "kit.html", titulo: "Kit de divulgação · Tardim Produções", descricao: "Seu link, cupom, textos prontos e card para stories.", imagem: "assets/compartilhar.jpg", url: BASE + "kit.html" },
   { arquivo: "evento.html", titulo: "Portfólio · Tardim Produções", descricao: "Trabalho realizado pela Tardim Produções.", imagem: "", url: BASE + "evento.html" },
 ];

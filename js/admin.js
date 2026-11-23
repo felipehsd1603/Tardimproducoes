@@ -16,6 +16,9 @@
   var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
     "agosto", "setembro", "outubro", "novembro", "dezembro"];
   var TIPOS = { embaixador: "Embaixador", influenciador: "Influenciador", assessoria: "Assessoria", equipe: "Equipe" };
+  var UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
+  function cidadeUf(p) { return (p.cidade || "") + (p.cidade && p.uf ? "/" + p.uf : ""); }
+  function seguidoresTxt(n) { return n ? Number(n).toLocaleString("pt-BR") + " seguidores" : ""; }
   // Mesma lista de functions/api/admin/[[rota]].js; o primeiro tem registro conferido no CREF6
   var PROFISSOES = [
     "Profissional de Educação Física (CREF6/MG)", "Profissional de Educação Física (outro CREF)",
@@ -237,7 +240,7 @@
     var topo = el("div", "painel-top");
     var quem = el("p", "muted", "Painel conectado ao banco do site.");
     var lado = acoes(
-      botao("Atualizar dados", null, function () { carregar().then(function () { mostra(S.aba); aviso("Dados atualizados."); }).catch(falha); }),
+      botao("Atualizar dados", null, function () { carregar().then(function () { contaPendentes(); mostra(S.aba); aviso("Dados atualizados."); }).catch(falha); }),
       botao("Sair", null, sair)
     );
     topo.append(quem, lado);
@@ -252,7 +255,18 @@
     });
     corpo = el("div", "painel-corpo");
     app.append(topo, abas, corpo);
+    contaPendentes();
+    var n = pendentes().length;
+    if (n && S.aba === "provas") S.aba = "parceiros";
     mostra(S.aba);
+    if (n) aviso(n === 1 ? "1 cadastro novo de parceiro aguardando aprovação." : n + " cadastros novos de parceiros aguardando aprovação.");
+  }
+  // Cadastros feitos pelo site (parceiro.html) que ainda não foram aprovados nem recusados
+  function pendentes() { return S.parceiros.filter(function (p) { return p.situacao === "pendente"; }); }
+  function contaPendentes() {
+    var b = app.querySelector('.painel-abas [data-aba="parceiros"]');
+    var n = pendentes().length;
+    if (b) b.textContent = "Parceiros" + (n ? " (" + n + " novo" + (n > 1 ? "s" : "") + ")" : "");
   }
   function mostra(aba) {
     S.aba = aba;
@@ -459,6 +473,8 @@
   // =====================================================================
   var filtroTipo = "", busca = "";
   function abaParceiros() {
+    var pend = pendentes();
+    if (pend.length) corpo.append(cardPendentes(pend));
     var c = card("Cadastro", "Parceiros");
     c.append(el("p", "muted", "Embaixadores, influenciadores, assessorias e equipes. Cada parceiro pode ter convites em várias provas."));
     var tipo = escolha([["", "Todos os tipos"]].concat(Object.keys(TIPOS).map(function (k) { return [k, TIPOS[k]]; })), filtroTipo);
@@ -474,7 +490,7 @@
       var lista = S.parceiros.filter(function (p) {
         if (filtroTipo && p.tipo !== filtroTipo) return false;
         if (!termo) return true;
-        return slug([p.nome, p.responsavel, p.cidade, p.instagram].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
+        return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
       });
       area.innerHTML = "";
       if (!lista.length) { area.append(el("p", "muted", S.parceiros.length ? "Nenhum parceiro com esse filtro." : "Nenhum parceiro cadastrado ainda.")); return; }
@@ -490,7 +506,9 @@
         if (p.instagram) { if (p.whatsapp) contato.append(" "); contato.append(linkExt("@" + p.instagram.replace(/^@/, ""), "https://www.instagram.com/" + p.instagram.replace(/^@/, "") + "/")); }
         return [nome, TIPOS[p.tipo], contato,
           String(S.convites.filter(function (x) { return x.parceiro_id === p.id; }).length),
-          situacao(p.ativo ? "Ativo" : "Inativo", p.ativo ? "is-pub" : "is-off"),
+          p.situacao === "pendente" ? situacao("Aguardando aprovação", "is-rasc")
+            : p.situacao === "recusado" ? situacao("Recusado", "is-off")
+            : situacao(p.ativo ? "Ativo" : "Inativo", p.ativo ? "is-pub" : "is-off"),
           acoes(botao("Editar", null, function () { formParceiro(p); }), p.ativo ? botao("Novo convite", null, function () { formConvite(null, { parceiro_id: p.id }); }) : null)];
       })));
     }
@@ -499,7 +517,60 @@
     desenha();
     corpo.append(c);
   }
+  // Mesma máscara de js/parceiro.js: (31) 99999-9999 celular, (31) 3333-4444 fixo, sem o +55
+  function mascaraTel(v) {
+    var d = String(v || "").replace(/\D/g, "");
+    if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2);
+    d = d.slice(0, 11);
+    return d.length > 10 ? d.replace(/^(\d{2})(\d{5})(\d{0,4})$/, "($1) $2-$3")
+      : d.length > 6 ? d.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3")
+      : d.length > 2 ? d.replace(/^(\d{2})(\d+)$/, "($1) $2")
+      : d.length ? "(" + d : "";
+  }
   function numeroWa(t) { var n = String(t || "").replace(/\D/g, ""); if (n && n.length <= 11) n = "55" + n; return n; }
+
+  // Cadastros novos (feitos em parceiro.html): aprovar libera a área do parceiro; recusar guarda o motivo
+  function cardPendentes(lista) {
+    var c = card("Cadastros pelo site", lista.length === 1 ? "1 cadastro aguardando aprovação" : lista.length + " cadastros aguardando aprovação");
+    c.classList.add("painel-pendentes");
+    c.append(el("p", "muted", "Confira os dados (Instagram, WhatsApp, CREF quando houver) antes de aprovar. Aprovado, o parceiro passa a ver na área dele os convites que você criar."));
+    c.append(tabela(["Recebido", "Nome", "Tipo", "Contato", "Cidade", ""], lista.map(function (p) {
+      var nome = el("div"); nome.append(el("strong", null, p.nome));
+      if (p.responsavel) nome.append(el("small", "muted", " · " + p.responsavel));
+      var contato = el("div");
+      if (p.email) contato.append(linkExt(p.email, "mailto:" + p.email), " ");
+      if (p.whatsapp) contato.append(linkExt(p.whatsapp, "https://wa.me/" + numeroWa(p.whatsapp)), " ");
+      if (p.instagram) contato.append(linkExt("@" + p.instagram.replace(/^@/, ""), "https://www.instagram.com/" + p.instagram.replace(/^@/, "") + "/"));
+      var recebido = p.criado_em ? new Date(p.criado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+      if (p.seguidores) nome.append(el("small", "muted", " · " + seguidoresTxt(p.seguidores)));
+      return [recebido, nome, TIPOS[p.tipo] || p.tipo, contato, cidadeUf(p),
+        acoes(botao("Aprovar", "btn btn--red", function (e) { decide(p, "aprovado", e.currentTarget); }),
+          botao("Recusar", "orc__email painel-perigo", function (e) { decide(p, "recusado", e.currentTarget); }),
+          botao("Editar", null, function () { formParceiro(p); }))];
+    })));
+    return c;
+  }
+  function decide(p, sit, btn) {
+    var dados = { situacao: sit, ativo: sit === "aprovado" };
+    if (sit === "recusado") {
+      var motivo = window.prompt("Recusar o cadastro de " + p.nome + "? Se quiser, escreva o motivo (o parceiro vê esta mensagem):", "");
+      if (motivo === null) return;
+      dados.motivo_recusa = motivo.trim().slice(0, 300);
+    } else {
+      dados.motivo_recusa = "";
+    }
+    btn.disabled = true;
+    api("PUT", "parceiros/" + encodeURIComponent(p.id), dados).then(function (salvo) {
+      S.parceiros = S.parceiros.map(function (x) { return x.id === p.id ? salvo : x; });
+      contaPendentes();
+      mostra("parceiros");
+      aviso(sit === "aprovado" ? p.nome + " aprovado. Avise pelo WhatsApp e crie o primeiro convite." : "Cadastro de " + p.nome + " recusado.",
+        false, sit === "aprovado" && p.whatsapp ? ["Avisar no WhatsApp", function () {
+          window.open("https://wa.me/" + numeroWa(p.whatsapp) + "?text=" + encodeURIComponent(
+            "Olá, " + (p.responsavel || p.nome) + "! Seu cadastro de parceiro da Tardim Produções foi aprovado. Entre na sua área para ver os convites: " + base() + "parceiro.html"), "_blank", "noopener");
+        }] : null);
+    }).catch(function (err) { btn.disabled = false; falha(err); });
+  }
 
   function formParceiro(p) {
     corpo.innerHTML = "";
@@ -509,10 +580,13 @@
     var tipo = escolha(Object.keys(TIPOS).map(function (k) { return [k, TIPOS[k]]; }), p.tipo);
     var nome = entrada("text", p.nome, { maxLength: 120, required: true });
     var resp = entrada("text", p.responsavel, { maxLength: 120 });
-    var wa = entrada("tel", p.whatsapp, { placeholder: "(31) 90000-0000", maxLength: 20 });
+    var wa = entrada("tel", mascaraTel(p.whatsapp), { placeholder: "(31) 90000-0000", maxLength: 20, inputMode: "numeric" });
+    wa.addEventListener("input", function () { wa.value = mascaraTel(wa.value); });
     var email = entrada("email", p.email, { maxLength: 120 });
     var insta = entrada("text", p.instagram, { placeholder: "@perfil", maxLength: 60 });
     var cidade = entrada("text", p.cidade, { maxLength: 80 });
+    var uf = escolha([["", "—"]].concat(UFS.map(function (u) { return [u, u]; })), p.uf || "");
+    var seg = entrada("number", p.seguidores || "", { min: 0, step: 1, placeholder: "Só para influenciador" });
     var doc = entrada("text", p.documento, { maxLength: 20, placeholder: "CPF ou CNPJ" });
     var pix = entrada("text", p.pix, { maxLength: 120 });
     var obs = entrada("textarea", p.observacoes, { maxLength: 1000 });
@@ -520,7 +594,8 @@
     f.append(
       campo("Tipo", tipo), campo("Nome", nome, "Pessoa, perfil ou nome da assessoria/equipe."),
       campo("Responsável", resp, "Para assessoria e equipe: quem fala pela equipe."),
-      campo("WhatsApp", wa), campo("E-mail", email), campo("Instagram", insta), campo("Cidade", cidade),
+      campo("WhatsApp", wa), campo("E-mail", email), campo("Instagram", insta), campo("Cidade", cidade), campo("Estado (UF)", uf),
+      campo("Seguidores (estimado)", seg),
       campo("CPF ou CNPJ", doc, "Para o pagamento da comissão."), campo("Chave Pix", pix, "Em nome do próprio parceiro."),
       campo("Observações", obs, null, true)
     );
@@ -627,6 +702,7 @@
       var linha = {
         tipo: tipo.value, nome: nome.value.trim(), responsavel: resp.value.trim(), whatsapp: wa.value.trim(),
         email: email.value.trim(), instagram: insta.value.trim().replace(/^@/, ""), cidade: cidade.value.trim(),
+        uf: uf.value, seguidores: Number(seg.value) || 0,
         documento: doc.value.trim(), pix: pix.value.trim(), observacoes: obs.value.trim(), ativo: ativo.caixa.checked,
       };
       var equipe = tipo.value === "assessoria" || tipo.value === "equipe";

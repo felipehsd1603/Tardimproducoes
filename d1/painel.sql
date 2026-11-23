@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS parceiros (
   whatsapp      TEXT NOT NULL DEFAULT '',
   email         TEXT NOT NULL DEFAULT '',
   instagram     TEXT NOT NULL DEFAULT '',
-  cidade        TEXT NOT NULL DEFAULT '',
+  cidade        TEXT NOT NULL DEFAULT '',      -- nome do município como no IBGE (functions/_cidades.js)
+  uf            TEXT NOT NULL DEFAULT '',      -- sigla do estado
+  seguidores    INTEGER NOT NULL DEFAULT 0,    -- influenciador: seguidores estimados
   documento     TEXT NOT NULL DEFAULT '',      -- CPF ou CNPJ, para o pagamento
   pix           TEXT NOT NULL DEFAULT '',
   observacoes   TEXT NOT NULL DEFAULT '',
@@ -51,6 +53,9 @@ CREATE TABLE IF NOT EXISTS parceiros (
   logo          TEXT NOT NULL DEFAULT '',      -- caminho em arquivos: assessorias/<id>-<t>.png
   cor           TEXT NOT NULL DEFAULT '',      -- "rrggbb"
   ativo         INTEGER NOT NULL DEFAULT 1,
+  situacao      TEXT NOT NULL DEFAULT 'aprovado', -- pendente | aprovado | recusado (cadastro feito pelo site)
+  origem        TEXT NOT NULL DEFAULT 'painel',   -- painel | cadastro
+  motivo_recusa TEXT NOT NULL DEFAULT '',
   criado_em     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   atualizado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
@@ -81,6 +86,17 @@ CREATE TABLE IF NOT EXISTS login_erros (
   quando    INTEGER NOT NULL                   -- epoch em segundos
 );
 CREATE INDEX IF NOT EXISTS login_erros_ip ON login_erros (ip, quando);
+
+-- Contas de acesso dos parceiros (parceiro.html): e-mail e senha e/ou Google
+CREATE TABLE IF NOT EXISTS contas (
+  id           TEXT PRIMARY KEY,               -- uuid
+  parceiro_id  TEXT NOT NULL UNIQUE REFERENCES parceiros(id),
+  email        TEXT NOT NULL UNIQUE,           -- sempre em minúsculas
+  senha        TEXT NOT NULL DEFAULT '',       -- pbkdf2$iteracoes$sal$hash (vazio = só Google)
+  google_sub   TEXT UNIQUE,                    -- id da conta Google (NULL = só senha)
+  criado_em    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ultimo_acesso TEXT NOT NULL DEFAULT ''
+);
 
 -- Busca de parceiro pelo registro profissional
 CREATE INDEX IF NOT EXISTS parceiros_registro ON parceiros (registro);

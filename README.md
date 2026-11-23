@@ -26,7 +26,7 @@ js/assessorias.js   inscrição coletiva: modelo de planilha, conferência e env
 js/convite.js       gera e lê o código do link de convite de cada assessoria
 js/gerar-convite.js gerador antigo de links (link-assessoria.html); não é mais usado, o link sai do painel
 js/equipe.js        página pública da equipe, para os atletas (equipe.html)
-js/vendor/          biblioteca SheetJS (lê e gera planilhas Excel na página de assessorias)
+js/vendor/          SheetJS (lê e gera planilhas na página de assessorias) e ExcelJS (gera o modelo com cores, logos e listas)
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
 js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
 js/demo.js          modo demonstração (só com ?demo=1)
@@ -41,6 +41,8 @@ kit.html            kit de divulgação de cada parceiro: js/kit.js
 programa-embaixadores.html  regras do programa de embaixadores
 js/provas-db.js     provas do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
 functions/api/admin/[[rota]].js  API do painel: login, provas, parceiros, convites, imagens, orçamentos e inscrições
+parceiro.html       área do parceiro: cadastro, login (e-mail/senha ou Google) e convites: js/parceiro.js
+functions/api/parceiro/[[rota]].js  API da área do parceiro: cadastro, login, Google e "minha área"
 functions/arquivos/[[caminho]].js  serve as imagens enviadas pelo painel (/arquivos/...)
 functions/_middleware.js  serve js/provas-db.js e prova-<id>.html das provas do painel, na hora
 d1/schema.sql       tabelas orcamentos, inscricoes e atletas
@@ -107,6 +109,23 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 - **Apuração**: solte o relatório de inscritos exportado da Ticket Sports (Excel ou CSV), escolha as colunas de cupom, valor e situação e marque quais situações contam como pagas. O painel soma por cupom, calcula a comissão de cada parceiro e baixa a planilha de pagamento. O arquivo é lido só no navegador.
 - **Inscrições coletivas**: os envios das assessorias (tabelas `inscricoes` e `atletas`), com filtro por prova e botão para baixar os atletas de cada envio em Excel.
 - **Orçamentos**: a cópia de cada pedido do formulário "Peça seu orçamento" (tabela `orcamentos`), com download em Excel.
+
+## Área do parceiro (cadastro e login)
+
+`parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias, influenciadores e embaixadores se cadastram e entram. API em `functions/api/parceiro/`.
+
+- **Cadastro**: tipo, nome (ou nome da assessoria e responsável), WhatsApp (obrigatório), estado e cidade, Instagram e aceite da política de privacidade e das regras do programa. Influenciador também precisa informar o Instagram e o número estimado de seguidores. A cidade é escolhida digitando, com sugestões da lista do IBGE do estado escolhido (`functions/_cidades.js`, servida por `api/parceiro/cidades?uf=MG`); o servidor só aceita cidade da lista e grava o nome oficial, mesmo que a pessoa digite sem acento. Para atualizar a lista, baixe `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado` e gere o arquivo de novo. Entra com e-mail e senha (mínimo de 8 caracteres, guardada só como hash PBKDF2) ou pelo botão **Entrar com Google**. Quem entra com Google e ainda não tem cadastro completa os dados na sequência. Se o e-mail do Google já tiver cadastro com senha, as duas formas passam a valer na mesma conta.
+- **Aprovação**: o cadastro chega como parceiro com situação "pendente" e inativo. O painel abre na aba Parceiros, mostra "Parceiros (N novos)" e o bloco "Cadastros aguardando aprovação" com **Aprovar** e **Recusar** (o motivo da recusa aparece para o parceiro). Aprovado, o painel oferece a mensagem de aviso pelo WhatsApp.
+- **Aviso por e-mail**: a cada cadastro novo a Tardim recebe um e-mail com os dados e o link do painel, se `RESEND_API_KEY` e `AVISO_EMAIL` estiverem definidos (veja abaixo). Sem eles, o aviso fica só no painel.
+- **Minha área**: pendente vê "Em análise"; recusado vê o motivo; aprovado vê os convites que a Tardim criou para ele no painel (prova, cupom, condições, link para os atletas, kit de divulgação e, para assessoria, o link da inscrição coletiva).
+- **Segurança**: cookie HttpOnly, Secure e SameSite=Lax (`tardim_parceiro`, 30 dias), assinado com `SESSAO_SEGREDO`. 5 senhas erradas em 15 minutos bloqueiam o IP por 15 minutos; no máximo 5 cadastros por IP por hora. O token do Google é conferido no servidor (assinatura, site, validade e e-mail confirmado). Excluir o parceiro no painel apaga a conta de acesso. Esqueceu a senha: por enquanto, a página manda falar com a Tardim pelo WhatsApp.
+
+**Configurar (uma vez por projeto):**
+
+1. Atualize o banco com `d1/migracoes/002-contas-parceiros.sql` e `d1/migracoes/003-parceiros-uf-seguidores.sql` (`npx wrangler d1 execute tardim --remote --file <arquivo>`, uma vez cada; banco novo: basta o `d1/painel.sql`).
+2. **Google**: no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie uma credencial "ID do cliente OAuth" do tipo "Aplicativo da Web", com as origens JavaScript autorizadas `https://tardim-teste.pages.dev` (e depois o domínio definitivo). Configure a tela de consentimento (nome "Tardim Produções", e-mail de suporte). Copie o ID do cliente e grave: `npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name <projeto>`. Sem ele, a página mostra só e-mail e senha.
+3. **E-mail de aviso**: crie uma conta gratuita no [Resend](https://resend.com), gere uma chave de API e grave `RESEND_API_KEY` e `AVISO_EMAIL` (o e-mail que recebe os avisos; vários separados por vírgula) com `npx wrangler pages secret put`. Sem domínio verificado no Resend, o remetente é `onboarding@resend.dev` e o Resend só entrega para o e-mail da própria conta Resend; com o domínio verificado, defina `AVISO_REMETENTE` (ex.: `Tardim Produções <avisos@tardimproducoes.com.br>`).
+4. Publique o site de novo.
 
 **Kit de divulgação** (`kit.html?p=<prova>&c=<CUPOM>&n=<nome>&d=<desconto>`): página pública e fora do Google com o link e o cupom do parceiro, card para stories (1080x1920, gerado no navegador com a arte e o cupom), a arte da prova e textos prontos para Instagram, WhatsApp e stories. Sem cupom (`kit.html?p=<prova>`), vira o kit geral da prova. O texto usa o campo "Texto de divulgação" da prova ou, vazio, monta sozinho com os dados dela.
 
@@ -202,10 +221,11 @@ E as do painel, em `d1/painel.sql`:
 | Tabela | O que guarda |
 | --- | --- |
 | `provas` | Provas cadastradas no painel (as publicadas aparecem no site na hora) |
-| `parceiros` | Embaixadores, influenciadores, assessorias e equipes, com contato, CPF/CNPJ, Pix, logo e cor |
+| `parceiros` | Embaixadores, influenciadores, assessorias e equipes, com contato, CPF/CNPJ, Pix, logo, cor e situação do cadastro (pendente, aprovado, recusado) |
+| `contas` | Acesso dos parceiros à `parceiro.html`: e-mail, hash da senha e/ou conta Google |
 | `convites` | Um parceiro numa prova: cupom da Ticket Sports, desconto, comissão, cortesias |
 | `arquivos` | Imagens enviadas pelo painel (artes e logos, até 1,9 MB cada), servidas em `/arquivos/...` |
-| `login_erros` | Senhas erradas no painel, para o bloqueio de 15 minutos |
+| `login_erros` | Senhas erradas no painel e na área do parceiro (bloqueio de 15 minutos) e limite de cadastros por IP |
 
 Para criar ou atualizar as tabelas (pode rodar de novo sem perder dados):
 

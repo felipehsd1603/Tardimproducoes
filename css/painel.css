@@ -66,3 +66,30 @@
 .kit-texto { margin: 6px 0 12px; padding: 14px 16px; border-radius: 12px; background: var(--paper); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.95rem; line-height: 1.5; }
 .kit .assess-card h3 { margin-top: 22px; font-size: 1.35rem; }
 .kit a[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+
+/* ----- Cadastros pendentes (painel) ----- */
+.painel-pendentes { border: 2px solid #f2c94c; }
+.painel-pendentes .btn { min-height: 40px; padding: 0 18px; }
+
+/* ----- Área do parceiro (parceiro.html) ----- */
+.parc { display: grid; gap: 20px; max-width: 760px; }
+.parc-abas { justify-content: flex-start; }
+.parc-google { display: flex; justify-content: center; min-height: 44px; margin: 6px 0 4px; }
+.parc-sep { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; color: var(--muted); font-size: 0.88rem; }
+.parc-sep::before, .parc-sep::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.parc-google-ok { margin: 8px 0 4px; padding: 10px 14px; border-radius: 10px; background: #e9f6ee; color: #14532d; font-weight: 600; overflow-wrap: anywhere; }
+.parc-tipos { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.parc-tipos legend { margin-bottom: 6px; padding: 0; font-weight: 700; color: var(--navy); }
+@media (min-width: 700px) { .parc-tipos { grid-template-columns: repeat(3, 1fr); } .parc-tipos legend { grid-column: 1 / -1; } }
+.parc-tipo { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 2px solid var(--rule); border-radius: 12px; background: #fff; cursor: pointer; }
+.parc-tipo:has(input:checked) { border-color: var(--red); background: #fff7f8; }
+.parc-tipo input { margin-top: 4px; accent-color: var(--red-btn); }
+.parc-tipo b { display: block; color: var(--navy); }
+.parc-tipo small { display: block; color: var(--muted); font-size: 0.85rem; line-height: 1.35; }
+.parc [hidden] { display: none !important; }
+.parc-ajuda { margin: 14px 0 0; font-size: 0.9rem; }
+.parc-convite { padding: 16px 0 4px; border-top: 1px solid var(--rule); }
+.parc-convite:first-of-type { border-top: 0; padding-top: 4px; }
+.parc-convite h3 { margin: 0 0 4px; font-size: 1.35rem; }
+.parc-convite > p { margin: 0 0 8px; }
+.parc-cond { margin: 0 0 6px; padding-left: 20px; font-size: 0.92rem; }

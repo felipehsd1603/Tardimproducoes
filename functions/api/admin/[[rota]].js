@@ -15,6 +15,9 @@
 //   POST   arquivos?caminho=provas/<nome>.jpg       (corpo = a imagem)
 //   GET    orcamentos | inscricoes | inscricoes/<id>/atletas
 //   GET    cref6?numero=012345-G/MG                 (consulta pública do CREF6, functions/_cref6.js)
+//
+// Cadastros feitos pelo site (parceiro.html) chegam como parceiros com situacao "pendente";
+// aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
 import { consultaCref6, numeroCref } from "../../_cref6.js";
 
@@ -48,6 +51,8 @@ const TABELAS = {
       tipo: 20, nome: 120, responsavel: 120, whatsapp: 20, email: 120, instagram: 60, cidade: 80,
       documento: 20, pix: 120, observacoes: 1000, logo: 200, cor: 7, ativo: "bool",
       profissao: 60, registro: 20, registro_situacao: 40, registro_nome: 120, registro_conferido_em: 30,
+      situacao: 12, motivo_recusa: 300, // cadastro feito pelo site (parceiro.html): pendente | aprovado | recusado
+      uf: 2, seguidores: "grande",
     },
     obrigatorios: ["tipo", "nome"], ordem: "nome COLLATE NOCASE",
   },
@@ -142,6 +147,9 @@ function limpa(tabela, d, criando) {
     } else if (regra === "num") {
       x = Number(x) || 0;
       if (x < 0 || x > 100) throw new Erro(400, "A comissão precisa estar entre 0 e 100%.");
+    } else if (regra === "grande") {
+      x = parseInt(x, 10) || 0;
+      if (x < 0 || x > 1000000000) throw new Erro(400, "Número inválido em " + campo + ".");
     } else if (regra === "int") {
       x = parseInt(x, 10) || 0;
       if (x < 0 || x > 1000) throw new Erro(400, "Número inválido em " + campo + ".");
@@ -162,6 +170,8 @@ function limpa(tabela, d, criando) {
   }
   if (tabela === "parceiros") {
     if ("tipo" in v && TIPOS_PARCEIRO.indexOf(v.tipo) < 0) throw new Erro(400, "Tipo de parceiro inválido.");
+    if ("uf" in v) { v.uf = v.uf.toUpperCase(); if (v.uf && !/^[A-Z]{2}$/.test(v.uf)) throw new Erro(400, "Estado inválido."); }
+    if ("situacao" in v &&["pendente", "aprovado", "recusado"].indexOf(v.situacao) < 0) throw new Erro(400, "Situação do cadastro inválida.");
     if ("cor" in v) { v.cor = v.cor.replace(/^#/, "").toLowerCase(); if (v.cor && !/^[0-9a-f]{6}$/.test(v.cor)) throw new Erro(400, "Cor inválida."); }
     if ("logo" in v && v.logo && !/^assessorias\/[\w-][\w.-]*\.(png|jpe?g|webp)$/.test(v.logo)) throw new Erro(400, "Caminho da logo inválido.");
     if ("profissao" in v && v.profissao && PROFISSOES.indexOf(v.profissao) < 0) throw new Erro(400, "Tipo de profissional inválido.");
@@ -235,7 +245,10 @@ async function altera(env, tabela, id, d) {
 
 async function apaga(env, tabela, id) {
   const passos = [];
-  if (tabela === "parceiros") passos.push(env.DB.prepare("DELETE FROM convites WHERE parceiro_id = ?").bind(id));
+  if (tabela === "parceiros") {
+    passos.push(env.DB.prepare("DELETE FROM convites WHERE parceiro_id = ?").bind(id));
+    passos.push(env.DB.prepare("DELETE FROM contas WHERE parceiro_id = ?").bind(id));
+  }
   passos.push(env.DB.prepare(`DELETE FROM ${tabela} WHERE id = ?`).bind(id));
   await env.DB.batch(passos);
   return { ok: true };
