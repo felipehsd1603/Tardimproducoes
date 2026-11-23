@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS convites (
   cortesias     INTEGER NOT NULL DEFAULT 0,
   contrapartida TEXT NOT NULL DEFAULT '',
   condicoes     TEXT NOT NULL DEFAULT '',
+  coletiva      TEXT NOT NULL DEFAULT '{}',    -- JSON da inscrição coletiva (prazo, limite, valor, faixas...); em banco já criado, rode d1/migracoes/001-convites-coletiva.sql
   criado_em     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   atualizado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (prova_id, cupom)

@@ -55,6 +55,7 @@ const TABELAS = {
     campos: {
       parceiro_id: 40, prova_id: 60, cupom: 40, desconto: 20, comissao_pct: "num", cortesias: "int",
       contrapartida: 300, condicoes: 1000,
+      coletiva: "json", // inscrição coletiva (assessoria/equipe): { d, m, i, v, f, g, b, kt, pe } de js/convite.js
     },
     obrigatorios: ["parceiro_id", "prova_id", "cupom"], ordem: "criado_em DESC",
   },
@@ -174,6 +175,10 @@ function limpa(tabela, d, criando) {
   if (tabela === "convites") {
     if ("cupom" in v) { v.cupom = v.cupom.toUpperCase(); if (!/^[A-Z0-9_-]{3,40}$/.test(v.cupom)) throw new Erro(400, "Cupom inválido: use de 3 a 40 letras, números, hífen ou sublinhado."); }
     if ("prova_id" in v && !RE_ID_PROVA.test(v.prova_id)) throw new Erro(400, "Prova inválida.");
+    if ("coletiva" in v) {
+      if (v.coletiva[0] !== "{") v.coletiva = "{}";
+      if (v.coletiva.length > 2000) throw new Erro(400, "As condições da inscrição coletiva estão grandes demais.");
+    }
   }
   return v;
 }

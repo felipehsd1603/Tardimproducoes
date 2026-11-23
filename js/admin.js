@@ -751,6 +751,48 @@
       campo("Desconto do cupom", desconto, "Só para aparecer na mensagem e no kit. O desconto de verdade é o da Ticket Sports."),
       campo("Comissão (% por inscrição paga)", comissao), campo("Cortesias", cortesias, "Inscrições gratuitas para o próprio parceiro."),
       campo("Contrapartida da cortesia", contrapartida, null, true), campo("Outras condições", condicoes, "Vão na mensagem do convite.", true));
+    // Inscrição coletiva (só assessoria e equipe): as condições que vão no link de assessorias.html
+    var co = cv.coletiva && !Array.isArray(cv.coletiva) ? cv.coletiva : {};
+    function numero(valor, ph, passo) { return entrada("number", valor || "", { min: 0, step: passo || 1, placeholder: ph }); }
+    var colPrazo = entrada("date", co.d), colPrazoAtl = entrada("date", co.i);
+    var colLimite = numero(co.m, "Sem limite"), colValor = numero(co.v, "Ex.: 89,90", 0.01);
+    var colPag = entrada("text", co.g, { maxLength: 80, placeholder: "Ex.: Pix único até 5 dias antes da prova" });
+    var colFx = [0, 1, 2].map(function (i) { var p = (co.f || [])[i] || []; return [numero(p[0], "Atletas"), numero(p[1], "% desc.", 0.5)]; });
+    var fxBox = el("div", "convite-faixas");
+    colFx.forEach(function (p, i) {
+      p[0].setAttribute("aria-label", "Faixa " + (i + 1) + ": a partir de quantos atletas");
+      p[1].setAttribute("aria-label", "Faixa " + (i + 1) + ": desconto em %");
+      var l = el("div", "convite-faixa");
+      l.append(el("span", null, "A partir de"), p[0], el("span", null, "atletas:"), p[1], el("span", null, "%"));
+      fxBox.append(l);
+    });
+    var fxCampo = el("div", "orc__field assess-grid__full"); fxCampo.append(el("span", null, "Desconto por volume (até 3 faixas)"), fxBox);
+    var benBox = el("div", "convite-benef");
+    var colBen = [["t", "Espaço para tenda"], ["k", "Retirada de kits em lote"], ["f", "Foto oficial da equipe"], ["e", "Ponto de encontro"]].map(function (b) {
+      var i = el("input"); i.type = "checkbox"; i.value = b[0]; i.checked = String(co.b || "").indexOf(b[0]) >= 0;
+      var l = el("label", "assess-toggle"); l.append(i, " " + b[1]); benBox.append(l);
+      return i;
+    });
+    var benCampo = el("div", "orc__field assess-grid__full"); benCampo.append(el("span", null, "Benefícios no dia da prova"), benBox);
+    var colKit = entrada("text", co.kt, { maxLength: 90, placeholder: "Ex.: sábado, 9h às 10h, na loja X" });
+    var colEncontro = entrada("text", co.pe, { maxLength: 90, placeholder: "Ex.: ao lado do pórtico, às 6h30" });
+    var tituloCol = el("div", "assess-grid__full convite-sec");
+    tituloCol.append(el("h3", null, "Inscrição coletiva"), el("p", "muted", "Só para assessoria e equipe. Tudo opcional: o que ficar em branco não aparece para a assessoria. As cortesias são as do campo acima."));
+    var blocoCol = [tituloCol,
+      campo("Prazo para enviar a planilha", colPrazo, "Depois dessa data o link para de funcionar."),
+      campo("Limite de atletas", colLimite),
+      campo("Prazo interno dos atletas", colPrazoAtl, "Aparece na página da equipe. Em branco, usa o prazo acima."),
+      campo("Valor por atleta (R$)", colValor, "A assessoria vê o combinado e o total estimado."),
+      fxCampo, campo("Forma de pagamento", colPag, null, true), benCampo,
+      campo("Retirada de kits (dia, horário, local)", colKit), campo("Ponto de encontro", colEncontro)];
+    blocoCol.forEach(function (x) { f.append(x); });
+    function mostraColetiva() {
+      var pa = parceiroPorId(parceiro.value);
+      var sim = !!pa && (pa.tipo === "assessoria" || pa.tipo === "equipe");
+      blocoCol.forEach(function (x) { x.style.display = sim ? "" : "none"; });
+    }
+    parceiro.addEventListener("change", mostraColetiva);
+    mostraColetiva();
     var salvar = el("button", "btn btn--red btn--lg", "Salvar convite"); salvar.type = "submit";
     f.append(acoes(salvar, botao("Cancelar", null, function () { mostra("convites"); })));
     c.append(f);
@@ -764,7 +806,17 @@
         prova_id: prova.value, parceiro_id: parceiro.value, cupom: cod, desconto: desconto.value.trim(),
         comissao_pct: Number(comissao.value) || 0, cortesias: parseInt(cortesias.value, 10) || 0,
         contrapartida: contrapartida.value.trim(), condicoes: condicoes.value.trim(),
+        coletiva: {
+          d: colPrazo.value, m: parseInt(colLimite.value, 10) || 0, i: colPrazoAtl.value,
+          v: Number(colValor.value) > 0 ? Math.round(Number(colValor.value) * 100) / 100 : 0,
+          f: colFx.map(function (p) { return [Math.floor(Number(p[0].value)) || 0, Number(p[1].value) || 0]; })
+            .filter(function (p) { return p[0] > 0 && p[1] > 0 && p[1] <= 100; }).sort(function (a, b) { return a[0] - b[0]; }),
+          g: colPag.value.trim(), b: colBen.filter(function (c) { return c.checked; }).map(function (c) { return c.value; }).join(""),
+          kt: colKit.value.trim(), pe: colEncontro.value.trim(),
+        },
       };
+      var pvEsc = provaPorId(prova.value);
+      if (linha.coletiva.d && pvEsc && pvEsc.data && linha.coletiva.d > pvEsc.data) return aviso("O prazo da inscrição coletiva não pode ser depois da data da prova.", true);
       salvar.disabled = true;
       var q = cv.id ? api("PUT", "convites/" + encodeURIComponent(cv.id), linha) : api("POST", "convites", linha);
       q.then(function (salvo) {
@@ -794,9 +846,11 @@
         (cv.desconto ? "&d=" + encodeURIComponent(cv.desconto) : ""),
     };
     if ((pa.tipo === "assessoria" || pa.tipo === "equipe") && window.CONVITE) {
+      var co = cv.coletiva && !Array.isArray(cv.coletiva) ? cv.coletiva : {};
       l.coletiva = b + "assessorias.html?c=" + CONVITE.gera({
-        p: cv.prova_id, e: pa.nome, d: "", m: 0, a: pa.id, t: pa.responsavel || "",
+        p: cv.prova_id, e: pa.nome, d: co.d || "", m: co.m || 0, a: pa.id, t: pa.responsavel || "",
         w: numeroWa(pa.whatsapp), c: (pa.cor || "").replace(/^#/, ""), l: pa.logo || "", k: cv.cortesias || 0,
+        v: co.v, f: co.f, g: co.g, b: co.b, kt: co.kt, pe: co.pe, i: co.i,
       });
     }
     return l;

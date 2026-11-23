@@ -24,7 +24,7 @@ js/monte.js         simulador "Monte sua corrida" (leva a configuração para o 
 js/extras.js        previsão do tempo, card "Eu vou correr!" e calculadora de ritmo
 js/assessorias.js   inscrição coletiva: modelo de planilha, conferência e envio (assessorias.html)
 js/convite.js       gera e lê o código do link de convite de cada assessoria
-js/gerar-convite.js página interna que gera os links (link-assessoria.html)
+js/gerar-convite.js gerador antigo de links (link-assessoria.html); não é mais usado, o link sai do painel
 js/equipe.js        página pública da equipe, para os atletas (equipe.html)
 js/vendor/          biblioteca SheetJS (lê e gera planilhas Excel na página de assessorias)
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
@@ -81,7 +81,7 @@ Quando a pessoa toca em enviar, o site também manda uma cópia do pedido para `
 
 ## Inscrição coletiva (assessorias)
 
-A página `assessorias.html` só funciona pelo link de convite que a Tardim Produções gera em `link-assessoria.html` (página interna, fora do menu e do Google): escolhe a prova, digita o nome da assessoria e, se quiser, um prazo e um limite de atletas, e manda o link pelo WhatsApp. Sem link válido, a página mostra só um aviso. O convite é conferido só no navegador: evita acesso casual, mas não é uma proteção forte, e ainda não dá para cancelar um link já enviado.
+A página `assessorias.html` só funciona pelo link de convite que a Tardim Produções gera no painel (`admin.html` > Convites): cadastra a assessoria em Parceiros, cria o convite dela na prova e, se quiser, define prazo, limite de atletas e as condições; o link aparece em "Links e mensagem" e vai pelo WhatsApp. A página antiga `link-assessoria.html` só redireciona para o painel. Sem link válido, a página mostra só um aviso. O convite é conferido só no navegador: evita acesso casual, mas não é uma proteção forte, e ainda não dá para cancelar um link já enviado.
 
 Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a planilha preenchida (CPF, data de nascimento, sexo, distância, camiseta, e-mail, telefone e repetidos) e envia o arquivo padronizado por WhatsApp ou e-mail. A conferência acontece no aparelho de quem usa. Ao tocar em enviar (com a confirmação de autorização dos atletas marcada), o site grava a inscrição no D1 por `POST /api/inscricao`: a equipe na tabela `inscricoes` e cada atleta na tabela `atletas` (nome, CPF, nascimento, sexo, distância, camiseta, e-mail e telefone). A função confere de novo o CPF e os campos obrigatórios e grava tudo ou nada. O botão "Baixar planilha conferida" não grava nada. As distâncias vêm dos `percursos` da prova e os tamanhos de camiseta do campo opcional `tamanhos` (padrão: PP, P, M, G, GG, XG, XGG).
 
@@ -116,7 +116,7 @@ As regras do programa ficam em `programa-embaixadores.html` (fora do menu e do G
 
 ### Personalização por assessoria
 
-Em `link-assessoria.html`, além de prova, equipe, prazo e limite, o convite aceita (tudo opcional, e o que ficar em branco não aparece):
+No formulário de convite do painel (bloco "Inscrição coletiva", que aparece para assessoria e equipe), além de prazo e limite, o convite aceita (tudo opcional, e o que ficar em branco não aparece):
 
 - **Cara da equipe**: nome do treinador (a página cumprimenta pelo primeiro nome), cor da equipe e logo. A logo é um arquivo em `assets/assessorias/`; no gerador vai só o nome do arquivo (sem espaços nem acentos).
 - **Condição comercial**: valor por atleta, até 3 faixas de desconto por volume, cortesias e forma de pagamento. A assessoria vê o combinado, a barra "faltam X atletas para a próxima faixa" e o total estimado conforme a planilha. O total também vai no resumo do WhatsApp/e-mail e na aba "Resumo" da planilha conferida.
