@@ -1,0 +1,10 @@
+# Arquivos gerados por scripts/gerar-paginas.js (o workflow de publicação recria todos)
+/prova-*.html
+/trabalho-*.html
+/404.html
+/sitemap.xml
+/robots.txt
+
+# Cloudflare (estado local do wrangler)
+/.wrangler/
+/.dev.vars

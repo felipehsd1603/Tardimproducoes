@@ -191,6 +191,7 @@
       var i = new Image();
       i.onload = function () { ok(i); };
       i.onerror = function () { ok(null); };
+      if (/^https?:/i.test(src)) i.crossOrigin = "anonymous"; // imagem do banco: precisa disso para o card poder ser salvo
       i.src = src;
     });
   }
@@ -209,6 +210,13 @@
     if (atual) linhas.push(atual);
     return linhas;
   }
+  // Quem chega pela página da equipe (equipe.html) leva o nome e a logo da assessoria para o card
+  var qsEquipe = new URLSearchParams(location.search);
+  var equipeNome = (qsEquipe.get("equipe") || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  var equipeLogo = (function (l) {
+    if (/^assessorias\/[\w-][\w.-]*\.(png|jpe?g|webp)$/i.test(l)) return "arquivos/" + l;
+    return /^[\w-][\w.-]*\.(png|jpe?g|webp)$/i.test(l) ? "assets/assessorias/" + l : "";
+  })(qsEquipe.get("logo") || "");
   function desenhaCard(nomeTxt) {
     var W = 1080, H = 1920;
     var fontes = document.fonts ? Promise.all([
@@ -217,9 +225,9 @@
       document.fonts.load('600 40px "Barlow"'),
     ]) : Promise.resolve();
     return fontes.then(function () {
-      return Promise.all([carrega(ev.poster), carrega("assets/logo-tardim.webp")]);
+      return Promise.all([carrega(ev.poster), carrega("assets/logo-tardim.webp"), carrega(equipeNome ? equipeLogo : "")]);
     }).then(function (imgs) {
-      var arte = imgs[0], logo = imgs[1];
+      var arte = imgs[0], logo = imgs[1], logoEq = imgs[2];
       var cv = document.createElement("canvas");
       cv.width = W; cv.height = H;
       var c = cv.getContext("2d");
@@ -275,6 +283,29 @@
       }
       // Marca
       var by = H - 2 * q - 70;
+      // Equipe (assessoria), acima da marca
+      if (equipeNome) {
+        c.textAlign = "center";
+        c.fillStyle = "#c3cbe3";
+        c.font = '600 30px "Barlow"';
+        c.fillText("CORRO COM A EQUIPE", W / 2, by - 178);
+        var te = cabe(c, equipeNome, 'italic 800 {t}px "Barlow Condensed"', W - 320, 68);
+        var we = c.measureText(equipeNome).width;
+        var raio = 38, sobra = logoEq ? raio * 2 + 20 : 0;
+        var x0 = (W - (we + sobra)) / 2;
+        if (logoEq) {
+          c.save();
+          c.beginPath(); c.arc(x0 + raio, by - 128, raio, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.clip();
+          var lado = raio * 2, lw = lado, lh = lado;
+          if (logoEq.width > logoEq.height) lh = lado * logoEq.height / logoEq.width; else lw = lado * logoEq.width / logoEq.height;
+          c.drawImage(logoEq, x0 + raio - lw / 2, by - 128 - lh / 2, lw, lh);
+          c.restore();
+        }
+        c.textAlign = "left";
+        c.fillStyle = "#ffffff";
+        c.fillText(equipeNome, x0 + sobra, by - 128 + te * 0.32);
+        c.textAlign = "center";
+      }
       c.font = 'italic 800 52px "Barlow Condensed"';
       var marca = "Tardim Produções";
       var mw = c.measureText(marca).width;

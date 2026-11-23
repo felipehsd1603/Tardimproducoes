@@ -33,7 +33,7 @@
     <!--/og-->
     <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="css/style.css?v=20261122-38" />
+    <link rel="stylesheet" href="css/style.css?v=20261122-39" />
     <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Organization", "name": "Tardim Produções", "legalName": "Tardim Produções e Eventos Ltda", "taxID": "33.787.309/0001-22", "slogan": "Fazendo bem feito!", "url": "https://felipehsd1603.github.io/TesteFelipe/", "logo": "https://felipehsd1603.github.io/TesteFelipe/assets/icon-512.png", "email": "tardimproducoes.corridas@gmail.com", "telephone": "+55-31-98428-9667", "address": {"@type": "PostalAddress", "addressLocality": "Belo Horizonte", "addressRegion": "MG", "addressCountry": "BR"}, "areaServed": "Minas Gerais", "sameAs": ["https://www.instagram.com/tardimproducoes/"], "description": "Organização de corridas de rua e eventos esportivos em Minas Gerais, com licenças, prevenção contra incêndio e equipe no dia da prova."}</script>
   </head>
   <body>
@@ -63,10 +63,9 @@
         <button class="menu-btn" aria-expanded="false" aria-controls="menu">Menu</button>
         <nav id="menu" class="nav">
           <a href="#calendario">Calendário</a>
-          <a href="#servicos">Serviços</a>
           <a href="#provas">Portfólio</a>
-          <a href="#empresas">Para empresas</a>
-          <a href="#institucional">Institucional</a>
+          <a href="#servicos">Serviços</a>
+          <a href="#contato">Contato</a>
           <a href="#orcamento" class="nav__cta">Pedir orçamento</a>
         </nav>
       </div>
@@ -85,8 +84,8 @@
             <h1>Da ideia à <span>linha de chegada.</span></h1>
             <p class="hero__lead">Planejamento, licenças e prova: tudo com a Tardim Produções.</p>
             <div class="actions">
-              <a class="btn btn--red btn--lg" href="#calendario">Ver calendário de provas</a>
-              <a class="hero__link" href="#contato">Fale com a Tardim Produções →</a>
+              <a class="btn btn--red btn--lg" href="#calendario">Quero correr</a>
+              <a class="btn btn--white btn--lg" href="#servicos">Quero contratar uma corrida</a>
             </div>
           </div>
 
@@ -123,6 +122,23 @@
             <a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">@tardimproducoes</a>.
           </p>
         </div>
+      </section>
+
+      <!-- Galeria de fotos (carrossel) -->
+      <section class="block gallery" aria-labelledby="galeria-titulo">
+        <div class="wrap">
+          <div class="carousel-head">
+            <div>
+              <h2 id="galeria-titulo">Na rua com a Tardim Produções</h2>
+              <p class="muted">Momentos das provas que produzimos.</p>
+            </div>
+            <div class="carousel-nav" data-for="galeria">
+              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Fotos anteriores">←</button>
+              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas fotos">→</button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel" id="galeria" tabindex="0" role="region" aria-label="Galeria de fotos dos eventos"></div>
       </section>
 
       <!-- Faixa de confiança: números + clientes -->
@@ -163,27 +179,10 @@
           <div class="portfolio-cta">
             <a class="btn btn--navy btn--lg" id="ver-portfolio" href="portfolio.html">Ver portfólio completo</a>
           </div>
+          <p class="portfolio-inst"><a class="race-card__more" href="institucional.html">Órgão público ou conselho? Veja a página institucional →</a></p>
         </div>
       </section>
 
-      <!-- Galeria de fotos (carrossel) -->
-      <section class="block gallery" aria-labelledby="galeria-titulo">
-        <div class="wrap">
-          <div class="carousel-head">
-            <div>
-              <h2 id="galeria-titulo">Na rua com a Tardim Produções</h2>
-              <p class="muted">Momentos das provas que produzimos.</p>
-            </div>
-            <div class="carousel-nav" data-for="galeria">
-              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Fotos anteriores">←</button>
-              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas fotos">→</button>
-            </div>
-          </div>
-        </div>
-        <div class="carousel" id="galeria" tabindex="0" role="region" aria-label="Galeria de fotos dos eventos"></div>
-      </section>
-
-      <!-- Serviços (bento) -->
       <!-- Faixa de palavras grandes -->
       <div class="wordband" aria-hidden="true">
         <div class="wordband__track">
@@ -192,6 +191,7 @@
         </div>
       </div>
 
+      <!-- Serviços (bento) + ofertas para empresas -->
       <section class="block" id="servicos">
         <div class="wrap">
           <div class="block__head">
@@ -246,6 +246,35 @@
               <p>Artes, redes sociais e comunicação com os inscritos.</p>
             </article>
           </div>
+
+          <div class="servicos__empresas" id="empresas">
+            <h3 class="servicos__sub">Para empresas</h3>
+            <p class="muted">Corridas com a sua marca, produzidas de ponta a ponta pela Tardim Produções.</p>
+            <div class="offers">
+              <article>
+                <h3>Corrida da sua marca</h3>
+                <p>
+                  Uma prova com o nome da sua empresa, aberta ao público. Cuidamos do percurso,
+                  licenças, kit, arena, premiação e divulgação, como fizemos na Hulk Run.
+                </p>
+              </article>
+              <article>
+                <h3>Corrida corporativa</h3>
+                <p>
+                  Evento para funcionários e clientes: aniversário da empresa, ações de saúde e
+                  bem-estar, integração de equipes. Caminhada, 5 km, 10 km ou kids.
+                </p>
+              </article>
+              <article>
+                <h3>Patrocínio de provas</h3>
+                <p>
+                  Coloque sua marca nas corridas do nosso calendário: kit do atleta, pórtico, arena,
+                  ativações no dia e divulgação nas redes.
+                </p>
+              </article>
+            </div>
+            <a class="btn btn--red" href="#orcamento" data-orc="corporativa" data-contratante="Empresa privada">Pedir orçamento para minha empresa</a>
+          </div>
         </div>
       </section>
 
@@ -289,104 +318,11 @@
         </div>
       </section>
 
-      <!-- Para empresas -->
-      <section class="block" id="empresas">
-        <div class="wrap">
-          <div class="block__head">
-            <h2>Para empresas</h2>
-            <p>Corridas, feiras e eventos com a sua marca, produzidos de ponta a ponta pela Tardim Produções.</p>
-          </div>
-          <div class="offers">
-            <article>
-              <h3>Corrida da sua marca</h3>
-              <p>
-                Uma prova com o nome da sua empresa, aberta ao público. Cuidamos do percurso,
-                licenças, kit, arena, premiação e divulgação, como fizemos na Hulk Run.
-              </p>
-            </article>
-            <article>
-              <h3>Corrida corporativa</h3>
-              <p>
-                Evento para funcionários e clientes: aniversário da empresa, ações de saúde e
-                bem-estar, integração de equipes. Caminhada, 5 km, 10 km ou kids.
-              </p>
-            </article>
-            <article>
-              <h3>Patrocínio de provas</h3>
-              <p>
-                Coloque sua marca nas corridas do nosso calendário: kit do atleta, pórtico, arena,
-                ativações no dia e divulgação nas redes.
-              </p>
-            </article>
-            <article>
-              <h3>Feiras, congressos e festas</h3>
-              <p>
-                Organização de feiras, congressos, exposições e festas corporativas, com equipe
-                (staff), licenças e projeto de prevenção contra incêndio.
-              </p>
-            </article>
-          </div>
-          <a class="btn btn--red" href="#orcamento" data-orc="corporativa" data-contratante="Empresa privada">Pedir orçamento para minha empresa</a>
-        </div>
-      </section>
-
-      <!-- Institucional: órgãos públicos e conselhos -->
-      <section class="block block--paper" id="institucional">
-        <div class="wrap inst">
-          <div>
-            <h2>Institucional</h2>
-            <p class="muted">
-              A Tardim Produções realiza corridas de rua, eventos e serviços de prevenção contra incêndio
-              para tribunais, prefeituras, conselhos profissionais, instituições e empresas, com produção,
-              regularização e licenciamento completos. A empresa tem contratos registrados com o Poder
-              Executivo Federal.
-            </p>
-            <h3 class="inst__sub">Por que a Tardim Produções</h3>
-            <ul class="creds">
-              <li><strong>Contratada por órgãos públicos</strong><span>Tribunal (TRT-3), Câmara Municipal de BH, Prefeituras de Belo Horizonte e Contagem e Prodemge, por licitação e contratos de serviço contínuo.</span></li>
-              <li><strong>Provas chanceladas</strong><span>Corridas com chancela da Federação Mineira de Atletismo e percursos aferidos.</span></li>
-              <li><strong>Segurança do começo ao fim</strong><span>Projetos de prevenção contra incêndio e brigada com bombeiros civis.</span></li>
-              <li><strong>Tudo regularizado</strong><span>Alvarás, autorizações e operação de trânsito resolvidos pela própria equipe.</span></li>
-              <li><strong>Eventos de grande porte</strong><span>Provas com milhares de inscritos, como a Corrida da Polícia Penal e a Corrida da Guarda Civil Municipal de BH, e circuitos em várias cidades de Minas.</span></li>
-            </ul>
-            <a class="race-card__more" href="#servicos">Ver todos os serviços →</a>
-          </div>
-          <div>
-            <h3 class="inst__sub">Instituições atendidas</h3>
-            <ul class="inst__clients">
-              <li>TRT-3</li>
-              <li>Câmara Municipal de BH</li>
-              <li>Prefeitura de Belo Horizonte</li>
-              <li>Prefeitura de Contagem</li>
-              <li>Prodemge</li>
-              <li>FHEMIG</li>
-              <li>Crea-MG</li>
-              <li>Crefito-4</li>
-              <li>CRO-MG</li>
-              <li>CRA-MG</li>
-              <li>CEAPOLC/MG (Polícia Civil)</li>
-              <li>Sindppen-MG</li>
-              <li>Guarda Civil Municipal de BH</li>
-              <li>Guarda Civil de Contagem</li>
-              <li>Batalhão de Trânsito da PMMG</li>
-              <li>SEST SENAT</li>
-              <li>Colégio Santa Maria Minas</li>
-              <li>Vila Nova Atlético Clube</li>
-              <li>ACAPO</li>
-              <li>Copass Saúde</li>
-              <li>Rádio Liberdade FM</li>
-              <li>Federação Mineira de Atletismo</li>
-            </ul>
-            <p class="inst__legal" id="inst-legal"></p>
-          </div>
-        </div>
-      </section>
-
       <!-- Simulador: monte sua corrida -->
       <section class="block monte-sec" id="monte">
         <div class="wrap">
           <div class="block__head">
-            <p class="eyebrow">Simulador</p>
+            <p class="eyebrow">Passo 1 · Simule</p>
             <h2>Monte sua corrida</h2>
             <p>Escolha como você imagina a prova e veja tudo o que a Tardim Produções cuida para ela acontecer.</p>
           </div>
@@ -398,7 +334,7 @@
       <section class="block orc-sec" id="orcamento">
         <div class="wrap orc">
           <div class="orc__intro">
-            <p class="eyebrow">Orçamento</p>
+            <p class="eyebrow">Passo 2 · Orçamento</p>
             <h2>Peça seu orçamento</h2>
             <p>Conte o básico sobre o evento. A mensagem chega pronta no WhatsApp da Tardim Produções, sem precisar explicar tudo de novo.</p>
             <ul class="orc__points">
@@ -522,10 +458,9 @@
           <p class="footer__title">Navegue</p>
           <ul>
             <li><a href="#calendario">Calendário</a></li>
-            <li><a href="#servicos">Serviços</a></li>
             <li><a href="portfolio.html">Portfólio</a></li>
-            <li><a href="#empresas">Para empresas</a></li>
-            <li><a href="#institucional">Institucional</a></li>
+            <li><a href="#servicos">Serviços</a></li>
+            <li><a href="institucional.html">Institucional</a></li>
             <li><a href="#orcamento">Pedir orçamento</a></li>
           </ul>
         </nav>
@@ -549,13 +484,15 @@
       <svg aria-hidden="true"><use href="#i-whatsapp" /></svg>
     </a>
 
-    <script src="js/eventos.js?v=20261122-38"></script>
-    <script src="js/demo.js?v=20261122-38"></script>
-    <script src="js/main.js?v=20261122-38"></script>
-    <script src="js/orcamento.js?v=20261122-38"></script>
-    <script src="js/monte.js?v=20261122-38"></script>
-    <script src="js/extras.js?v=20261122-38"></script>
-    <script src="js/mapa.js?v=20261122-38"></script>
-    <script src="js/ui.js?v=20261122-38"></script>
+    <script src="js/eventos.js?v=20261122-39"></script>
+    <script src="js/provas-db.js?v=20261122-39"></script>
+    <script src="js/realizadas.js?v=20261122-39"></script>
+    <script src="js/demo.js?v=20261122-39"></script>
+    <script src="js/main.js?v=20261122-39"></script>
+    <script src="js/orcamento.js?v=20261122-39"></script>
+    <script src="js/monte.js?v=20261122-39"></script>
+    <script src="js/extras.js?v=20261122-39"></script>
+    <script src="js/mapa.js?v=20261122-39"></script>
+    <script src="js/ui.js?v=20261122-39"></script>
   </body>
 </html>

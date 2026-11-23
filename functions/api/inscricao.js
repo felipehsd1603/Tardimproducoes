@@ -1,0 +1,74 @@
+// POST /api/inscricao — guarda a inscrição coletiva (equipe + atletas) no D1 (binding DB).
+
+const MAX_ATLETAS = 1000;
+const POR_LOTE = 10; // 10 atletas x 10 colunas = 100 parâmetros, o teto do D1 por comando
+
+function json(corpo, status) {
+  return new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+}
+
+function mesmaOrigem(request) {
+  try { return new URL(request.headers.get("Origin")).host === new URL(request.url).host; } catch (e) { return false; }
+}
+
+function txt(valor, max) {
+  const s = typeof valor === "string" ? valor.trim() : "";
+  return s.length > max ? null : s;
+}
+
+function cpfValido(d) {
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  for (let t = 9; t < 11; t++) {
+    let s = 0;
+    for (let i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i);
+    if ((s * 10) % 11 % 10 !== Number(d[t])) return false;
+  }
+  return true;
+}
+
+export async function onRequestPost({ request, env }) {
+  if (!mesmaOrigem(request)) return json({ erro: "origem" }, 403);
+  const texto = await request.text();
+  if (texto.length > 600000) return json({ erro: "tamanho" }, 413);
+  let d;
+  try { d = JSON.parse(texto); } catch (e) { return json({ erro: "json" }, 400); }
+  if (!d || typeof d !== "object" || !d.prova || !Array.isArray(d.atletas)) return json({ erro: "json" }, 400);
+
+  const cab = {
+    prova_id: txt(d.prova.id, 80), prova_nome: txt(d.prova.nome, 160), convite: txt(d.convite, 400),
+    equipe: txt(d.equipe, 120), responsavel: txt(d.responsavel, 120), telefone: txt(d.telefone, 30),
+  };
+  for (const k in cab) if (cab[k] === null) return json({ erro: "campo", campo: k }, 400);
+  if (!cab.prova_id || !cab.prova_nome || !cab.equipe) return json({ erro: "obrigatorio" }, 400);
+  if (!d.atletas.length || d.atletas.length > MAX_ATLETAS) return json({ erro: "atletas" }, 400);
+  const canal = d.canal === "email" ? "email" : "whatsapp";
+
+  const id = crypto.randomUUID();
+  const linhas = [];
+  for (let i = 0; i < d.atletas.length; i++) {
+    const a = d.atletas[i] || {};
+    const l = [
+      id, txt(a.nome, 120), txt(a.cpf, 14), txt(a.nasc, 10), txt(a.sexo, 1), txt(a.dist, 40),
+      txt(a.cam, 10), txt(a.email, 160), txt(a.tel, 20), txt(a.equipe, 120),
+    ];
+    const faltou = l.slice(1, 9).some(function (c) { return !c; });
+    if (faltou || l[9] === null || !cpfValido(l[2].replace(/\D/g, ""))) return json({ erro: "atleta", linha: i + 1 }, 400);
+    linhas.push(l);
+  }
+
+  const comandos = [
+    env.DB.prepare(
+      "INSERT INTO inscricoes (id, canal, prova_id, prova_nome, convite, equipe, responsavel, telefone, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(id, canal, cab.prova_id, cab.prova_nome, cab.convite, cab.equipe, cab.responsavel, cab.telefone, linhas.length),
+  ];
+  for (let i = 0; i < linhas.length; i += POR_LOTE) {
+    const lote = linhas.slice(i, i + POR_LOTE);
+    comandos.push(env.DB.prepare(
+      "INSERT INTO atletas (inscricao_id, nome, cpf, nascimento, sexo, distancia, camiseta, email, telefone, equipe) VALUES " +
+      lote.map(function () { return "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; }).join(", ")
+    ).bind(...lote.flat()));
+  }
+  await env.DB.batch(comandos); // tudo ou nada
+
+  return json({ ok: true, id, atletas: linhas.length }, 201);
+}

@@ -54,6 +54,18 @@
   var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   var dias = Math.round((d - hoje) / 86400000);
   var inscricao = ev.inscricao || site.linktree || "#";
+  // Cupom de embaixador: chega pelo link prova-<id>.html?cupom=CODIGO
+  var cupom = (new URLSearchParams(location.search).get("cupom") || "").toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30);
+  if (cupom && site.cupomParam && ev.inscricao) {
+    inscricao += (inscricao.indexOf("?") < 0 ? "?" : "&") + site.cupomParam + "=" + encodeURIComponent(cupom);
+  }
+  function btnInscricao(cls) {
+    var a = link(cupom ? "Fazer inscrição com o cupom" : "Fazer inscrição", inscricao, cls, true);
+    if (cupom) a.addEventListener("click", function () {
+      if (navigator.clipboard) navigator.clipboard.writeText(cupom).catch(function () {});
+    });
+    return a;
+  }
   var percursos = Array.isArray(ev.percursos) ? ev.percursos : (ev.percursos ? [ev.percursos] : []);
   var quando = cap(DIAS[d.getDay()]) + ", " + d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear();
 
@@ -100,8 +112,15 @@
     txt.append(el("p", "event-hero__count", "Prova realizada"));
   }
 
+  if (cupom && dias >= 0) {
+    var cp = el("p", "cupom-box");
+    cp.append("Seu cupom de desconto: ", el("b", null, cupom),
+      el("span", null, "Ao clicar em \"Fazer inscrição com o cupom\", o código é copiado. Cole no campo de cupom da Ticket Sports."));
+    txt.append(cp);
+  }
+
   var acoes = el("div", "actions");
-  if (dias >= 0) acoes.append(link("Fazer inscrição", inscricao, "btn btn--red btn--lg", true));
+  if (dias >= 0) acoes.append(btnInscricao("btn btn--red btn--lg"));
 
   // Salvar na agenda
   var ymd = ev.data.replace(/-/g, "");
@@ -177,7 +196,7 @@
     });
     var vwrap = el("div");
     vwrap.append(tab);
-    if (dias >= 0) vwrap.append(link("Fazer inscrição", inscricao, "btn btn--red", true));
+    if (dias >= 0) vwrap.append(btnInscricao("btn btn--red"));
     secao("valores", "Valores", vwrap);
   } else faltando.push("valores");
 

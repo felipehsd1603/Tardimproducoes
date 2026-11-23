@@ -1,7 +1,8 @@
 /*
  * Pedido de orçamento guiado.
  * Monta a mensagem no próprio aparelho e abre o WhatsApp (ou o e-mail) da
- * Tardim Produções. O site não envia nem guarda nenhum dado.
+ * Tardim Produções. Ao enviar, uma cópia do pedido é guardada no banco do
+ * site (functions/api/orcamento.js).
  */
 (function () {
   "use strict";
@@ -125,9 +126,31 @@
     ok.hidden = false;
   }
 
+  // Guarda o pedido no banco do site (Cloudflare D1). Nunca atrapalha o envio:
+  // se a função não existir ou falhar, o WhatsApp e o e-mail seguem normalmente.
+  var registrado = "";
+  function registra(canal) {
+    var quando = "";
+    if (valor("mes") !== "") quando = MESES[Number(valor("mes"))];
+    if (valor("ano")) quando = quando ? quando + " de " + valor("ano") : valor("ano");
+    var dados = {
+      servico: servicoEscolhido(), nome: valor("nome"), contratante: valor("contratante"), empresa: valor("empresa"),
+      cidade: valor("cidade"), quando: quando, publico: valor("publico"), detalhes: valor("detalhes"),
+    };
+    var chave = JSON.stringify(dados);
+    if (chave === registrado) return;
+    registrado = chave;
+    dados.canal = canal;
+    try {
+      fetch("/api/orcamento", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify(dados) })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     if (!valida()) return;
+    registra("whatsapp");
     var link = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(linhas(true));
     window.open(link, "_blank", "noopener");
     confirma(link, "Abrimos o WhatsApp com a sua mensagem pronta. É só enviar.");
@@ -135,6 +158,7 @@
 
   document.getElementById("orc-email").addEventListener("click", function () {
     if (!valida()) return;
+    registra("email");
     var link = "mailto:" + EMAIL + "?subject=" + encodeURIComponent("Pedido de orçamento: " + servicoEscolhido()) +
       "&body=" + encodeURIComponent(linhas(false));
     window.location.href = link;

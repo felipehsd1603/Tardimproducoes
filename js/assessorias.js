@@ -87,7 +87,10 @@
     var passos = document.querySelector(".assess-steps");
     if (passos) passos.hidden = true;
   }
-  var convite = window.CONVITE ? CONVITE.le(new URLSearchParams(location.search).get("c")) : null;
+  var codigo = new URLSearchParams(location.search).get("c");
+  var convite = window.CONVITE ? CONVITE.le(codigo) : null;
+  // Link público da equipe (dos atletas): vai para a página da equipe
+  if (convite && convite.x) { location.replace("equipe.html?c=" + encodeURIComponent(codigo)); return; }
   if (!convite) {
     bloqueia("Página exclusiva para assessorias convidadas",
       "A inscrição coletiva é feita por um link que a Tardim Produções envia para cada assessoria. Se a sua equipe quer participar, peça o seu link.",
@@ -111,6 +114,131 @@
   var estado = { prova: provaConv, linhas: [], erros: 0, avisos: 0, arquivo: "" };
   var limite = Number(convite.m) || 0;
 
+  // ---------- Personalização: a página com a cara da assessoria ----------
+  var treinador = String(convite.t || "").trim();
+  var corEquipe = CONVITE.cor(convite);
+  var logoEquipe = CONVITE.logo(convite);
+  (function () {
+    var hero = document.querySelector(".assess-hero");
+    if (!hero) return;
+    if (corEquipe) { document.documentElement.style.setProperty("--equipe", corEquipe); document.body.classList.add("tem-equipe"); }
+    var olho = hero.querySelector(".eyebrow"), h1 = hero.querySelector("h1"), lead = hero.querySelector(".assess-hero__lead");
+    if (olho) olho.textContent = convite.e;
+    if (h1) h1.textContent = treinador ? "Olá, " + treinador.split(" ")[0] + "! Vamos inscrever a equipe" : "Inscrição coletiva da " + convite.e;
+    if (lead) lead.textContent = "Esta página foi preparada para a " + convite.e + " na " + provaConv.nome + ". Baixe o modelo, preencha, confira aqui e envie para a Tardim Produções com tudo certo na primeira.";
+    if (logoEquipe && olho) {
+      var lg = el("img", "equipe-logo");
+      lg.alt = "Logo da " + convite.e;
+      lg.onerror = function () { lg.remove(); };
+      lg.src = logoEquipe;
+      olho.before(lg);
+    }
+    document.title = convite.e + " · Inscrição coletiva · Tardim Produções";
+  })();
+
+  // Condição comercial combinada (mostrada no site; o valor final é conferido pela Tardim Produções)
+  var valorAtleta = Number(convite.v) > 0 ? Number(convite.v) : 0;
+  var cortesias = Number(convite.k) > 0 ? Math.floor(Number(convite.k)) : 0;
+  var pagamento = String(convite.g || "").trim();
+  var faixas = (Array.isArray(convite.f) ? convite.f : [])
+    .map(function (f) { return [Math.floor(Number(f && f[0])), Number(f && f[1])]; })
+    .filter(function (f) { return f[0] > 0 && f[1] > 0 && f[1] <= 100; })
+    .sort(function (a, b) { return a[0] - b[0]; });
+  var temCondicao = !!(valorAtleta || faixas.length || cortesias || pagamento);
+  function reais(v) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+  function pct(v) { return String(v).replace(".", ",") + "%"; }
+  function atletasTxt(n) { return n + (n === 1 ? " atleta" : " atletas"); }
+  function conta(n) {
+    var atual = null, prox = null;
+    faixas.forEach(function (f) { if (n >= f[0]) atual = f; else if (!prox) prox = f; });
+    var desc = atual ? atual[1] : 0;
+    var gratis = Math.min(cortesias, n);
+    var unit = valorAtleta * (1 - desc / 100);
+    return { desc: desc, prox: prox, gratis: gratis, pagantes: n - gratis, unit: unit, total: (n - gratis) * unit, cheio: n * valorAtleta };
+  }
+  // Barra "faltam X atletas para a próxima faixa"
+  function progresso(n) {
+    if (!faixas.length) return null;
+    var c = conta(n);
+    var box = el("div", "assess-meta");
+    var barra = el("div", "assess-meta__barra");
+    var fill = el("span");
+    var alvo = c.prox ? c.prox[0] : faixas[faixas.length - 1][0];
+    fill.style.width = Math.max(4, Math.min(100, Math.round(n / alvo * 100))) + "%";
+    barra.append(fill);
+    var txt = el("p", "assess-meta__txt");
+    if (c.prox) {
+      var falta = c.prox[0] - n;
+      txt.append(el("b", null, falta === 1 ? "Falta 1 atleta" : "Faltam " + falta + " atletas"), " para " + pct(c.prox[1]) + " de desconto" + (c.desc ? " (hoje: " + pct(c.desc) + ")" : "") + ".");
+    } else {
+      txt.append(el("b", null, "Maior faixa alcançada: "), pct(c.desc) + " de desconto para a equipe.");
+    }
+    var marcos = el("ul", "assess-meta__faixas");
+    faixas.forEach(function (f) {
+      var li = el("li", n >= f[0] ? "is-on" : "");
+      li.append(el("b", null, pct(f[1])), el("span", null, "a partir de " + f[0]));
+      marcos.append(li);
+    });
+    box.append(txt, barra, marcos);
+    return box;
+  }
+  function linhasCondicao(n) {
+    var l = [], c = conta(n);
+    if (valorAtleta) l.push(["Valor por atleta", reais(valorAtleta)]);
+    if (faixas.length) l.push(["Desconto por volume", n ? (c.desc ? pct(c.desc) + " (" + atletasTxt(n) + ")" : "ainda sem desconto") : faixas.map(function (f) { return pct(f[1]) + " a partir de " + f[0]; }).join(" · ")]);
+    if (cortesias) l.push(["Cortesias", cortesias === 1 ? "1 inscrição grátis" : cortesias + " inscrições grátis"]);
+    if (pagamento) l.push(["Pagamento", pagamento]);
+    if (n && valorAtleta) {
+      l.push(["Atletas pagantes", String(c.pagantes)]);
+      l.push(["Total estimado", reais(c.total)]);
+      if (c.cheio - c.total > 0.005) l.push(["Economia da equipe", reais(c.cheio - c.total)]);
+    }
+    return l;
+  }
+  function tabelaCondicao(n) {
+    var dl = el("dl", "assess-cond");
+    linhasCondicao(n).forEach(function (p) { dl.append(el("dt", null, p[0]), el("dd", null, p[1])); });
+    return dl;
+  }
+  var NOTA_VALOR = "Condição combinada com a Tardim Produções para este convite. O valor final é confirmado quando a planilha é recebida.";
+
+  // Benefícios do dia da prova
+  var BENEFICIOS = {
+    t: ["Espaço para a tenda da equipe", "Área reservada na arena para montar a tenda da " + convite.e + "."],
+    k: ["Retirada de kits em lote", String(convite.kt || "").trim() || "O responsável retira os kits de toda a equipe de uma vez. A Tardim Produções combina dia e horário."],
+    f: ["Foto oficial da equipe", "Foto da equipe no pórtico, antes da largada."],
+    e: ["Ponto de encontro", String(convite.pe || "").trim() || "Local de encontro da equipe na arena, combinado com a Tardim Produções."],
+  };
+  var beneficios = String(convite.b || "").split("").filter(function (k, i, a) { return BENEFICIOS[k] && a.indexOf(k) === i; });
+
+  // Link público da equipe, para o treinador mandar aos atletas
+  var linkEquipe = location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "") + "equipe.html?c=" + CONVITE.publico(convite);
+  function dataCurta(str) { var d = data(str); return d.getDate() + " de " + MESES[d.getMonth()]; }
+  var prazoAtletas = convite.i || convite.d || "";
+
+  // Condições e benefícios da equipe
+  if (temCondicao || beneficios.length) {
+    var p0 = el("section", "assess-card assess-card--equipe");
+    p0.append(el("p", "assess-card__step", "Exclusivo da " + convite.e), el("h2", null, "O que foi combinado com a sua equipe"));
+    if (temCondicao) {
+      p0.append(tabelaCondicao(0));
+      var meta0 = progresso(0);
+      if (meta0) p0.append(meta0);
+      if (valorAtleta || faixas.length) p0.append(el("p", "muted assess-nota", NOTA_VALOR));
+    }
+    if (beneficios.length) {
+      p0.append(el("h3", "assess-benef__t", "No dia da prova"));
+      var ulB = el("ul", "assess-benef");
+      beneficios.forEach(function (k) {
+        var li = el("li");
+        li.append(el("b", null, BENEFICIOS[k][0]), el("span", null, BENEFICIOS[k][1]));
+        ulB.append(li);
+      });
+      p0.append(ulB);
+    }
+    app.append(p0);
+  }
+
   // Passo 1: prova, equipe e modelo
   var p1 = el("section", "assess-card");
   p1.append(el("p", "assess-card__step", "Passo 1"), el("h2", null, "Baixe o modelo da planilha"));
@@ -133,6 +261,8 @@
   var inEquipe = el("input"); inEquipe.value = convite.e; inEquipe.readOnly = true;
   var inResp = el("input"); inResp.placeholder = "Quem está enviando"; inResp.autocomplete = "name";
   var inTel = el("input"); inTel.placeholder = "(31) 90000-0000"; inTel.type = "tel"; inTel.autocomplete = "tel";
+  if (treinador) inResp.value = treinador;
+  if (convite.w) inTel.value = telefone(String(convite.w)) || "";
   g1.append(campo("Responsável", inResp), campo("WhatsApp do responsável", inTel));
   var info = el("div", "assess-info");
   var acoes1 = el("div", "assess-acoes");
@@ -168,16 +298,20 @@
     xlsx().then(function (X) {
       var wb = X.utils.book_new();
       var cab = COLS.map(function (c) { return c.titulo; });
-      var ws = X.utils.aoa_to_sheet([cab, linhaExemplo(ev)]);
+      // Coluna "Equipe" já preenchida nas linhas dos atletas
+      var vagas = limite || 50, prontas = [];
+      for (var k = 0; k < vagas; k++) prontas.push(["", "", "", "", "", "", "", "", convite.e]);
+      var ws = X.utils.aoa_to_sheet([cab, linhaExemplo(ev)].concat(prontas));
       ws["!cols"] = [{ wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 8 }, { wch: 18 }, { wch: 11 }, { wch: 28 }, { wch: 17 }, { wch: 22 }];
       X.utils.book_append_sheet(wb, ws, "Atletas");
       var ds = distancias(ev);
       var instr = [
         ["Inscrição coletiva · " + ev.nome],
         [quando(ev)],
+        ["Equipe: " + convite.e + (convite.d ? " · enviar até " + dataCurta(convite.d) : "") + (limite ? " · até " + limite + " atletas" : "")],
         [""],
         ["Como preencher"],
-        ["1. Uma linha por atleta, a partir da linha 2. Apague a linha de exemplo."],
+        ["1. Uma linha por atleta, a partir da linha 3. A linha 2 é só um exemplo (o site ignora). A coluna Equipe já vem preenchida."],
         ["2. Não mude a ordem nem o nome das colunas."],
         ["3. Data de nascimento no formato dd/mm/aaaa."],
         ["4. Sexo: F ou M."],
@@ -188,7 +322,7 @@
       var wi = X.utils.aoa_to_sheet(instr);
       wi["!cols"] = [{ wch: 90 }];
       X.utils.book_append_sheet(wb, wi, "Como preencher");
-      X.writeFile(wb, "Modelo-inscricao-coletiva_" + slug(ev.nome) + ".xlsx");
+      X.writeFile(wb, "Modelo-inscricao-coletiva_" + slug(convite.e) + "_" + slug(ev.nome) + ".xlsx");
     }).catch(function () { alert("Não foi possível gerar o modelo agora. Tente o modelo em CSV."); })
       .then(function () { bModelo.disabled = false; });
   });
@@ -287,6 +421,9 @@
       if (!row.some(function (v) { return String(v).trim() !== ""; })) continue;
       var bruto = {};
       COLS.forEach(function (c) { bruto[c.id] = mapa[c.id] != null ? row[mapa[c.id]] : ""; });
+      // Ignora as linhas do modelo que só têm a equipe e a linha de exemplo
+      if (COLS.every(function (c) { return c.id === "equipe" || String(bruto[c.id]).trim() === ""; })) continue;
+      if (norm(bruto.nome) === "maria da silva exemplo") continue;
       estado.linhas.push({ n: j + 1, bruto: bruto });
     }
     status.textContent = estado.arquivo + ": " + estado.linhas.length + (estado.linhas.length === 1 ? " atleta encontrado." : " atletas encontrados.");
@@ -406,6 +543,7 @@
 
   // ---------- Resultado ----------
   var soErros = false;
+  var registrado = "";
   function desenha() {
     p3.innerHTML = "";
     p3.append(el("p", "assess-card__step", "Resultado"));
@@ -432,6 +570,16 @@
     num(total - comErro, "prontos", "is-ok");
     num(comErro, comErro === 1 ? "com erro" : "com erro", comErro ? "is-erro" : "");
     p3.append(nums);
+
+    // Condição da equipe com o número de atletas da planilha
+    if (valorAtleta || faixas.length) {
+      var cond = el("div", "assess-valor");
+      cond.append(el("p", "assess-resumo__t", "Condição da " + convite.e));
+      var metaN = progresso(total);
+      if (metaN) cond.append(metaN);
+      cond.append(tabelaCondicao(total), el("p", "muted assess-nota", NOTA_VALOR));
+      p3.append(cond);
+    }
 
     // Resumo por distância e camiseta
     var porDist = {}, porCam = {}, porSexo = { F: 0, M: 0 };
@@ -520,8 +668,25 @@
       return true;
     }
     bBaixar.addEventListener("click", function () { if (confere()) geraArquivo().then(function (f) { baixa(f); aviso.textContent = "Planilha baixada: " + f.name; }); });
+    // Guarda a inscrição no banco do site (Cloudflare D1). Nunca atrapalha o envio.
+    function registra(canal) {
+      var dados = {
+        prova: { id: estado.prova.id, nome: estado.prova.nome }, convite: codigo || "",
+        equipe: inEquipe.value.trim(), responsavel: inResp.value.trim(), telefone: inTel.value.trim(),
+        atletas: estado.linhas.map(function (l) { return l.v; }),
+      };
+      var chave = JSON.stringify(dados);
+      if (chave === registrado) return;
+      registrado = chave;
+      dados.canal = canal;
+      try {
+        fetch("/api/inscricao", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(dados) })
+          .catch(function () {});
+      } catch (e) {}
+    }
     bWa.addEventListener("click", function () {
       if (!confere()) return;
+      registra("whatsapp");
       geraArquivo().then(function (f) {
         var texto = resumoTexto(true);
         if (navigator.canShare && navigator.canShare({ files: [f] })) {
@@ -536,6 +701,7 @@
     });
     bMail.addEventListener("click", function () {
       if (!confere()) return;
+      registra("email");
       geraArquivo().then(function (f) {
         baixa(f);
         location.href = "mailto:" + EMAIL + "?subject=" + encodeURIComponent("Inscrição coletiva: " + inEquipe.value.trim() + " · " + estado.prova.nome) + "&body=" + encodeURIComponent(resumoTexto(false) + "\n\nSegue em anexo a planilha: " + f.name);
@@ -552,6 +718,10 @@
       l.push(b("Atletas:") + " " + total);
       l.push(b("Por distância:") + " " + Object.keys(porDist).map(function (k) { return k + ": " + porDist[k]; }).join(" · "));
       l.push(b("Camisetas:") + " " + tamanhos(estado.prova).filter(function (k) { return porCam[k]; }).map(function (k) { return k + ": " + porCam[k]; }).join(" · "));
+      if (temCondicao) {
+        l.push("", b("Condição do convite (a confirmar):"));
+        linhasCondicao(total).forEach(function (p) { l.push(p[0] + ": " + p[1]); });
+      }
       l.push("", "Planilha conferida no site da Tardim Produções.");
       return l.join("\n");
     }
@@ -567,6 +737,7 @@
       X.utils.book_append_sheet(wb, ws, "Atletas");
       var r = [["Inscrição coletiva"], ["Prova", estado.prova.nome], ["Data", quando(estado.prova)], ["Equipe", inEquipe.value.trim()],
         ["Responsável", inResp.value.trim()], ["WhatsApp", inTel.value.trim()], ["Atletas", estado.linhas.length], ["Conferida em", fmtData(new Date())]];
+      if (temCondicao) r = r.concat([[""], ["Condição do convite (a confirmar pela Tardim Produções)"]], linhasCondicao(estado.linhas.length));
       var wr = X.utils.aoa_to_sheet(r);
       wr["!cols"] = [{ wch: 16 }, { wch: 50 }];
       X.utils.book_append_sheet(wb, wr, "Resumo");
@@ -582,5 +753,62 @@
     document.body.append(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   }
+
+  // ---------- Página da equipe e mensagens prontas para os atletas ----------
+  function copia(texto, botao, rotulo) {
+    var feito = function () { botao.textContent = "Copiado!"; setTimeout(function () { botao.textContent = rotulo; }, 2000); };
+    var reserva = function () {
+      var t = el("textarea"); t.value = texto; t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.append(t); t.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      t.remove(); feito();
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(texto).then(feito, reserva); else reserva();
+  }
+  var p4 = el("section", "assess-card");
+  p4.append(el("p", "assess-card__step", "Para os seus atletas"), el("h2", null, "Página da " + convite.e + " e mensagens prontas"));
+  p4.append(el("p", "muted", "Mande este link no grupo da equipe. Cada atleta vê a prova, o prazo e envia os dados dele direto para você, já no formato da planilha."));
+  var cx = el("div", "convite-link");
+  var inLink = el("input"); inLink.readOnly = true; inLink.value = linkEquipe;
+  inLink.setAttribute("aria-label", "Link da página da equipe");
+  inLink.addEventListener("focus", function () { inLink.select(); });
+  cx.append(inLink);
+  var acL = el("div", "assess-acoes");
+  var bCopiaLink = el("button", "btn btn--red", "Copiar link da equipe"); bCopiaLink.type = "button";
+  bCopiaLink.addEventListener("click", function () { copia(linkEquipe, bCopiaLink, "Copiar link da equipe"); });
+  var aVer = el("a", "orc__email", "Ver a página da equipe"); aVer.href = linkEquipe; aVer.target = "_blank"; aVer.rel = "noopener";
+  acL.append(bCopiaLink, aVer);
+  p4.append(cx, acL);
+
+  var ev0 = estado.prova;
+  var ate = prazoAtletas ? " até " + dataCurta(prazoAtletas) : " o quanto antes";
+  var mensagens = [
+    ["Convite para o grupo",
+      "Pessoal, a " + convite.e + " vai correr a *" + ev0.nome + "*!\n" + quando(ev0) + (ev0.hora ? ", largada às " + ev0.hora : "") + (ev0.local ? "\n" + ev0.local : "") +
+      "\n\nA inscrição é coletiva, pela equipe. Veja os detalhes e me mande seus dados" + ate + " por este link:\n" + linkEquipe],
+    ["Lembrete de prazo",
+      "Lembrete, pessoal: quem vai correr a *" + ev0.nome + "* com a " + convite.e + " precisa me mandar os dados" + ate + ". Depois disso a lista fecha.\n\nÉ rápido, pelo link:\n" + linkEquipe],
+    ["Retirada de kit",
+      "Kits da *" + ev0.nome + "*: " + (beneficios.indexOf("k") >= 0
+        ? "a retirada da " + convite.e + " é em lote, feita pela equipe. " + (String(convite.kt || "").trim() || "Aviso aqui o dia e o horário assim que a organização confirmar.")
+        : (ev0.kit && ev0.kit.retirada ? ev0.kit.retirada : "aviso aqui o local e o horário de retirada assim que a organização confirmar.")) +
+      (beneficios.indexOf("e") >= 0 && String(convite.pe || "").trim() ? "\n\nNo dia da prova, nosso ponto de encontro: " + String(convite.pe).trim() : "")],
+  ];
+  var listaM = el("div", "assess-msgs");
+  mensagens.forEach(function (m) {
+    var item = el("div", "assess-msg");
+    item.append(el("h3", null, m[0]));
+    var ta = el("textarea"); ta.value = m[1]; ta.rows = 5; ta.setAttribute("aria-label", m[0]);
+    var ac = el("div", "assess-acoes");
+    var bc = el("button", "btn btn--line", "Copiar"); bc.type = "button";
+    bc.addEventListener("click", function () { copia(ta.value, bc, "Copiar"); });
+    var bw = el("button", "btn btn--wa", "Abrir no WhatsApp"); bw.type = "button";
+    bw.addEventListener("click", function () { window.open("https://wa.me/?text=" + encodeURIComponent(ta.value), "_blank", "noopener"); });
+    ac.append(bw, bc);
+    item.append(ta, ac);
+    listaM.append(item);
+  });
+  p4.append(listaM, el("p", "muted assess-nota", "Você pode ajustar o texto antes de copiar ou enviar."));
+  app.append(p4);
 
 })();

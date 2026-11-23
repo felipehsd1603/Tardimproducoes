@@ -2,6 +2,8 @@
 
 Site estático (HTML + CSS + JS puro) da **Tardim Produções LTDA**, produtora de corridas de rua e eventos esportivos em Minas Gerais.
 
+Hospedado no **Cloudflare Pages** (plano gratuito), com funções em `functions/` e banco de dados **Cloudflare D1**. Repositório: `felipehsd1603/tardimproducoes`. Domínio: `tardimproducoes.com.br` (registrado no Registro.br). Veja [Publicar](#publicar-cloudflare-pages), [Banco de dados](#banco-de-dados-cloudflare-d1) e [Domínio](#domínio).
+
 ## Estrutura
 
 ```
@@ -9,18 +11,21 @@ index.html          página inicial
 prova.html          página de cada prova (prova.html?id=...)
 portfolio.html      portfólio de trabalhos (eventos e serviços)
 evento.html         página de cada trabalho do portfólio (evento.html?id=...)
+institucional.html  página para órgãos públicos e conselhos (credenciais e instituições atendidas)
 privacidade.html    política de privacidade (LGPD)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
-js/eventos.js       ← CALENDÁRIO, PROVAS REALIZADAS E CONTATOS (edite aqui)
+js/eventos.js       ← CONTATOS, CALENDÁRIO E GALERIA (edite aqui)
+js/realizadas.js    ← PORTFÓLIO: trabalhos realizados (edite aqui)
 js/main.js          monta a página inicial (calendário, próxima prova, menu)
 js/prova.js         monta a página de cada prova (com breadcrumb)
 js/portfolio.js     monta o portfólio e a página de cada trabalho
-js/orcamento.js     pedido de orçamento: monta a mensagem e abre o WhatsApp ou o e-mail
+js/orcamento.js     pedido de orçamento: monta a mensagem, abre o WhatsApp ou o e-mail e guarda uma cópia no banco
 js/monte.js         simulador "Monte sua corrida" (leva a configuração para o orçamento)
 js/extras.js        previsão do tempo, card "Eu vou correr!" e calculadora de ritmo
 js/assessorias.js   inscrição coletiva: modelo de planilha, conferência e envio (assessorias.html)
 js/convite.js       gera e lê o código do link de convite de cada assessoria
 js/gerar-convite.js página interna que gera os links (link-assessoria.html)
+js/equipe.js        página pública da equipe, para os atletas (equipe.html)
 js/vendor/          biblioteca SheetJS (lê e gera planilhas Excel na página de assessorias)
 js/mapa.js          mapa de Minas "Onde já corremos" (conta as corridas por cidade sozinho)
 js/ui.js            animações, barra de percurso no topo e fotos em tela cheia
@@ -29,29 +34,99 @@ assets/fonts/       fontes Barlow e Barlow Condensed (hospedadas no próprio sit
 assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas
 assets/fotos/       fotos dos eventos
+functions/api/orcamento.js  função POST /api/orcamento: valida e grava o pedido de orçamento no D1
+functions/api/inscricao.js  função POST /api/inscricao: valida e grava a inscrição coletiva (equipe + atletas) no D1
+admin.html          painel da Tardim Produções (fora do menu e do Google): js/admin.js + css/painel.css
+kit.html            kit de divulgação de cada parceiro: js/kit.js
+programa-embaixadores.html  regras do programa de embaixadores
+pre-cadastro.html   pré-cadastro público de embaixadores com CREF6/MG: js/pre-cadastro.js
+functions/api/pre-cadastro.js  função POST /api/pre-cadastro: confere o CREF6 e grava o embaixador inativo no D1 (5 envios por IP por hora)
+js/provas-db.js     provas do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
+functions/api/admin/[[rota]].js  API do painel: login, provas, parceiros, convites, imagens, orçamentos e inscrições
+functions/arquivos/[[caminho]].js  serve as imagens enviadas pelo painel (/arquivos/...)
+functions/_middleware.js  serve js/provas-db.js e prova-<id>.html das provas do painel, na hora
+d1/schema.sql       tabelas orcamentos, inscricoes e atletas
+d1/painel.sql       tabelas do painel: provas, parceiros, convites, arquivos e login_erros
+wrangler.toml       configuração do Cloudflare Pages e ligação com o banco D1 (binding DB)
+_routes.json        quais endereços passam pelas funções (o resto é servido como arquivo estático)
 ```
+
+## Ordem da página inicial
+
+A página inicial é organizada por público:
+
+1. **Abertura**, com dois caminhos: "Quero correr" e "Quero contratar uma corrida".
+2. **Para quem corre**: Calendário e galeria de fotos.
+3. **Quem confia**: números e clientes, mapa "Onde já corremos" e Portfólio.
+4. **Para quem contrata**: Serviços (com as ofertas para empresas), "Sua corrida do começo ao fim", "Monte sua corrida" (passo 1) e "Peça seu orçamento" (passo 2).
+5. **Contato**.
+
+O conteúdo institucional (credenciais e instituições atendidas) fica em `institucional.html`, com link no rodapé e no Portfólio.
 
 ## Como atualizar as corridas
 
-Abra `js/eventos.js`:
+Abra `js/eventos.js` (calendário, contatos e galeria) ou `js/realizadas.js` (portfólio):
 
 - `PROXIMAS`: provas com data. Cada prova tem um `id` e ganha uma página própria (`prova.html?id=...`) com informações, valores, kit, programação, percurso, regulamento e resultados. Campos vazios não aparecem, e a página avisa o que ainda vai ser publicado. Coloque a arte da prova em `assets/corridas/` e aponte no campo `poster`. Quando a data passa, a prova sai do calendário sozinha.
 - O **calendário** da página inicial tem duas abas: *Próximas* (de `PROXIMAS`) e *Edições anteriores* (todas as edições/etapas das corridas em `REALIZADAS`, da mais recente para a mais antiga), com busca e filtros por ano, mês e distância.
-- `REALIZADAS`: portfólio de trabalhos realizados, separados por área (eventos esportivos ou prevenção contra incêndio). Cada trabalho ganha uma página (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (trabalhos, eventos, serviços de prevenção, instituições atendidas e participantes) são calculados sozinhos.
+- `REALIZADAS` (em `js/realizadas.js`): portfólio de trabalhos realizados, separados por área (eventos esportivos ou prevenção contra incêndio). Cada trabalho ganha uma página (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (trabalhos, eventos, serviços de prevenção, instituições atendidas e participantes) são calculados sozinhos.
 - `GALERIA`: fotos do carrossel "Na rua com a Tardim Produções" (foto, legenda e descrição). Coloque as fotos em `assets/fotos/`.
 - `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
 
-No mesmo arquivo, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
+No `js/eventos.js`, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
 
 ## Pedido de orçamento
 
-A seção "Peça seu orçamento" da página inicial não envia nada para servidor: ela monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
+A seção "Peça seu orçamento" da página inicial monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
+
+Quando a pessoa toca em enviar, o site também manda uma cópia do pedido para `POST /api/orcamento`, que grava na tabela `orcamentos` do D1 (serviço, nome, contratante, empresa, cidade, data prevista, público, detalhes e o canal escolhido). Enquanto a pessoa só preenche, nada é enviado. Se a função falhar ou não existir (por exemplo, abrindo o `index.html` direto do computador), o WhatsApp e o e-mail abrem normalmente. O formulário não pede telefone nem e-mail, então o registro serve para contar e acompanhar pedidos, não para retornar o contato.
 
 ## Inscrição coletiva (assessorias)
 
-A página `assessorias.html` só funciona pelo link de convite que a Tardim Produções gera em `link-assessoria.html` (página interna, fora do menu e do Google): escolhe a prova, digita o nome da assessoria e, se quiser, um prazo e um limite de atletas, e manda o link pelo WhatsApp. Sem link válido, a página mostra só um aviso. Como o site não tem servidor, o convite evita acesso casual, mas não é uma proteção forte; cancelar links e receber os envios num só lugar fica para o painel de administração.
+A página `assessorias.html` só funciona pelo link de convite que a Tardim Produções gera em `link-assessoria.html` (página interna, fora do menu e do Google): escolhe a prova, digita o nome da assessoria e, se quiser, um prazo e um limite de atletas, e manda o link pelo WhatsApp. Sem link válido, a página mostra só um aviso. O convite é conferido só no navegador: evita acesso casual, mas não é uma proteção forte, e ainda não dá para cancelar um link já enviado.
 
-Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a planilha preenchida (CPF, data de nascimento, sexo, distância, camiseta, e-mail, telefone e repetidos) e envia o arquivo padronizado por WhatsApp ou e-mail. Tudo acontece no aparelho de quem usa; nenhum dado é guardado no site. As distâncias vêm dos `percursos` da prova e os tamanhos de camiseta do campo opcional `tamanhos` (padrão: PP, P, M, G, GG, XG, XGG).
+Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a planilha preenchida (CPF, data de nascimento, sexo, distância, camiseta, e-mail, telefone e repetidos) e envia o arquivo padronizado por WhatsApp ou e-mail. A conferência acontece no aparelho de quem usa. Ao tocar em enviar (com a confirmação de autorização dos atletas marcada), o site grava a inscrição no D1 por `POST /api/inscricao`: a equipe na tabela `inscricoes` e cada atleta na tabela `atletas` (nome, CPF, nascimento, sexo, distância, camiseta, e-mail e telefone). A função confere de novo o CPF e os campos obrigatórios e grava tudo ou nada. O botão "Baixar planilha conferida" não grava nada. As distâncias vêm dos `percursos` da prova e os tamanhos de camiseta do campo opcional `tamanhos` (padrão: PP, P, M, G, GG, XG, XGG).
+
+## Painel (provas, parceiros, convites e apuração)
+
+`admin.html` (fora do menu e do Google) é o painel da Tardim Produções. Funciona no site publicado no **Cloudflare Pages**: os dados ficam no mesmo banco **D1** do site (tabelas de `d1/painel.sql`) e a API está em `functions/api/admin/`. Entra quem tem a senha do painel.
+
+**Primeira vez (uma vez só, por projeto do Cloudflare Pages):**
+
+1. Crie as tabelas: `npx wrangler d1 execute tardim --remote --file d1/painel.sql`
+2. Defina a senha do painel e o segredo da sessão (o segundo é um texto longo e aleatório, que ninguém precisa decorar):
+   `npx wrangler pages secret put ADMIN_SENHA --project-name <projeto>` e
+   `npx wrangler pages secret put SESSAO_SEGREDO --project-name <projeto>`
+3. Publique o site de novo e abra `admin.html`.
+
+**Segurança:** a senha nunca fica em arquivo do repositório (a pasta inteira é publicada). O login usa cookie HttpOnly, Secure e SameSite=Strict, válido por 14 dias; trocar `ADMIN_SENHA` derruba todas as sessões. Depois de 5 senhas erradas em 15 minutos, o mesmo endereço IP fica bloqueado por 15 minutos. As escritas só são aceitas a partir do próprio site.
+
+**Abas do painel:**
+
+- **Provas**: cadastro completo da prova (dados, arte, valores, kit, programação, links). A arte enviada é reduzida para JPG de até 1600 px e guardada no banco. Marcou como publicada e salvou, a prova já está no site (até 1 minuto de cache): o calendário, a página `prova-<id>.html` com a prévia certa e o kit de divulgação são servidos na hora pelo banco (`functions/_middleware.js`), sem publicar o site de novo. Desmarcou, ela sai. As provas do `js/eventos.js` aparecem como "No código" e podem ser trazidas para o painel; a versão do painel vale no site.
+- **Parceiros**: embaixadores, influenciadores, assessorias e equipes (contato, CPF/CNPJ e Pix para a comissão). Embaixador e influenciador têm o tipo de profissional; para "Profissional de Educação Física (CREF6/MG)" o número do CREF6 é obrigatório e o botão "Validar no CREF6" consulta o registro na página pública do CREF6 (`functions/_cref6.js`, pela rota `api/admin/cref6`, só para quem está no painel). O painel avisa, sem impedir o cadastro, quando o registro não existe, não está ativo ou está em nome de outra pessoa; se o CREF6 estiver fora do ar, salva como "não conferido". Quem se inscreve pelo `pre-cadastro.html` entra como embaixador inativo, com "Pré-cadastro: aprovar" na lista: confira e marque "Ativo" para aprovar. O pré-cadastro recusa registro inexistente ou não ativo e registro já cadastrado. A lista mostra "CREF6 ativo", "CREF6 não conferido" ou a situação devolvida. Assessoria e equipe têm logo (PNG até 400 px) e cor, usadas na inscrição coletiva e na página da equipe. As imagens ficam na tabela `arquivos` e são servidas em `/arquivos/<caminho>`; cada envio ganha nome novo, e o antigo continua valendo para links já enviados.
+- **Convites**: um parceiro numa prova, com o cupom criado na Ticket Sports (Promover > Cupons de desconto, tipo individual), desconto, comissão, cortesias e contrapartida. O convite gera o link para os atletas (`prova-<id>.html?cupom=CODIGO`), o link do kit de divulgação, o link de inscrição coletiva (assessoria/equipe) e a mensagem pronta para o WhatsApp.
+- **Apuração**: solte o relatório de inscritos exportado da Ticket Sports (Excel ou CSV), escolha as colunas de cupom, valor e situação e marque quais situações contam como pagas. O painel soma por cupom, calcula a comissão de cada parceiro e baixa a planilha de pagamento. O arquivo é lido só no navegador.
+- **Inscrições coletivas**: os envios das assessorias (tabelas `inscricoes` e `atletas`), com filtro por prova e botão para baixar os atletas de cada envio em Excel.
+- **Orçamentos**: a cópia de cada pedido do formulário "Peça seu orçamento" (tabela `orcamentos`), com download em Excel.
+
+**Kit de divulgação** (`kit.html?p=<prova>&c=<CUPOM>&n=<nome>&d=<desconto>`): página pública e fora do Google com o link e o cupom do parceiro, card para stories (1080x1920, gerado no navegador com a arte e o cupom), a arte da prova e textos prontos para Instagram, WhatsApp e stories. Sem cupom (`kit.html?p=<prova>`), vira o kit geral da prova. O texto usa o campo "Texto de divulgação" da prova ou, vazio, monta sozinho com os dados dela.
+
+**Cupom na página da prova**: quem entra pelo link do parceiro vê o cupom em destaque, e o botão de inscrição copia o código antes de abrir a Ticket Sports, onde a pessoa cola no campo de cupom. A Ticket Sports não aceita cupom pelo endereço; se um dia aceitar, coloque o nome do parâmetro em `SITE.cupomParam` (`js/eventos.js`).
+
+As regras do programa ficam em `programa-embaixadores.html` (fora do menu e do Google); o link vai na mensagem de cada convite.
+
+### Personalização por assessoria
+
+Em `link-assessoria.html`, além de prova, equipe, prazo e limite, o convite aceita (tudo opcional, e o que ficar em branco não aparece):
+
+- **Cara da equipe**: nome do treinador (a página cumprimenta pelo primeiro nome), cor da equipe e logo. A logo é um arquivo em `assets/assessorias/`; no gerador vai só o nome do arquivo (sem espaços nem acentos).
+- **Condição comercial**: valor por atleta, até 3 faixas de desconto por volume, cortesias e forma de pagamento. A assessoria vê o combinado, a barra "faltam X atletas para a próxima faixa" e o total estimado conforme a planilha. O total também vai no resumo do WhatsApp/e-mail e na aba "Resumo" da planilha conferida.
+- **Dia da prova**: espaço para tenda, retirada de kits em lote, foto oficial e ponto de encontro.
+
+Tudo isso viaja dentro do próprio link (`js/convite.js` lista os campos). **O link não é proteção forte**: confira sempre o valor e o desconto ao receber a planilha. Links antigos continuam funcionando.
+
+A página da assessoria também traz o modelo de planilha com a coluna "Equipe" preenchida, mensagens prontas para o grupo (convite, lembrete de prazo e retirada de kit) e o link da **página da equipe** (`equipe.html`), que o treinador manda aos atletas. Nela o atleta vê a prova, a contagem para o prazo interno, os ritmos por pelotão, preenche os dados e envia para o WhatsApp do treinador, já com a linha pronta para colar na planilha. Esse link público não leva valores, descontos nem limite, e não abre a inscrição coletiva. O card "Eu vou correr!" aberto a partir dela sai com o nome (e a logo) da equipe.
 
 ## Previsão do tempo
 
@@ -63,20 +138,20 @@ Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Co
 
 ## Depois de editar CSS ou JS
 
-Em todas as páginas (`index.html`, `prova.html`, `portfolio.html`, `evento.html` e `scripts/404-modelo.html`), troque o número `?v=...` dos arquivos CSS e JS (por exemplo, `?v=20261122-1` para `?v=20261122-2`). Assim o navegador dos visitantes baixa a versão nova em vez de usar a cópia antiga em cache.
+O `scripts/gerar-paginas.js` troca o `?v=...` dos arquivos CSS e JS de todas as páginas, para o navegador dos visitantes baixar a versão nova em vez de usar a cópia antiga em cache. Ele usa o código do commit quando roda no GitHub Actions ou no build do Cloudflare Pages ligado ao GitHub. Rodando no seu computador, só troca se você pedir com `node scripts/gerar-paginas.js --versao` (usa data e hora); sem `--versao`, o `?v=` não muda. Isso altera o `?v=` em todas as páginas do repositório; use na hora de publicar.
 
 ## Páginas geradas automaticamente
 
-O script `scripts/gerar-paginas.js` cria, a partir do `js/eventos.js`:
+O script `scripts/gerar-paginas.js` cria, a partir do `js/eventos.js` e do `js/realizadas.js`:
 
 - `prova-<id>.html`: uma página por prova, com a prévia certa (arte e título) ao compartilhar no WhatsApp;
 - `trabalho-<id>.html`: uma página por trabalho do portfólio, também com prévia própria;
 - `sitemap.xml` e `robots.txt`, para o Google;
 - `404.html`, a página de erro com a cara da Tardim Produções.
 
-Ele roda sozinho a cada publicação (workflow do GitHub Pages). Para ver localmente depois de editar o `eventos.js`, rode `node scripts/gerar-paginas.js`.
+Esses arquivos não ficam guardados no repositório (estão no `.gitignore`). Rode `node scripts/gerar-paginas.js` antes de cada publicação (veja [Publicar](#publicar-cloudflare-pages)).
 
-Ao trocar para domínio próprio, mude `SITE.urlBase` no `js/eventos.js`.
+Os endereços das prévias de compartilhamento vêm de `SITE.urlBase` (`js/eventos.js`) e das tags `canonical` e `og:` fixas no `<head>` de cada página. Hoje todos ainda apontam para o endereço antigo do GitHub Pages; quando o domínio entrar no ar, troque para `https://tardimproducoes.com.br/`.
 
 ## Mapa "Onde já corremos"
 
@@ -84,11 +159,86 @@ O mapa conta as corridas de cada cidade a partir das edições em `REALIZADAS`. 
 
 ## Ver localmente
 
-É só abrir o `index.html` no navegador.
+Para ver só as páginas, abra o `index.html` no navegador. Assim os formulários funcionam, mas nada é gravado no banco.
 
-## Publicar (GitHub Pages)
+Para testar com as funções e um banco local (precisa do Node.js):
 
-O workflow `.github/workflows/pages.yml` publica o site. Rode-o em **Actions → Deploy static content to Pages → Run workflow**. O endereço fica em `https://felipehsd1603.github.io/TesteFelipe/`.
+```
+npx wrangler d1 execute tardim --local --file d1/schema.sql
+npx wrangler d1 execute tardim --local --file d1/painel.sql
+npx wrangler pages dev . --port 8799 --binding ADMIN_SENHA=teste --binding SESSAO_SEGREDO=segredo-local
+```
+
+O site abre em `http://127.0.0.1:8799`. O banco local fica em `.wrangler/` (fora do repositório) e não tem relação com o banco real.
+
+## Publicar (Cloudflare Pages)
+
+A publicação é feita do computador, por upload direto, com o `wrangler` (na primeira vez, `npx wrangler login` abre o navegador para autorizar a conta da Cloudflare):
+
+```
+node scripts/gerar-paginas.js --versao
+npx wrangler pages deploy --project-name tardim-teste --branch main
+```
+
+- Hoje existe só o projeto de teste `tardim-teste`, em `https://tardim-teste.pages.dev`. O projeto definitivo (`tardim-producoes`, o nome que está no `wrangler.toml`) ainda não foi criado; crie com `npx wrangler pages project create tardim-producoes --production-branch main` e passe a publicar com esse nome.
+- A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.js` responde 404 para `functions/`, `d1/`, `scripts/`, `.github/`, `wrangler.toml`, `README.md`, `.gitignore` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.
+- As funções em `functions/` e a ligação com o banco (`wrangler.toml`) sobem junto, no mesmo comando.
+- A Cloudflare serve as páginas sem o `.html` (`/assessorias.html` redireciona para `/assessorias`).
+- Publicando do computador, o `--versao` carimba o `?v=` dos arquivos CSS e JS com data e hora, para os visitantes baixarem a versão nova (veja [Depois de editar CSS ou JS](#depois-de-editar-css-ou-js)).
+- O painel precisa, em cada projeto, das tabelas de `d1/painel.sql` e dos segredos `ADMIN_SENHA` e `SESSAO_SEGREDO` (veja [Painel](#painel-provas-parceiros-convites-e-apuração)).
+
+O workflow `.github/workflows/pages.yml` (GitHub Pages) continua no repositório, mas não é mais o caminho de publicação: o GitHub Pages não roda as funções nem acessa o banco.
+
+## Banco de dados (Cloudflare D1)
+
+O banco se chama `tardim` e está ligado às funções pelo nome `DB` (`wrangler.toml`). As tabelas de `d1/schema.sql`:
+
+| Tabela | O que guarda |
+| --- | --- |
+| `orcamentos` | Um pedido de orçamento por linha |
+| `inscricoes` | Uma inscrição coletiva por linha (prova, equipe, responsável, total de atletas) |
+| `atletas` | Os atletas de cada inscrição (ligados por `inscricao_id`) |
+
+E as do painel, em `d1/painel.sql`:
+
+| Tabela | O que guarda |
+| --- | --- |
+| `provas` | Provas cadastradas no painel (as publicadas aparecem no site na hora) |
+| `parceiros` | Embaixadores, influenciadores, assessorias e equipes, com contato, CPF/CNPJ, Pix, logo e cor |
+| `convites` | Um parceiro numa prova: cupom da Ticket Sports, desconto, comissão, cortesias |
+| `arquivos` | Imagens enviadas pelo painel (artes e logos, até 1,9 MB cada), servidas em `/arquivos/...` |
+| `login_erros` | Senhas erradas no painel, para o bloqueio de 15 minutos |
+
+Para criar ou atualizar as tabelas (pode rodar de novo sem perder dados):
+
+```
+npx wrangler d1 execute tardim --remote --file d1/schema.sql
+npx wrangler d1 execute tardim --remote --file d1/painel.sql
+```
+
+Para consultar:
+
+```
+npx wrangler d1 execute tardim --remote --command "SELECT * FROM orcamentos ORDER BY id DESC LIMIT 20"
+npx wrangler d1 execute tardim --remote --command "SELECT criado_em, prova_nome, equipe, total FROM inscricoes ORDER BY criado_em DESC"
+```
+
+Também dá para ver os dados no painel da Cloudflare, em **Storage & Databases > D1**.
+
+A tabela `atletas` tem dados pessoais (CPF, e-mail, telefone). O acesso é só pela conta da Cloudflare e pelo painel do site. O que o site diz aos visitantes sobre isso está em `privacidade.html`; se mudar o que é guardado, mude o texto de lá também.
+
+As funções só aceitam pedidos vindos do próprio site (conferem o cabeçalho `Origin`) e limitam o tamanho de cada campo. Não há limite de envios por visitante.
+
+## Domínio
+
+`tardimproducoes.com.br` está registrado no Registro.br, no nome da empresa, e já foi adicionado à conta da Cloudflare (plano Free). Para o site abrir nesse endereço:
+
+1. No Registro.br, trocar os servidores DNS do domínio para `ali.ns.cloudflare.com` e `jermaine.ns.cloudflare.com`, deixando os campos de DNSSEC/DS em branco (o domínio tinha DNSSEC ativo com os servidores antigos).
+2. Esperar a Cloudflare ativar o domínio (ela avisa por e-mail; pode levar até 24 horas).
+3. No painel da Cloudflare, em **Workers & Pages**, abrir o projeto do site e adicionar `tardimproducoes.com.br` e `www.tardimproducoes.com.br` em **Custom domains**.
+4. Trocar os endereços do site para o domínio (veja o fim de [Páginas geradas automaticamente](#páginas-geradas-automaticamente)) e publicar de novo.
+
+Em 22/11/2026 o passo 1 ainda estava pendente.
 
 ## Pendências de conteúdo
 
