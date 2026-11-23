@@ -427,7 +427,7 @@
 
   function excluirProva(id) {
     var n = S.convites.filter(function (x) { return x.prova_id === id; }).length;
-    if (!window.confirm("Excluir esta prova do painel? Ela sai do site." + (n ? " Os " + n + " convites dela continuam guardados." : ""))) return;
+    if (!window.confirm("Excluir esta prova do painel? Ela sai do site." + (n === 1 ? " O convite dela continua guardado." : n ? " Os " + n + " convites dela continuam guardados." : ""))) return;
     api("DELETE", "provas/" + encodeURIComponent(id)).then(function () {
       S.provas = S.provas.filter(function (x) { return x.id !== id; });
       mostra("provas");
@@ -679,7 +679,7 @@
   }
   function excluirParceiro(p) {
     var n = S.convites.filter(function (x) { return x.parceiro_id === p.id; }).length;
-    if (!window.confirm("Excluir " + p.nome + "?" + (n ? " Os " + n + " convites dele também serão apagados. Para só esconder, desmarque \"Ativo\"." : ""))) return;
+    if (!window.confirm("Excluir " + p.nome + "?" + (n ? (n === 1 ? " O convite deste parceiro também será apagado." : " Os " + n + " convites deste parceiro também serão apagados.") + " Para só esconder, desmarque \"Ativo\"." : ""))) return;
     api("DELETE", "parceiros/" + encodeURIComponent(p.id)).then(function () {
       S.parceiros = S.parceiros.filter(function (x) { return x.id !== p.id; });
       S.convites = S.convites.filter(function (x) { return x.parceiro_id !== p.id; });
@@ -966,7 +966,7 @@
       grade.append(campo("Coluna do cupom", colCupom), campo("Coluna do valor pago", colValor), campo("Coluna da situação do pagamento", colSit, "Para contar só as inscrições pagas."));
       var sitBox = el("div", "assess-grid__full painel-sits");
       grade.append(sitBox);
-      area.append(el("p", "assess-status", dados.arquivo + ": " + dados.linhas.length + " linhas."), grade);
+      area.append(el("p", "assess-status", dados.arquivo + ": " + dados.linhas.length + (dados.linhas.length === 1 ? " linha." : " linhas.")), grade);
       var resultado = el("div"); area.append(resultado);
 
       var marcadas = {};
@@ -1084,7 +1084,7 @@
         var lista = S.inscricoes.filter(function (i) { return !prova.value || i.prova_id === prova.value; });
         if (!lista.length) { area.append(el("p", "muted", "Nenhuma inscrição coletiva recebida ainda.")); return; }
         var total = lista.reduce(function (a, i) { return a + (Number(i.atletas) || Number(i.total) || 0); }, 0);
-        area.append(el("p", "assess-status", lista.length + " envios · " + total + " atletas"));
+        area.append(el("p", "assess-status", lista.length + (lista.length === 1 ? " envio · " : " envios · ") + total + (total === 1 ? " atleta" : " atletas")));
         area.append(tabela(["Recebida", "Prova", "Equipe", "Responsável", "Atletas", "Canal", ""], lista.map(function (i) {
           var b = botao("Baixar atletas (Excel)", null, function () {
             b.disabled = true;

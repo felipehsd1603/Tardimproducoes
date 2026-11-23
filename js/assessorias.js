@@ -248,7 +248,7 @@
   conv.append(el("span", null, estado.prova.nome + " · " + quando(estado.prova)));
   var extras = [];
   if (convite.d) { var dz = data(convite.d); extras.push("Envie até " + dz.getDate() + " de " + MESES[dz.getMonth()]); }
-  if (limite) extras.push("Até " + limite + " atletas");
+  if (limite) extras.push("Até " + atletasTxt(limite));
   if (extras.length) conv.append(el("small", null, extras.join(" · ")));
   p1.append(conv);
   var g1 = el("div", "assess-grid");
@@ -308,7 +308,7 @@
       var instr = [
         ["Inscrição coletiva · " + ev.nome],
         [quando(ev)],
-        ["Equipe: " + convite.e + (convite.d ? " · enviar até " + dataCurta(convite.d) : "") + (limite ? " · até " + limite + " atletas" : "")],
+        ["Equipe: " + convite.e + (convite.d ? " · enviar até " + dataCurta(convite.d) : "") + (limite ? " · até " + atletasTxt(limite) : "")],
         [""],
         ["Como preencher"],
         ["1. Uma linha por atleta, a partir da linha 3. A linha 2 é só um exemplo (o site ignora). A coluna Equipe já vem preenchida."],
@@ -557,11 +557,11 @@
     }
     if (!total) {
       p3.append(el("h2", null, "Nenhum atleta na planilha"));
-      p3.append(el("p", "muted", "Preencha a partir da linha 2 do modelo e envie de novo."));
+      p3.append(el("p", "muted", "Preencha a partir da linha 3 do modelo e envie de novo."));
       return;
     }
     p3.append(el("h2", null, comErro ? "Quase lá: corrija " + comErro + (comErro === 1 ? " linha" : " linhas") : passou ? "Passou do limite de atletas" : "Tudo certo com a sua planilha"));
-    if (passou) p3.append(el("p", "assess-alerta", "O convite da sua equipe é para até " + limite + " atletas, e a planilha tem " + total + ". Tire " + (total - limite) + " ou fale com a Tardim Produções."));
+    if (passou) p3.append(el("p", "assess-alerta", "O convite da sua equipe é para até " + atletasTxt(limite) + ", e a planilha tem " + total + ". Tire " + (total - limite) + " ou fale com a Tardim Produções."));
 
     // Números
     var nums = el("div", "assess-nums");
@@ -611,7 +611,7 @@
       tg.append(cb, " Mostrar só as linhas com erro");
       topoTab.append(tg);
     }
-    if (estado.avisos) topoTab.append(el("span", "assess-legenda", estado.avisos + (estado.avisos === 1 ? " aviso" : " avisos") + " (não impede o envio)"));
+    if (estado.avisos) topoTab.append(el("span", "assess-legenda", estado.avisos + (estado.avisos === 1 ? " aviso (não impede o envio)" : " avisos (não impedem o envio)")));
     p3.append(topoTab);
     var wrapT = el("div", "assess-tab");
     var t = el("table");
