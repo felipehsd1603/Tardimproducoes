@@ -5,16 +5,19 @@ import { sha256, novaChave, novoSegredo } from "../_lib/chaves.ts";
 import { json } from "../_lib/http.ts";
 import { isoBanco, hojeBR } from "./provas.ts";
 import { ErroApi, corpoJson, texto, contaUso, LIMITE_CONEXAO_IP } from "./comum.ts";
+import type { Env, Conexao, Integracao } from "../_lib/tipos.ts";
+
+type ConexaoComParceiro = Conexao & { p_nome: string; p_tipo: string; p_situacao: string; p_ativo: number };
 
 const ABERTAS = ["enviado", "enviando", "falhou"];
 
 /** POST /conexoes/<id>/aceitar | /recusar (sem chave: autentica pelo código do convite) */
-export async function respondeConexao(request, env, id, acao) {
+export async function respondeConexao(request: Request, env: Env, id: string, acao: "aceitar" | "recusar"): Promise<Response> {
   await contaUso(env, "ip:" + (request.headers.get("CF-Connecting-IP") || "local"), LIMITE_CONEXAO_IP);
   const d = await corpoJson(request);
   const cx = await env.DB.prepare(
     "SELECT x.*, p.nome AS p_nome, p.tipo AS p_tipo, p.situacao AS p_situacao, p.ativo AS p_ativo FROM conexoes x JOIN parceiros p ON p.id = x.parceiro_id WHERE x.id = ?"
-  ).bind(id).first();
+  ).bind(id).first<ConexaoComParceiro>();
   if (!cx) throw new ErroApi(404, "nao_encontrado", "Convite não encontrado.");
   if (!/^[0-9a-f]{64}$/.test(String(d.codigo || "")) || (await sha256(d.codigo)) !== cx.codigo_hash) {
     throw new ErroApi(401, "codigo_invalido", "Código do convite inválido.");
@@ -35,7 +38,7 @@ export async function respondeConexao(request, env, id, acao) {
   // O endereço de avisos precisa ser da mesma plataforma convidada
   let webhook = "";
   if (d.webhook_url) {
-    let u;
+    let u: URL;
     try { u = new URL(String(d.webhook_url)); } catch (e) { throw new ErroApi(400, "campo_obrigatorio", "webhook_url inválido."); }
     if (u.origin !== cx.plataforma_url) throw new ErroApi(400, "campo_obrigatorio", "webhook_url precisa ser do mesmo endereço convidado (" + cx.plataforma_url + ").");
     webhook = u.toString();
@@ -59,7 +62,7 @@ export async function respondeConexao(request, env, id, acao) {
 }
 
 /** DELETE /conexao: a plataforma desconecta (a chave deixa de valer) */
-export async function desconecta(env, integ) {
+export async function desconecta(env: Env, integ: Pick<Integracao, "id">): Promise<Response> {
   await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(isoBanco(Date.now()), integ.id).run();
   return json({ ok: true });
 }

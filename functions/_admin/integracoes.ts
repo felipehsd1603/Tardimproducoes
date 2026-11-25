@@ -39,7 +39,7 @@ async function entregaConvite(env: Env, cx: Conexao, url: URL) {
   const expira = new Date(Date.now() + VALIDADE_CONVITE).toISOString().slice(0, 19) + "Z";
   await env.DB.prepare("UPDATE conexoes SET codigo_hash = ?, expira_em = ?, situacao = 'enviando', erro = '' WHERE id = ?")
     .bind(await sha256(codigo), expira, cx.id).run();
-  const r = await enviaConviteConexao(env, Object.assign({}, cx, { expira_em: expira }), p, codigo, origemPublica(url));
+  const r = await enviaConviteConexao(env, Object.assign({}, cx, { expira_em: expira }), p!, codigo, origemPublica(url));
   await env.DB.prepare("UPDATE conexoes SET situacao = ?, erro = ?, enviado_em = ? WHERE id = ? AND situacao = 'enviando'")
     .bind(r.ok ? "enviado" : "falhou", r.ok ? "" : String(r.erro || "").slice(0, 300), new Date().toISOString().slice(0, 19) + "Z", cx.id).run();
   return env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE id = ?").bind(cx.id).first();

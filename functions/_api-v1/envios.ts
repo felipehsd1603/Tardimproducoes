@@ -10,16 +10,25 @@ import { linhasProvas, formataProva, isoBanco } from "./provas.ts";
 import { atletaApi } from "./avisos.ts";
 
 import { ErroApi } from "./comum.ts";
+import type { Env, Dados, Atleta, EnvioApi, IntegracaoComParceiro } from "../_lib/tipos.ts";
+
+type Integ = IntegracaoComParceiro;
+type ProvaApi = Awaited<ReturnType<typeof formataProva>>;
+interface Rejeitado { id_externo: string | null; codigo: string; campo: string | null; mensagem: string }
+interface AtletaEnvio {
+  id_externo: string; nome: string; cpf: string; nascimento: string; sexo: string; percurso_id: string; distancia: string;
+  camiseta: string; email: string; telefone: string; equipe: string; consentimento_em: string;
+}
 
 const MAX_ATLETAS = 1000;
 const ATIVAS = ["recebido", "aguardando_pagamento", "inscrito"];
-const txt = (v, max) => { const s = typeof v === "string" ? v.trim() : (v == null ? "" : String(v).trim()); return s.length > max ? null : s; };
+const txt = (v: unknown, max: number): string | null => { const s = typeof v === "string" ? v.trim() : (v == null ? "" : String(v).trim()); return s.length > max ? null : s; };
 
-const dataValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + "T12:00:00Z"));
+const dataValida = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + "T12:00:00Z"));
 
 // Confere um atleta. Devolve { a } normalizado ou { erro: { codigo, campo, mensagem } }
-function confereAtleta(x, prova) {
-  const e = (codigo, campo, mensagem) => ({ erro: { id_externo: x && x.id_externo ? String(x.id_externo) : null, codigo, campo, mensagem } });
+function confereAtleta(x: Dados | null, prova: ProvaApi): { a: AtletaEnvio; erro?: undefined } | { erro: Rejeitado; a?: undefined } {
+  const e = (codigo: string, campo: string | null, mensagem: string) => ({ erro: { id_externo: x && x.id_externo ? String(x.id_externo) : null, codigo, campo, mensagem } });
   if (!x || typeof x !== "object") return e("atleta_invalido", null, "Atleta inválido.");
   const id = txt(x.id_externo, 80);
   if (!id) return e("campo_obrigatorio", "id_externo", "id_externo obrigatório (até 80 caracteres).");
@@ -37,21 +46,22 @@ function confereAtleta(x, prova) {
   const tel = String(x.telefone || "").replace(/[^\d+]/g, "");
   if (!/^\+?\d{10,14}$/.test(tel)) return e("atleta_invalido", "telefone", "Telefone inválido.");
   const consent = isoBanco(x.consentimento_em);
+  // (id, nome, email e equipe já conferidos acima: não são null aqui)
   if (!consent) return e("campo_obrigatorio", "consentimento_em", "consentimento_em obrigatório: o atleta precisa autorizar o envio dos dados.");
   const equipe = txt(x.equipe, 120);
-  return { a: { id_externo: id, nome, cpf, nascimento: x.nascimento, sexo: x.sexo, percurso_id: percurso.id, distancia: percurso.nome, camiseta: x.camiseta, email, telefone: tel, equipe: equipe === null ? "" : equipe, consentimento_em: consent } };
+  return { a: { id_externo: id as string, nome: nome as string, cpf, nascimento: x.nascimento, sexo: x.sexo, percurso_id: percurso.id, distancia: percurso.nome, camiseta: x.camiseta, email: email as string, telefone: tel, equipe: equipe === null ? "" : equipe, consentimento_em: consent } };
 }
 
-export async function recebeEnvio(request, env, integ, url, corpoTexto) {
+export async function recebeEnvio(request: Request, env: Env, integ: Integ, url: URL, corpoTexto: string): Promise<{ status: number; corpo: Dados }> {
   const chaveIdem = (request.headers.get("Idempotency-Key") || "").trim();
   if (!chaveIdem || chaveIdem.length > 120) throw new ErroApi(400, "campo_obrigatorio", "Cabeçalho Idempotency-Key obrigatório (até 120 caracteres).");
   const hashCorpo = await sha256(corpoTexto);
-  const anterior = await env.DB.prepare("SELECT corpo_hash, resposta FROM envios_api WHERE integracao_id = ? AND idempotency_key = ?").bind(integ.id, chaveIdem).first();
+  const anterior = await env.DB.prepare("SELECT corpo_hash, resposta FROM envios_api WHERE integracao_id = ? AND idempotency_key = ?").bind(integ.id, chaveIdem).first<Pick<EnvioApi, "corpo_hash" | "resposta">>();
   if (anterior) {
     if (anterior.corpo_hash !== hashCorpo) throw new ErroApi(409, "idempotencia_conflito", "Esta Idempotency-Key já foi usada com outro conteúdo.");
     return { status: 202, corpo: JSON.parse(anterior.resposta) };
   }
-  let d;
+  let d: Dados;
   try { d = JSON.parse(corpoTexto); } catch (e) { throw new ErroApi(400, "json_invalido", "JSON inválido."); }
   if (!d || typeof d !== "object" || Array.isArray(d)) throw new ErroApi(400, "json_invalido", "JSON inválido.");
   const atletas = Array.isArray(d.atletas) ? d.atletas : [];
@@ -74,19 +84,20 @@ export async function recebeEnvio(request, env, integ, url, corpoTexto) {
   // Atletas que esta assessoria já tem na prova (pelo id_externo)
   const ja = new Map((await env.DB.prepare(
     "SELECT id, id_externo, situacao FROM atletas WHERE prova_id = ? AND parceiro_id = ? AND id_externo <> ''"
-  ).bind(l.id, integ.parceiro_id).all()).results.map((x) => [x.id_externo, x]));
+  ).bind(l.id, integ.parceiro_id).all<Pick<Atleta, "id" | "id_externo" | "situacao">>()).results.map((x) => [x.id_externo, x]));
   let ativos = [...ja.values()].filter((x) => ATIVAS.includes(x.situacao)).length;
   // Cancelamentos do mesmo envio liberam a vaga antes de contar os novos
-  for (const c of cancel) { const x = ja.get(txt(c && c.id_externo, 80)); if (x && ATIVAS.includes(x.situacao)) ativos--; }
+  for (const c of cancel) { const x = ja.get(txt(c && c.id_externo, 80) as string); if (x && ATIVAS.includes(x.situacao)) ativos--; }
   const limite = prova.coletiva.limite_atletas;
 
-  const passos = [], saidaAtletas = [], rejeitados = [], saidaCancel = [];
-  const vistos = new Set();
+  const passos: D1PreparedStatement[] = [], saidaAtletas: { id_externo: string; situacao: string }[] = [], rejeitados: Rejeitado[] = [],
+    saidaCancel: { id_externo: string; situacao: string }[] = [];
+  const vistos = new Set<string>();
   let novos = 0;
   for (const x of atletas) {
     const r = confereAtleta(x, prova);
     if (r.erro) { rejeitados.push(r.erro); continue; }
-    const a = r.a;
+    const a = r.a as AtletaEnvio;
     if (vistos.has(a.id_externo)) { rejeitados.push({ id_externo: a.id_externo, codigo: "atleta_invalido", campo: "id_externo", mensagem: "id_externo repetido no mesmo envio." }); continue; }
     vistos.add(a.id_externo);
     const existe = ja.get(a.id_externo);
@@ -116,7 +127,7 @@ export async function recebeEnvio(request, env, integ, url, corpoTexto) {
     if (!existe) { rejeitados.push({ id_externo: id || null, codigo: "nao_encontrado", campo: "id_externo", mensagem: "Atleta não encontrado para cancelar." }); continue; }
     passos.push(env.DB.prepare("UPDATE atletas SET situacao = 'cancelado', motivo = ?, envio_id = ?, atualizado_em = ? WHERE id = ?")
       .bind(txt(c.motivo, 300) || "cancelado pela assessoria", envioId, agora, existe.id));
-    saidaCancel.push({ id_externo: id, situacao: "cancelado" });
+    saidaCancel.push({ id_externo: id as string, situacao: "cancelado" });
   }
 
   // A linha de inscricoes agrupa o envio (aparece no painel em Inscrições coletivas); precisa vir antes dos atletas novos
@@ -135,16 +146,16 @@ export async function recebeEnvio(request, env, integ, url, corpoTexto) {
   return { status: 202, corpo };
 }
 
-export async function consultaEnvio(env, integ, id) {
+export async function consultaEnvio(env: Env, integ: Integ, id: string) {
   const e = await env.DB.prepare("SELECT * FROM envios_api WHERE id = ? AND integracao_id IN (SELECT id FROM integracoes WHERE parceiro_id = ?)")
-    .bind(id, integ.parceiro_id).first();
+    .bind(id, integ.parceiro_id).first<EnvioApi>();
   if (!e) throw new ErroApi(404, "nao_encontrado", "Envio não encontrado.");
   const r = JSON.parse(e.resposta);
-  const atuais = (await env.DB.prepare("SELECT * FROM atletas WHERE envio_id = ?").bind(id).all()).results;
+  const atuais = (await env.DB.prepare("SELECT * FROM atletas WHERE envio_id = ?").bind(id).all<Atleta>()).results;
   return { envio: r.envio, prova_id: e.prova_id, atletas: atuais.map(atletaApi), rejeitados: r.rejeitados };
 }
 
-export async function situacaoAtletas(env, integ, url) {
+export async function situacaoAtletas(env: Env, integ: Integ, url: URL) {
   const prova = url.searchParams.get("prova_id");
   if (!prova) throw new ErroApi(400, "campo_obrigatorio", "Informe prova_id.");
   const desde = url.searchParams.get("atualizados_desde");
@@ -152,6 +163,6 @@ export async function situacaoAtletas(env, integ, url) {
   if (desde && !desdeIso) throw new ErroApi(400, "campo_obrigatorio", "Data inválida em atualizados_desde.");
   const r = await env.DB.prepare(
     "SELECT * FROM atletas WHERE prova_id = ? AND parceiro_id = ? AND id_externo <> ''" + (desdeIso ? " AND atualizado_em >= ?" : "") + " ORDER BY id"
-  ).bind(...[prova, integ.parceiro_id].concat(desdeIso ? [desdeIso] : [])).all();
+  ).bind(...[prova, integ.parceiro_id].concat(desdeIso ? [desdeIso] : [])).all<Atleta>();
   return { atletas: r.results.map((a) => Object.assign(atletaApi(a), { atualizado_em: isoBanco(a.atualizado_em) })), proximo_cursor: null };
 }

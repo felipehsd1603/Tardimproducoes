@@ -6,15 +6,21 @@
 import { assinaJws } from "../_lib/assinatura.ts";
 import { hmacHex } from "../_lib/http.ts";
 import { linhasProvas, formataProva, conviteApi, integracaoAtiva } from "./provas.ts";
+import type { Env, Dados, Atleta, Conexao, Convite, Parceiro, AvisoFila, Integracao } from "../_lib/tipos.ts";
+
+/** Resultado de uma entrega (convite ou aviso) à plataforma. */
+export interface Entrega { ok: boolean; status: number; erro?: string; entrega?: string }
+/** O mínimo de uma integração para assinar e entregar avisos. */
+type Destino = Pick<Integracao, "webhook_url" | "webhook_segredo">;
 
 const ESPERA = 10000;
 
 // Endereço oficial que assina os convites (iss): o painel pode estar aberto pelo *.pages.dev
-export function origemPublica(url) {
+export function origemPublica(url: URL): string {
   return /(^|\.)tardimproducoes\.com\.br$|(^|\.)tardim-teste\.pages\.dev$/i.test(url.hostname) ? "https://tardimproducoes.com.br" : url.origin;
 }
 
-async function posta(url, corpo, cabecalhos) {
+async function posta(url: string, corpo: string, cabecalhos?: Record<string, string>): Promise<Entrega> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ESPERA);
   try {
@@ -24,14 +30,14 @@ async function posta(url, corpo, cabecalhos) {
     try { detalhe = (await r.text()).slice(0, 200); } catch (e) { /* sem corpo */ }
     return { ok: false, status: r.status, erro: "HTTP " + r.status + (detalhe ? ": " + detalhe : "") };
   } catch (e) {
-    return { ok: false, status: 0, erro: ctl.signal.aborted ? "sem resposta em 10 s" : "não conectou (" + String((e && e.message) || e).slice(0, 120) + ")" };
+    return { ok: false, status: 0, erro: ctl.signal.aborted ? "sem resposta em 10 s" : "não conectou (" + String((e && (e as Error).message) || e).slice(0, 120) + ")" };
   } finally { clearTimeout(t); }
 }
 
 // ---------- convite de conexão ----------
-export function endpointConvites(plataformaUrl) { return plataformaUrl.replace(/\/+$/, "") + "/api/integracoes/organizadoras/convites"; }
+export function endpointConvites(plataformaUrl: string): string { return plataformaUrl.replace(/\/+$/, "") + "/api/integracoes/organizadoras/convites"; }
 
-export async function enviaConviteConexao(env, cx, parceiro, codigo, origem) {
+export async function enviaConviteConexao(env: Env, cx: Conexao, parceiro: Pick<Parceiro, "id" | "nome" | "responsavel" | "email">, codigo: string, origem: string): Promise<Entrega> {
   const agora = Math.floor(Date.now() / 1000);
   const jws = await assinaJws(env, {
     iss: origem,
@@ -58,16 +64,16 @@ export async function enviaConviteConexao(env, cx, parceiro, codigo, origem) {
 // ---------- avisos (webhooks) ----------
 // Novas tentativas (minutos depois da 1ª, 2ª... falha). Depois da última, a entrega é dada como perdida.
 const ESPERAS_MIN = [1, 5, 30, 120, 360, 1440];
-const isoAgora = (mais = 0) => new Date(Date.now() + mais * 60000).toISOString().slice(0, 19) + "Z";
+const isoAgora = (mais = 0): string => new Date(Date.now() + mais * 60000).toISOString().slice(0, 19) + "Z";
 
-async function entrega(integ, evento, id, corpo) {
+async function entrega(integ: Destino, evento: string, id: string, corpo: string): Promise<Entrega> {
   const t = Math.floor(Date.now() / 1000);
   const v1 = await hmacHex(integ.webhook_segredo, t + "." + corpo);
   return posta(integ.webhook_url, corpo, { "x-tardim-evento": evento, "x-tardim-entrega": id, "x-tardim-assinatura": "t=" + t + ",v1=" + v1 });
 }
 
 /** Manda um aviso agora; se falhar, entra na fila (avisos_fila) com o mesmo id de entrega. */
-export async function enviaAviso(env, integ, evento, dados) {
+export async function enviaAviso(env: Env, integ: (Destino & { id: string }) | null, evento: string, dados: unknown): Promise<Entrega> {
   if (!integ || !integ.webhook_url || !integ.webhook_segredo) return { ok: false, status: 0, erro: "sem endereço de avisos" };
   const id = "ent_" + crypto.randomUUID();
   const corpo = JSON.stringify({ id, evento, criado_em: isoAgora(), dados });
@@ -80,7 +86,7 @@ export async function enviaAviso(env, integ, evento, dados) {
 }
 
 // Entregue depois de falhar: as marcas de "aviso não entregue" do painel passam a "ok"
-async function marcaEntregue(env, x) {
+async function marcaEntregue(env: Env, x: AvisoFila): Promise<void> {
   try {
     const c = JSON.parse(x.corpo).dados || {};
     if (x.evento.startsWith("convite.") && (c.convite?.id || c.convite_id)) {
@@ -88,7 +94,7 @@ async function marcaEntregue(env, x) {
     }
     if (x.evento === "atleta.situacao" && Array.isArray(c.atletas) && c.atletas.length) {
       await env.DB.prepare("UPDATE atletas SET aviso = 'ok' WHERE prova_id = ? AND parceiro_id = (SELECT parceiro_id FROM integracoes WHERE id = ?) AND id_externo IN (" +
-        c.atletas.map(() => "?").join(",") + ")").bind(c.prova_id, x.integracao_id, ...c.atletas.map((a) => a.id_externo)).run();
+        c.atletas.map(() => "?").join(",") + ")").bind(c.prova_id, x.integracao_id, ...c.atletas.map((a: Dados) => a.id_externo)).run();
     }
   } catch (e) { /* marca é só informativa */ }
 }
@@ -98,11 +104,11 @@ async function marcaEntregue(env, x) {
  * requisições que chegam (Pages não tem tarefa agendada). Cada linha é "reservada" antes do envio
  * para duas chamadas simultâneas não mandarem o mesmo aviso.
  */
-export async function processaFila(env, limite = 10) {
+export async function processaFila(env: Env, limite = 10): Promise<{ vistos: number; entregues: number }> {
   const lista = (await env.DB.prepare(
     "SELECT f.*, i.webhook_url, i.webhook_segredo, i.revogada_em FROM avisos_fila f LEFT JOIN integracoes i ON i.id = f.integracao_id " +
     "WHERE f.entregue_em = '' AND f.desistido_em = '' AND f.proxima_em <= ? ORDER BY f.proxima_em LIMIT ?"
-  ).bind(isoAgora(), limite).all()).results;
+  ).bind(isoAgora(), limite).all<AvisoFila & Destino & { revogada_em: string | null }>()).results;
   let entregues = 0;
   for (const x of lista) {
     const reserva = await env.DB.prepare("UPDATE avisos_fila SET proxima_em = ? WHERE id = ? AND proxima_em = ?").bind(isoAgora(2), x.id, x.proxima_em).run();
@@ -127,14 +133,14 @@ export async function processaFila(env, limite = 10) {
   return { vistos: lista.length, entregues };
 }
 
-const marcaAviso = (env, id, r) => env.DB.prepare("UPDATE convites SET api_aviso = ? WHERE id = ?")
+const marcaAviso = (env: Env, id: string, r: Entrega): Promise<D1Result> => env.DB.prepare("UPDATE convites SET api_aviso = ? WHERE id = ?")
   .bind(r.ok ? "ok" : "erro: " + String(r.erro || "").slice(0, 200), id).run();
 
 // Convite de prova criado ou alterado: se a assessoria está conectada e a prova aparece para ela,
 // marca como pendente (primeira vez) e manda convite.criado / convite.alterado.
 // Devolve null quando não há o que avisar (sem conexão, prova passada ou não publicada).
-export async function avisaConvite(env, conviteId, origem) {
-  const c = await env.DB.prepare("SELECT id, parceiro_id FROM convites WHERE id = ?").bind(conviteId).first();
+export async function avisaConvite(env: Env, conviteId: string, origem: string): Promise<Entrega | null> {
+  const c = await env.DB.prepare("SELECT id, parceiro_id FROM convites WHERE id = ?").bind(conviteId).first<Pick<Convite, "id" | "parceiro_id">>();
   if (!c) return null;
   const integ = await integracaoAtiva(env, c.parceiro_id);
   if (!integ) return null;
@@ -151,7 +157,7 @@ export async function avisaConvite(env, conviteId, origem) {
 }
 
 // Convite apagado no painel (chamar ANTES de apagar, com os dados da linha)
-export async function avisaConviteCancelado(env, convite) {
+export async function avisaConviteCancelado(env: Env, convite: Convite | null): Promise<Entrega | null> {
   if (!convite || !convite.api_situacao) return null;
   const integ = await integracaoAtiva(env, convite.parceiro_id);
   if (!integ) return null;
@@ -159,21 +165,21 @@ export async function avisaConviteCancelado(env, convite) {
 }
 
 // Situação de atletas mudou no painel: um aviso atleta.situacao por assessoria e prova
-export function atletaApi(a) {
+export function atletaApi(a: Atleta) {
   return { id_externo: a.id_externo, situacao: a.situacao, motivo: a.motivo || null, numero_peito: a.numero_peito || null, percurso_id: a.percurso_id || null };
 }
-export async function avisaAtletas(env, ids) {
+export async function avisaAtletas(env: Env, ids: number[]): Promise<Dados[]> {
   if (!ids || !ids.length) return [];
   const linhas = (await env.DB.prepare(
     "SELECT * FROM atletas WHERE origem = 'api' AND id IN (" + ids.map(() => "?").join(",") + ")"
-  ).bind(...ids).all()).results;
-  const grupos = {};
+  ).bind(...ids).all<Atleta>()).results;
+  const grupos: Record<string, Atleta[]> = {};
   for (const a of linhas) (grupos[a.parceiro_id + "|" + a.prova_id] = grupos[a.parceiro_id + "|" + a.prova_id] || []).push(a);
-  const res = [];
+  const res: Dados[] = [];
   for (const k of Object.keys(grupos)) {
     const g = grupos[k];
     const integ = await integracaoAtiva(env, g[0].parceiro_id);
-    const r = integ ? await enviaAviso(env, integ, "atleta.situacao", { prova_id: g[0].prova_id, atletas: g.map(atletaApi) }) : { ok: false, erro: "assessoria desconectada" };
+    const r: Partial<Entrega> = integ ? await enviaAviso(env, integ, "atleta.situacao", { prova_id: g[0].prova_id, atletas: g.map(atletaApi) }) : { ok: false, erro: "assessoria desconectada" };
     const marca = r.ok ? "ok" : "erro: " + String(r.erro || "").slice(0, 200);
     await env.DB.batch(g.map((a) => env.DB.prepare("UPDATE atletas SET aviso = ? WHERE id = ?").bind(marca, a.id)));
     res.push(Object.assign({ prova_id: g[0].prova_id, atletas: g.length }, r));
@@ -182,9 +188,9 @@ export async function avisaAtletas(env, ids) {
 }
 
 // Prova alterada ou publicada: avisa os convites dela de assessorias conectadas
-export async function avisaConvitesDaProva(env, provaId, origem) {
+export async function avisaConvitesDaProva(env: Env, provaId: string, origem: string): Promise<void> {
   const r = await env.DB.prepare(
     "SELECT c.id FROM convites c WHERE c.prova_id = ? AND EXISTS (SELECT 1 FROM integracoes i WHERE i.parceiro_id = c.parceiro_id AND i.revogada_em = '')"
-  ).bind(provaId).all();
+  ).bind(provaId).all<{ id: string }>();
   for (const x of r.results) await avisaConvite(env, x.id, origem).catch(() => null);
 }
