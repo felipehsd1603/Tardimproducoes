@@ -8,3 +8,6 @@
 # Cloudflare (estado local do wrangler)
 /.wrangler/
 /.dev.vars
+
+# Dependências (npm install)
+/node_modules/
