@@ -83,9 +83,21 @@ async function paginaProva(env, id, url) {
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" } });
 }
 
-// A pasta inteira é publicada: o código do servidor, o esquema do banco e os
-// arquivos de configuração não devem ser lidos pelo endereço do site.
-const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
+// O deploy sobe só publico/ (scripts/montar-publico.mjs), mas o Pages guarda em cache respostas
+// de deploys antigos, que publicavam a pasta inteira. Por isso o _routes.json manda quase tudo
+// para cá e o caminho é normalizado antes de conferir (//, \, /./, %2f, maiúsculas).
+const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
+function caminhoNormal(pathname) {
+  let p = pathname;
+  for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch (e) { break; } }
+  p = p.replace(/\\/g, "/").replace(/\/{2,}/g, "/");
+  const partes = [];
+  for (const s of p.split("/")) {
+    if (s === "..") partes.pop();
+    else if (s !== ".") partes.push(s);
+  }
+  return ("/" + partes.filter((s, i) => s || i === partes.length - 1).join("/")).replace(/\/+/g, "/").replace(/[.\s]+$/, "");
+}
 
 // Avisos às plataformas que falharam: tentados de novo em segundo plano (Pages não tem tarefa agendada).
 // Sempre nas chamadas do painel e da API v1; numa fração das visitas ao site, para não pesar.
@@ -97,7 +109,7 @@ function cuidaDaFila(env, url, waitUntil) {
 
 export async function onRequest({ request, env, next, waitUntil }) {
   const url = new URL(request.url);
-  if (PRIVADO.test(decodeURIComponent(url.pathname))) {
+  if (PRIVADO.test(caminhoNormal(url.pathname))) {
     return new Response("Não encontrado", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
   }
   cuidaDaFila(env, url, waitUntil);
