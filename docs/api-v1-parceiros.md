@@ -165,7 +165,7 @@ Cada convite que a Tardim cria para a assessoria (cupom, comissão, condições 
 | `recusado` | O admin recusou, com motivo opcional |
 
 - Aviso `convite.criado`, `convite.alterado` ou `convite.cancelado` (webhook), com `{ "convite": Convite, "prova": Prova }`.
-- `GET /convites?situacao=pendente` (com a chave): lista para conciliar se algum aviso se perder. Sem filtro, todos os convites de provas futuras.
+- `GET /convites?situacao=pendente` (com a chave): lista para conciliar se algum aviso se perder. Sem filtro, todos os convites de provas futuras. Resposta: `{ "convites": [ Convite com o campo "prova": Prova ] }` (sem paginação nesta versão). Convite que sumiu da lista (apagado ou prova já realizada) só chega como `convite.cancelado` quando foi apagado.
 - `POST /convites/{id}/aceitar` `{ "modo_pagamento": "assessoria" | "ticketsports", "aceito_por": "Nome" }` → `200 { "convite": Convite }`
 - `POST /convites/{id}/recusar` `{ "motivo": "opcional", "recusado_por": "Nome" }` → `200 { "convite": Convite }`
 - Aceitar ou recusar de novo um convite já respondido troca a resposta (a assessoria pode mudar de ideia até o prazo da coletiva).
