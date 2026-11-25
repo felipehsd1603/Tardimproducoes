@@ -2,6 +2,16 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-25 · Servidor em TypeScript + Hono
+
+### Mudou
+- `functions/` inteiro em **TypeScript** (`.ts`), com tipos do `Env` (ligações e segredos) e das linhas do D1 (`functions/_lib/tipos.ts`). Sem passo de build: o wrangler compila os `.ts`. `npm run tipos` confere os tipos (`tsconfig.json`).
+- Os roteadores `api/admin`, `api/v1`, `api/parceiro` e `api/inscricao-site` são apps **Hono** (`hono/cloudflare-pages`). Rotas, métodos (405 da v1), ordem das conferências (origem, login, sessão), formatos de erro, cabeçalhos e mensagens continuam iguais.
+- Dependências novas, versões exatas e gratuitas: `hono` 4.13.18; para desenvolvimento, `typescript` 5.9.3 e `@cloudflare/workers-types` 5.20261123.1.
+
+### Segurança
+- `tsconfig.json` não sai pelo endereço do site (lista de arquivos privados do middleware).
+
 ## 2026-11-25 · Organização da API e integração com sistemas de assessorias
 
 ### Novo

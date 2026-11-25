@@ -10,9 +10,9 @@ na Ticket Sports.
 | Parte | Onde |
 | --- | --- |
 | Configuração por prova (abrir, modalidades, camisetas, lotes com valor, último dia e vagas) | Painel > Provas > Inscrição no site (`provas.inscricao_site`) |
-| Regras (lote atual, desconto do cupom, vagas, CPF repetido, confirmação) | `functions/_lib/inscricoes-site.js` |
-| Cobrança PIX (API PIX padrão do Banco Central, formato do Banco Inter) | `functions/_lib/pix.js` |
-| Inscrição pública | `functions/api/inscricao-site/[[rota]].js` + `inscricao.html` |
+| Regras (lote atual, desconto do cupom, vagas, CPF repetido, confirmação) | `functions/_lib/inscricoes-site.ts` |
+| Cobrança PIX (API PIX padrão do Banco Central, formato do Banco Inter) | `functions/_lib/pix.ts` |
+| Inscrição pública | `functions/api/inscricao-site/[[rota]].ts` + `inscricao.html` |
 | Inscrição do parceiro | `POST /api/parceiro/inscricao`, `GET /api/parceiro/inscricoes` |
 | Painel | aba Inscrições no site (`/api/admin/inscricoes-site`) |
 | Tabela | `inscricoes_site` (`d1/migracoes/016-inscricoes-site.sql`) |

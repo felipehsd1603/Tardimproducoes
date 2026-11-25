@@ -6,13 +6,15 @@ Guia para quem mantém o código. O README explica o que cada página faz e como
 
 Site estático (HTML, CSS e JS na raiz) servido pelo **Cloudflare Pages**, com o backend em **Pages Functions** (`functions/`) e o banco no **Cloudflare D1** (binding `DB`, banco `tardim`).
 
+O código do servidor é **TypeScript** (`functions/**/*.ts`). Não há passo de build: o wrangler compila os `.ts` sozinho (esbuild) no `wrangler pages dev` e no deploy. O `tsc` só confere os tipos (`npm run tipos`, configuração em `tsconfig.json`). Os roteadores `api/admin`, `api/v1`, `api/parceiro` e `api/inscricao-site` são apps **Hono** (`hono/cloudflare-pages`); as rotas simples e o middleware continuam como funções do Pages.
+
 | Área | Endereço | Quem usa | Login | Formato de erro | Documentação |
 | --- | --- | --- | --- | --- | --- |
 | Painel | `/api/admin/*` | `admin.html` (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
 | Área do parceiro | `/api/parceiro/*` | `parceiro.html` | E-mail/senha ou Google + cookie `tardim_parceiro` | `{ erro: <status>, mensagem }` | `/api/admin/docs` |
 | Site | `/api/orcamento`, `/api/inscricao`, `/api/aviso`, `/api/evento`, `/api/ticketsports` | Páginas do site; Ticket Sports | Nenhum (origem e limite por IP) | `{ erro: "<campo>" }` | `/api/admin/docs` |
 | API v1 para parceiros | `/api/v1/*` | Sistemas das assessorias (ex.: IM3), servidor a servidor | `Authorization: Bearer tdm_live_...` | `{ erro: { codigo, mensagem } }` | `/api/v1/docs` (pública) e `docs/api-v1-parceiros.md` |
-| Páginas dinâmicas | `/js/provas-db.js`, `/prova-<id>` | Calendário e páginas de prova | Nenhum | — | `functions/_middleware.js` |
+| Páginas dinâmicas | `/js/provas-db.js`, `/prova-<id>` | Calendário e páginas de prova | Nenhum | — | `functions/_middleware.ts` |
 
 Os formatos de erro das áreas antigas ficam como estão porque as páginas dependem deles; tudo que for **novo e para terceiros** segue o padrão da v1.
 
@@ -20,63 +22,66 @@ Os formatos de erro das áreas antigas ficam como estão porque as páginas depe
 
 ```
 functions/
-  _middleware.js          arquivos privados (404), provas do banco, cabeçalhos de segurança, fila de avisos
+  _middleware.ts          arquivos privados (404), provas do banco, cabeçalhos de segurança, fila de avisos
   _lib/                   utilitários sem regra de negócio
-    http.js               json(), mesmaOrigem(), HMAC, SHA-256, iguais(), cpfValido()
-    chaves.js             chaves e segredos da API v1 (geração, formato)
-    assinatura.js         JWS ES256 dos convites de conexão (segredo TARDIM_ASSINATURA_JWK)
-    limite.js             limite de envios por IP (tabela envios_tentativas)
-    cref6.js · instagram.js · cidades.js   consultas externas e lista do IBGE
+    tipos.ts              Env (ligações e segredos) e as linhas das tabelas do D1 (só tipos)
+    hono.ts               peças comuns dos roteadores Hono (método/HEAD, segmentos da rota)
+    http.ts               json(), mesmaOrigem(), HMAC, SHA-256, iguais(), cpfValido()
+    chaves.ts             chaves e segredos da API v1 (geração, formato)
+    assinatura.ts         JWS ES256 dos convites de conexão (segredo TARDIM_ASSINATURA_JWK)
+    limite.ts             limite de envios por IP (tabela envios_tentativas)
+    cref6.ts · instagram.ts · cidades.ts   consultas externas e lista do IBGE
   _admin/                 lógica da API do painel
-    comum.js              Erro, corpo(), regras compartilhadas
-    sessao.js             login e cookie
-    tabelas.js            campos permitidos, validação e CRUD das tabelas do painel
-    arquivos.js           imagens, configurações e PDF do contrato assinado
-    avisos-email.js       e-mail de "Me avise" (Resend)
-    integracoes.js        convite de conexão, reenviar, cancelar, desconectar
-    inscricoes.js         orçamentos, inscrições, conferência de atletas, medição
-    openapi.js            especificação das APIs internas
+    comum.ts              Erro, corpo(), regras compartilhadas
+    sessao.ts             login e cookie
+    tabelas.ts            campos permitidos, validação e CRUD das tabelas do painel
+    arquivos.ts           imagens, configurações e PDF do contrato assinado
+    avisos-email.ts       e-mail de "Me avise" (Resend)
+    integracoes.ts        convite de conexão, reenviar, cancelar, desconectar
+    inscricoes.ts         orçamentos, inscrições, conferência de atletas, medição
+    openapi.ts            especificação das APIs internas
   _api-v1/                lógica da API para parceiros
-    comum.js              ErroApi, corpoJson(), limite de 120/min
-    autenticacao.js       chave Bearer
-    conexoes.js           aceitar/recusar convite de conexão, desconectar
-    catalogo.js           eu, provas, convites de prova
-    envios.js             inscrição coletiva pela API
-    provas.js             formato de provas e convites
-    avisos.js             convite assinado, webhooks (HMAC) e fila de novas tentativas
-    openapi.js            especificação pública + página Swagger
+    comum.ts              ErroApi, corpoJson(), limite de 120/min
+    autenticacao.ts       chave Bearer
+    conexoes.ts           aceitar/recusar convite de conexão, desconectar
+    catalogo.ts           eu, provas, convites de prova
+    envios.ts             inscrição coletiva pela API
+    provas.ts             formato de provas e convites
+    avisos.ts             convite assinado, webhooks (HMAC) e fila de novas tentativas
+    openapi.ts            especificação pública + página Swagger
   api/                    só roteamento (um arquivo por área)
-    admin/[[rota]].js · parceiro/[[rota]].js · v1/[[rota]].js
-    orcamento.js · inscricao.js · aviso.js · evento.js · ticketsports.js
-  arquivos/[[caminho]].js imagens enviadas pelo painel
+    admin/[[rota]].ts · parceiro/[[rota]].ts · v1/[[rota]].ts
+    orcamento.ts · inscricao.ts · aviso.ts · evento.ts · ticketsports.ts
+  arquivos/[[caminho]].ts imagens enviadas pelo painel
 ```
 
 Regra: arquivo em `api/` só **mapeia rota para função**; regra de negócio fica em `_admin/`, `_api-v1/` ou `_lib/`. Pastas e arquivos com `_` não viram rota (não exportam `onRequest`).
 
 ## Como acrescentar uma rota
 
-1. Escreva a função no módulo da área (ex.: `_admin/inscricoes.js`), recebendo `env` e o que precisar, e devolvendo `json(...)`.
-2. Acrescente uma linha na tabela `ROTAS` do `[[rota]].js` da área: `["GET", "caminho/:id", ({ env, p }) => funcao(env, p.id)]`.
-3. Descreva a rota no `openapi.js` da área.
-4. Escreva o teste em `tests/api.test.mjs` e rode `npm test`.
+1. Escreva a função no módulo da área (ex.: `_admin/inscricoes.ts`), recebendo `env` e o que precisar, e devolvendo `json(...)`.
+2. Acrescente uma linha na tabela `ROTAS` do `[[rota]].ts` da área: `["GET", "caminho/:id", ({ env, p }) => funcao(env, p.id)]` (a tabela é registrada na app Hono do arquivo; na área do parceiro e na inscrição pelo site, a rota é um `app.get`/`app.post` direto). Rota GET não responde HEAD: use `metodo("GET", ...)` de `_lib/hono.ts`.
+3. Descreva a rota no `openapi.ts` da área.
+4. Escreva o teste em `tests/api.test.mjs` e rode `npm run tipos` e `npm test`.
 5. Rota da API v1: atualize também `docs/api-v1-parceiros.md` (e a cópia no repositório do IM3). A v1 só cresce: mudar ou remover um campo exige `/api/v2`.
 
 ## Segurança (vale para tudo)
 
 - **Escrita só da própria origem**: o painel, a área do parceiro e as rotas do site recusam escrita sem o cabeçalho `Origin` do próprio site. A API v1 não tem CORS: só servidor chama.
 - **Nenhum segredo no repositório.** Senhas, chaves e tokens são segredos do projeto Cloudflare (lista abaixo). Do que é gerado (chave da API, código de convite, senha de parceiro), o banco guarda só o hash.
-- **Arquivos privados**: o site inteiro é publicado; `functions/_middleware.js` responde 404 para código, esquema, documentação, testes e configuração (`PRIVADO`), e essas rotas estão em `_routes.json`. Arquivo interno novo na raiz entra nas duas listas, e o teste "arquivos privados" confere.
+- **Arquivos privados**: o site inteiro é publicado; `functions/_middleware.ts` responde 404 para código, esquema, documentação, testes e configuração (`PRIVADO`), e essas rotas estão em `_routes.json`. Arquivo interno novo na raiz entra nas duas listas, e o teste "arquivos privados" confere.
 - **Limites**: login do painel e do parceiro, 5 erros em 15 min por IP; orçamento e inscrição pelo site, 10 por hora por IP; API v1, 120 chamadas por minuto por chave e 20 aceites por minuto por IP.
 - **Dados pessoais** (CPF, nascimento, e-mail, telefone dos atletas) só chegam pela inscrição coletiva e nunca saem por API pública.
 
 ## Avisos às plataformas (webhooks)
 
-`_api-v1/avisos.js` assina cada aviso com HMAC-SHA256 do segredo da conexão. Se a entrega falhar, o aviso vai para a tabela `avisos_fila` com o mesmo `x-tardim-entrega` e é tentado de novo em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h. Como o Pages não tem tarefa agendada, o middleware processa a fila em segundo plano: sempre nas chamadas de `/api/admin` e `/api/v1`, e em 10% das outras visitas. Cada linha é reservada antes do envio, para duas requisições simultâneas não mandarem o mesmo aviso.
+`_api-v1/avisos.ts` assina cada aviso com HMAC-SHA256 do segredo da conexão. Se a entrega falhar, o aviso vai para a tabela `avisos_fila` com o mesmo `x-tardim-entrega` e é tentado de novo em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h. Como o Pages não tem tarefa agendada, o middleware processa a fila em segundo plano: sempre nas chamadas de `/api/admin` e `/api/v1`, e em 10% das outras visitas. Cada linha é reservada antes do envio, para duas requisições simultâneas não mandarem o mesmo aviso.
 
 ## Testes
 
 ```
 npm install
+npm run tipos   # TypeScript: zero erros
 npm test
 ```
 
