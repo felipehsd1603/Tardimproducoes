@@ -64,8 +64,28 @@ const REALIZADAS = [
         legenda: "Largada"
       },
       {
-        foto: "assets/fotos/hulk-run-2.webp",
-        legenda: "Percurso na Pampulha"
+        foto: "assets/fotos/hulk-run-percurso-0.webp",
+        legenda: "Percurso na Pampulha · Foto: @fotosgabii_"
+      },
+      {
+        foto: "assets/fotos/hulk-run-percurso-1.webp",
+        legenda: "Percurso · Foto: @fotosgabii_"
+      },
+      {
+        foto: "assets/fotos/hulk-run-percurso-2.webp",
+        legenda: "Orla da Pampulha · Foto: @fotosgabii_"
+      },
+      {
+        foto: "assets/fotos/hulk-run-percurso-4.webp",
+        legenda: "Percurso · Foto: @fotosgabii_"
+      },
+      {
+        foto: "assets/fotos/hulk-run-percurso-7.webp",
+        legenda: "Percurso · Foto: @fotosgabii_"
+      },
+      {
+        foto: "assets/fotos/hulk-run-percurso-10.webp",
+        legenda: "Percurso · Foto: @fotosgabii_"
       },
       {
         foto: "assets/fotos/hulk-run-3.webp",
@@ -259,6 +279,20 @@ const REALIZADAS = [
       "Corrida 5 km",
       "Corrida 10 km"
     ],
+    fotos: [
+      {
+        foto: "assets/fotos/policia-penal-2025-1.webp",
+        legenda: "1ª edição · Foto: @josycastro_fotop"
+      },
+      {
+        foto: "assets/fotos/policia-penal-2025-2.webp",
+        legenda: "1ª edição · Foto: @josycastro_fotop"
+      },
+      {
+        foto: "assets/fotos/policia-penal-2025-3.webp",
+        legenda: "1ª edição · Foto: @josycastro_fotop"
+      }
+    ],
     edicoes: [
       {
         rotulo: "1ª Corrida da Polícia Penal de MG",
@@ -435,6 +469,24 @@ const REALIZADAS = [
     destaques: [
       "Três edições seguidas organizadas pela Tardim Produções",
       "Homologada pela Federação Mineira de Atletismo"
+    ],
+    fotos: [
+      {
+        foto: "assets/fotos/policia-civil-2026-1.webp",
+        legenda: "5ª edição · Foto: @josycastro_fotop"
+      },
+      {
+        foto: "assets/fotos/policia-civil-2026-2.webp",
+        legenda: "5ª edição · Foto: @josycastro_fotop"
+      },
+      {
+        foto: "assets/fotos/policia-civil-2026-3.webp",
+        legenda: "5ª edição · Foto: @josycastro_fotop"
+      },
+      {
+        foto: "assets/fotos/policia-civil-2026-4.webp",
+        legenda: "5ª edição · Foto: @josycastro_fotop"
+      }
     ],
     edicoes: [
       {
@@ -728,6 +780,12 @@ const REALIZADAS = [
     descricao: "Corrida noturna em volta da Lagoa da Pampulha.",
     destaques: [
       "Chancela da Federação Mineira de Atletismo"
+    ],
+    fotos: [
+      {
+        foto: "assets/fotos/volta-noturna-2026-1.webp",
+        legenda: "5ª edição · Foto: @paulopeninha"
+      }
     ],
     edicoes: [
       {

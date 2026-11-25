@@ -86,6 +86,7 @@ const fixas = [
   { arquivo: "prova.html", titulo: "Prova · Tardim Produções", descricao: "Calendário de provas da Tardim Produções.", imagem: "", url: BASE + "prova.html" },
   { arquivo: "assessorias.html", titulo: "Inscrição coletiva para assessorias · Tardim Produções", descricao: "Baixe o modelo, confira a planilha da sua equipe e envie para a Tardim Produções.", imagem: "assets/compartilhar.jpg", url: BASE + "assessorias.html" },
   { arquivo: "equipe.html", titulo: "Página da equipe · Tardim Produções", descricao: "Corra com a sua assessoria: veja a prova, o prazo e mande seus dados para a inscrição.", imagem: "assets/compartilhar.jpg", url: BASE + "equipe.html" },
+  { arquivo: "empresas.html", titulo: "Para empresas · Tardim Produções", descricao: "Sua corrida ou evento do começo ao fim, com um só fornecedor. Simule e peça seu orçamento.", imagem: "assets/compartilhar.jpg", url: BASE + "empresas.html" },
   { arquivo: "institucional.html", titulo: "Institucional · Tardim Produções", descricao: "Corridas, eventos e prevenção contra incêndio para órgãos públicos, conselhos e instituições.", imagem: "assets/compartilhar.jpg", url: BASE + "institucional.html" },
   { arquivo: "privacidade.html", titulo: "Política de privacidade · Tardim Produções", descricao: "Fazendo bem feito!", imagem: "assets/compartilhar.jpg", url: BASE + "privacidade.html" },
   { arquivo: "programa-embaixadores.html", titulo: "Programa de embaixadores · Tardim Produções", descricao: "Regras para quem divulga as provas da Tardim Produções com cupom e link próprios.", imagem: "assets/compartilhar.jpg", url: BASE + "programa-embaixadores.html" },
@@ -96,7 +97,7 @@ const fixas = [
 for (const p of fixas) {
   gravar(p.arquivo, trocaOG(ler(p.arquivo), blocoOG({ titulo: p.titulo, descricao: p.descricao, imagem: imagemPrevia(p.imagem), url: p.url })));
 }
-urls.push(BASE, BASE + "portfolio.html", BASE + "institucional.html", BASE + "privacidade.html");
+urls.push(BASE, BASE + "empresas.html", BASE + "portfolio.html", BASE + "institucional.html", BASE + "privacidade.html");
 const FIXAS_NO_SITEMAP = urls.length;
 
 // Uma página por prova
@@ -109,7 +110,9 @@ for (const ev of PROXIMAS) {
   const descricao = [ev.data ? dataBR(ev.data) : "", ev.local, percursos].filter(Boolean).join(" · ") + ". Inscrições e informações da prova.";
   let html = trocaTitulo(modeloProva, titulo);
   html = trocaDescricao(html, descricao);
-  html = trocaOG(html, blocoOG({ titulo: ev.nome, descricao, imagem: imagemPrevia(ev.poster), url: BASE + arquivo }));
+  // A arte é a maior imagem da tela e só entra pelo js/prova.js: o navegador já começa a baixar
+  html = trocaOG(html, blocoOG({ titulo: ev.nome, descricao, imagem: imagemPrevia(ev.poster), url: BASE + arquivo }) +
+    (ev.poster ? `\n    <link rel="preload" as="image" href="${esc(ev.poster)}" fetchpriority="high" />` : ""));
   html = marcaId(html, ev.id);
   gravar(arquivo, html);
   urls.push(BASE + arquivo);

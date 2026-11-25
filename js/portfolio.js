@@ -85,8 +85,25 @@
   }
 
   // Card de evento (usado na lista e em "outros eventos")
-  function card(ev) {
-    var a = el("a", "case-card");
+  // Trabalho sem foto nem logo: linha compacta (ícone + nome), em vez de um card grande vazio
+  function cardCompacto(ev) {
+    var a = el("a", "case-card case-card--compacto");
+    a.href = linkEvento(ev.id);
+    a.setAttribute("data-tipo", ev.tipo || "");
+    a.setAttribute("data-area", area(ev));
+    a.append(iconeEvento(ev, "case-icon"));
+    var corpo = el("div", "case-card__body");
+    var meta = el("p", "case-card__meta", [rotuloEdicoes(ev), ev.tipo].filter(Boolean).join(" · "));
+    if (ev.demo) meta.append(" ", el("span", "tag-demo", "Exemplo"));
+    corpo.append(meta, el("h3", null, ev.nome));
+    if (ev.cliente) corpo.append(el("p", "case-card__client", ev.cliente));
+    if (ev.participantes) corpo.append(el("p", "case-card__num", participantes(ev.participantes)));
+    a.append(corpo, el("span", "case-card__seta", "→"));
+    return a;
+  }
+
+  function card(ev, destaque) {
+    var a = el("a", "case-card" + (destaque ? " case-card--destaque" : ""));
     a.href = linkEvento(ev.id);
     a.setAttribute("data-tipo", ev.tipo || "");
     a.setAttribute("data-area", area(ev));
@@ -110,6 +127,7 @@
     var corpo = el("div", "case-card__body");
     var meta = el("p", "case-card__meta", [rotuloEdicoes(ev), ev.tipo].filter(Boolean).join(" · "));
     if (ev.demo) meta.append(" ", el("span", "tag-demo", "Exemplo"));
+    if (destaque) capa.append(el("span", "case-card__destaque", "Destaque"));
     corpo.append(meta, el("h3", null, ev.nome));
     if (ev.cliente) corpo.append(el("p", "case-card__client", ev.cliente));
     if (ev.participantes) corpo.append(el("p", "case-card__num", participantes(ev.participantes)));
@@ -192,10 +210,14 @@
       filtros.forEach(function (f) {
         f.el.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === estado[f.chave])); });
       });
-      grade.querySelectorAll(".case-card").forEach(function (c) {
+      cw.querySelectorAll(".case-card").forEach(function (c) {
         c.hidden = !((estado.area === "" || c.getAttribute("data-area") === estado.area) &&
           (estado.tipo === "" || c.getAttribute("data-tipo") === estado.tipo));
       });
+      // Títulos e "nenhum resultado" acompanham o filtro
+      if (tituloOutros) tituloOutros.hidden = !lista.querySelector(".case-card:not([hidden])");
+      var nada = !cw.querySelector(".case-card:not([hidden])");
+      vazio.hidden = !nada;
     }
     function linhaFiltro(chave, rotulo, todos, valores) {
       if (valores.length < 2) return;
@@ -224,8 +246,26 @@
     linhaFiltro("area", "Filtrar por área", "Todas as áreas", ordenados(area));
     linhaFiltro("tipo", "Filtrar por tipo de cliente", "Todos os clientes", ordenados(function (e) { return e.tipo; }));
     setTimeout(aplicaFiltros);
-    eventos.forEach(function (e) { grade.append(card(e)); });
+    // Ordem: com foto (os de mais participantes primeiro), depois com logo; sem imagem vai para a lista compacta
+    var comFoto = eventos.filter(function (e) { return e.capa; })
+      .map(function (e, i) { return { e: e, i: i }; })
+      .sort(function (x, y) { return (Number(y.e.participantes) || 0) - (Number(x.e.participantes) || 0) || x.i - y.i; })
+      .map(function (x) { return x.e; });
+    var comLogo = eventos.filter(function (e) { return !e.capa && e.logo; });
+    var semImagem = eventos.filter(function (e) { return !e.capa && !e.logo; });
+    comFoto.forEach(function (e, i) { grade.append(card(e, i < 3)); });
+    comLogo.forEach(function (e) { grade.append(card(e)); });
     cw.append(grade);
+    var tituloOutros = null;
+    var lista = el("div", "case-lista");
+    if (semImagem.length) {
+      tituloOutros = el("h2", "case-lista__titulo", "Outros trabalhos");
+      semImagem.forEach(function (e) { lista.append(cardCompacto(e)); });
+      cw.append(tituloOutros, lista);
+    }
+    var vazio = el("p", "muted", "Nenhum trabalho com esse filtro.");
+    vazio.hidden = true;
+    cw.append(vazio);
     corpo.append(cw);
     raizLista.append(corpo);
     raizLista.append(ctaFinal(null));

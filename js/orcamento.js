@@ -19,6 +19,7 @@
     ["corporativa", "Corrida corporativa ou de marca"],
     ["esportivo", "Outro evento esportivo"],
     ["feira", "Feira, congresso ou festa"],
+    ["estrutura", "Locação de estrutura"],
     ["incendio", "Prevenção contra incêndio"],
     ["licencas", "Licenças e regularização"],
     ["outro", "Outro"],
@@ -82,19 +83,44 @@
     if (msg) msg.hidden = !mostra;
   }
 
+  // Duas etapas: 1 = sobre o evento (serviço, cidade, data, público); 2 = sobre você (nome, empresa, detalhes)
+  var etapa = 1;
+  var passo = document.getElementById("orc-passo");
+  function mostraEtapa(n) {
+    etapa = n;
+    form.querySelectorAll("[data-etapa]").forEach(function (x) { x.hidden = x.getAttribute("data-etapa") !== String(n); });
+    passo.textContent = n === 1 ? "Etapa 1 de 2 · Sobre o evento" : "Etapa 2 de 2 · Sobre você";
+    passo.hidden = false;
+    document.getElementById("orc-voltar").hidden = false;
+  }
+  mostraEtapa(1);
+
+  // Confere a etapa 1; estando nela, avança em vez de enviar. Só devolve true com tudo certo na etapa 2.
   function valida() {
-    var primeiro = null;
-    var semServico = !servicoEscolhido();
+    var semServico = !servicoEscolhido(), semCidade = !valor("cidade");
     erroServico(semServico);
-    if (semServico) primeiro = chips.querySelector("input");
-    ["nome", "cidade"].forEach(function (n) {
-      var vazio = !valor(n);
-      erroCampo(n, vazio);
-      if (vazio && !primeiro) primeiro = form.elements[n];
-    });
-    if (primeiro) { primeiro.focus(); return false; }
+    erroCampo("cidade", semCidade);
+    if (semServico || semCidade) {
+      mostraEtapa(1);
+      (semServico ? chips.querySelector("input") : form.elements.cidade).focus();
+      return false;
+    }
+    if (etapa === 1) {
+      mostraEtapa(2);
+      form.elements.nome.focus({ preventScroll: true });
+      form.scrollIntoView({ block: "start" });
+      return false;
+    }
+    var semNome = !valor("nome");
+    erroCampo("nome", semNome);
+    if (semNome) { form.elements.nome.focus(); return false; }
     return true;
   }
+  document.getElementById("orc-avancar").addEventListener("click", valida);
+  document.getElementById("orc-voltar").addEventListener("click", function () {
+    mostraEtapa(1);
+    form.scrollIntoView({ block: "start" });
+  });
 
   function linhas(negrito) {
     var b = function (t) { return negrito ? "*" + t + ":*" : t + ":"; };
@@ -141,6 +167,7 @@
     if (chave === registrado) return;
     registrado = chave;
     dados.canal = canal;
+    if (window.MEDIR) window.MEDIR("orcamento"); // js/ui.js: total de pedidos enviados
     try {
       fetch("/api/orcamento", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify(dados) })
         .catch(function () {});

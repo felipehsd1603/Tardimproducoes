@@ -84,8 +84,10 @@
   }
 
   // Card da próxima prova na página inicial
-  var proxima = provas.filter(function (p) { return p.data && diasAte(p) >= 0; })
-    .sort(function (a, b) { return a.data.localeCompare(b.data); })[0];
+  // Mesma regra do js/main.js: o card destaca a próxima prova com inscrição aberta
+  var futuras = provas.filter(function (p) { return p.data && diasAte(p) >= 0; })
+    .sort(function (a, b) { return a.data.localeCompare(b.data); });
+  var proxima = futuras.filter(function (p) { return !p.esgotado && p.inscricao; })[0] || futuras[0];
   var corpoCard = document.querySelector("#next .next-card__body");
   if (proxima && corpoCard) {
     var lugar = el("div", "clima-slot");
@@ -326,16 +328,19 @@
   }
 
   // ---------- Calculadora de ritmo ----------
-  if (corpo) {
+  // Só as distâncias da própria prova (caminhada fica de fora). Prova sem km informado não mostra a calculadora.
+  var kms = [];
+  if (ev) (Array.isArray(ev.percursos) ? ev.percursos : [ev.percursos || ""]).forEach(function (p) {
+    if (/caminhada/i.test(p)) return;
+    var m = String(p).match(/(\d+(?:[.,]\d+)?)\s*km/i);
+    if (m) { var v = parseFloat(m[1].replace(",", ".")); if (v >= 3 && kms.indexOf(v) < 0) kms.push(v); }
+  });
+  kms.sort(function (a, b) { return a - b; });
+  if (corpo && kms.length) {
     var sr = novaSecao("ritmo", "Calcule seu ritmo");
-    sr.append(el("p", "muted", "Escolha a distância e o tempo que você quer fazer. O site mostra o ritmo por km e as passagens."));
-    var kms = [];
-    (Array.isArray(ev.percursos) ? ev.percursos : [ev.percursos || ""]).forEach(function (p) {
-      var m = String(p).match(/(\d+(?:[.,]\d+)?)\s*km/i);
-      if (m) { var v = parseFloat(m[1].replace(",", ".")); if (v >= 3 && kms.indexOf(v) < 0) kms.push(v); }
-    });
-    [5, 10, 21.1, 42.2].forEach(function (v) { if (kms.indexOf(v) < 0) kms.push(v); });
-    kms.sort(function (a, b) { return a - b; });
+    sr.append(el("p", "muted", kms.length > 1
+      ? "Escolha a distância e o tempo que você quer fazer. O site mostra o ritmo por km e as passagens."
+      : "Informe o tempo que você quer fazer nos " + String(kms[0]).replace(".", ",") + " km. O site mostra o ritmo por km e as passagens."));
     var estado = { km: kms[0], seg: 0 };
     var calc = el("div", "pace");
     var distG = el("div", "pace__chips");
@@ -371,6 +376,7 @@
     var velEl = el("p", "pace__sub");
     var tabela = el("ol", "pace__splits");
     res.append(ritmoEl, velEl, tabela);
+    if (kms.length < 2) distG.style.display = "none";
     calc.append(distG, tempoG, res);
     sr.append(calc);
 
