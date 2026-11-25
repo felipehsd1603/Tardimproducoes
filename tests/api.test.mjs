@@ -279,6 +279,19 @@ describe("API v1 para parceiros", () => {
     assert.equal(T.sql("SELECT api_aviso FROM convites WHERE id = '" + conviteId + "'")[0].api_aviso, "ok");
   });
 
+  test("convite de prova que ainda não está no painel chega quando a prova é trazida e publicada", async () => {
+    const cv = await painel.chama("POST", "/api/admin/convites", { parceiro_id: assessoriaId, prova_id: "prova-do-codigo-2099", cupom: "CODIGO1" });
+    assert.equal(cv.status, 201);
+    assert.equal((await P.api("GET", "convites?situacao=pendente")).json.convites.some((c) => c.id === cv.json.id), false, "prova fora do painel não aparece");
+    const antes = P.estado.avisos.length;
+    const pr = await painel.chama("POST", "/api/admin/provas", { id: "prova-do-codigo-2099", nome: "Prova do Código 2099", data: "2099-08-01", percursos: ["5 km"], publicada: true });
+    assert.equal(pr.status, 201);
+    const aviso = await P.espera(() => P.estado.avisos.slice(antes).find((a) => a.evento === "convite.criado" && a.corpo.dados.convite.id === cv.json.id));
+    assert.ok(aviso, "convite.criado ao trazer a prova para o painel");
+    assert.equal(aviso.hmac, "ok");
+    assert.ok((await P.api("GET", "convites?situacao=pendente")).json.convites.some((c) => c.id === cv.json.id));
+  });
+
   test("limite de uso por chave", async () => {
     const r = await Promise.all(Array.from({ length: 130 }, () => P.api("GET", "eu")));
     assert.ok(r.some((x) => x.status === 429));
