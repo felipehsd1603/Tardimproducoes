@@ -10,6 +10,9 @@
 //                                 assessoria_nome, cnpj, assessoria_instagram, email, senha | credential, aceite }
 //                               Um perfil (linha em parceiros) por tipo marcado, todos no mesmo login (parceiros.conta_id).
 //                               Assessoria exige CNPJ válido (guardado em parceiros.documento).
+//                               Com e-mail e senha (e Resend configurado): { confirmar: true } e um link por e-mail;
+//                               nada é gravado antes da confirmação e a resposta é a mesma se o e-mail já tem conta.
+//   POST confirmar              { token }  -> grava o cadastro do link do e-mail (24 horas) e já entra
 //   POST login                  { email, senha }
 //   POST google                 { credential }  -> entra, ou { novo: true, email, nome } para completar o cadastro
 //   POST esqueci                { email }  -> manda por e-mail o link para criar senha nova (1 hora, uso único)
@@ -227,11 +230,26 @@ async function cadastro(request, env, ctx) {
     if (s.length < 8 || s.length > 200) throw new Erro(400, "A senha precisa ter pelo menos 8 caracteres.");
     senha = await hashSenha(s);
   }
-  if (await env.DB.prepare("SELECT 1 FROM contas WHERE email = ?").bind(email).first()) {
+  const existe = await env.DB.prepare("SELECT 1 FROM contas WHERE email = ?").bind(email).first();
+  // Com e-mail e senha: nada é gravado antes de a pessoa abrir o link do e-mail, e a resposta é a mesma
+  // com ou sem cadastro (quem já tem conta recebe um e-mail explicando como entrar). Sem o Resend
+  // configurado (servidor local), cadastra direto como antes.
+  if (!sub && env.RESEND_API_KEY) {
+    await marca(env, "cad:" + ip);
+    await mandaConfirmacao(env, new URL(request.url).origin, email, existe ? null : { perfis, email, senha });
+    return json({ ok: true, confirmar: true, email });
+  }
+  if (existe) {
     // Conta no limite por IP: sem isso, dá para testar à vontade quais e-mails têm cadastro
     await marca(env, "cad:" + ip);
     throw new Erro(409, "Já existe um cadastro com este e-mail. Use \"Entrar\".");
   }
+  await marca(env, "cad:" + ip);
+  return criaConta(env, ctx, new URL(request.url).origin, perfis, email, senha, sub);
+}
+
+// Grava os perfis e o login, avisa a Tardim e já entra (cadastro com Google, ou e-mail confirmado)
+async function criaConta(env, ctx, origem, perfis, email, senha, sub) {
   const cid = crypto.randomUUID();
   perfis.forEach((x) => { x.id = crypto.randomUUID(); });
   await env.DB.batch(perfis.map((x) => env.DB.prepare(
@@ -239,11 +257,86 @@ async function cadastro(request, env, ctx) {
   ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.cidade, x.uf, x.seguidores, x.documento, cid)).concat([
     env.DB.prepare("INSERT INTO contas (id, parceiro_id, email, senha, google_sub) VALUES (?, ?, ?, ?, ?)").bind(cid, perfis[0].id, email, senha, sub),
   ]));
-  await marca(env, "cad:" + ip);
-  ctx.waitUntil(avisaTardim(env, new URL(request.url).origin, perfis, email));
+  ctx.waitUntil(avisaTardim(env, origem, perfis, email));
   // Já confere os seguidores reais para a tela de aprovação (sem IG_TOKEN, não faz nada)
   perfis.forEach((x) => { if (x.instagram) ctx.waitUntil(confereInstagramParceiro(env, x.id).catch(() => {})); });
   return entra(env, { id: cid });
+}
+
+// ---------- confirmação do e-mail (cadastro com senha) ----------
+// O link leva os dados do cadastro cifrados (AES-GCM, chave derivada do SESSAO_SEGREDO) e vale 24 horas.
+// Depois de confirmado, o e-mail já tem conta e o mesmo link não cria outra.
+const VALIDADE_CONFIRMACAO = 24 * 60 * 60;
+async function chaveConfirmacao(env) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(env.SESSAO_SEGREDO), "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: enc.encode("tardim-parceiro"), info: enc.encode("confirmacao-cadastro-v1") },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function cifraCadastro(env, dados) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const c = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await chaveConfirmacao(env), enc.encode(JSON.stringify(dados)));
+  return b64url(iv) + "." + b64url(new Uint8Array(c));
+}
+async function decifraCadastro(env, token) {
+  try {
+    const [iv, c] = token.split(".");
+    const t = await crypto.subtle.decrypt({ name: "AES-GCM", iv: deB64url(iv) }, await chaveConfirmacao(env), deB64url(c));
+    return JSON.parse(new TextDecoder().decode(t));
+  } catch (e) {
+    return null;
+  }
+}
+
+async function enviaEmail(env, para, assunto, linhas) {
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: env.AVISO_REMETENTE || "Tardim Produções <onboarding@resend.dev>",
+      to: [para], subject: assunto, text: linhas.join("\n"),
+    }),
+  }).catch(() => null);
+  if (!r || !r.ok) throw new Erro(502, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos ou fale com a Tardim pelo WhatsApp.");
+}
+
+// cadastro = null: o e-mail já tem conta, então o e-mail só explica como entrar
+async function mandaConfirmacao(env, origem, email, cadastro) {
+  if (!cadastro) {
+    return enviaEmail(env, email, "Você já tem cadastro · Área do parceiro Tardim Produções", [
+      "Olá!", "",
+      "Alguém tentou fazer um cadastro de parceiro da Tardim Produções com este e-mail, mas ele já tem cadastro.",
+      "Para entrar, use o seu e-mail e a sua senha (ou o botão \"Entrar com Google\") em:", "",
+      origem + "/parceiro.html", "",
+      "Esqueceu a senha? Na mesma página, use \"Esqueci minha senha\".",
+      "Se não foi você, ignore este e-mail: nada mudou na sua conta.", "",
+      "Tardim Produções",
+    ]);
+  }
+  const token = await cifraCadastro(env, Object.assign({ exp: Math.floor(Date.now() / 1000) + VALIDADE_CONFIRMACAO }, cadastro));
+  return enviaEmail(env, email, "Confirme o seu cadastro · Área do parceiro Tardim Produções", [
+    "Olá!", "",
+    "Para concluir o seu cadastro de parceiro da Tardim Produções, abra o link abaixo (vale por 24 horas):", "",
+    origem + "/parceiro.html#confirmar=" + token, "",
+    "Depois disso, a Tardim confere os seus dados e avisa quando o cadastro for aprovado.",
+    "Se não foi você, ignore este e-mail: nenhum cadastro é feito sem a confirmação.", "",
+    "Tardim Produções",
+  ]);
+}
+
+async function confirma(request, env, ctx) {
+  const chave = "parc:" + ipDe(request);
+  await limite(env, chave, MAX_ERROS, JANELA_ERROS, "Muitas tentativas. Espere 15 minutos e tente de novo.");
+  const d = await corpo(request);
+  const c = await decifraCadastro(env, texto(d.token, 8000));
+  if (!c || !(Number(c.exp) > Date.now() / 1000) || !Array.isArray(c.perfis) || !c.perfis.length || !c.email) {
+    await marca(env, chave);
+    throw new Erro(400, "Este link expirou ou não é válido. Faça o cadastro de novo.");
+  }
+  if (await env.DB.prepare("SELECT 1 FROM contas WHERE email = ?").bind(c.email).first()) {
+    throw new Erro(409, "Este cadastro já foi confirmado. Entre com o seu e-mail e a sua senha.");
+  }
+  return criaConta(env, ctx, new URL(request.url).origin, c.perfis, c.email, c.senha || "", null);
 }
 
 async function loginSenha(request, env) {
@@ -375,6 +468,7 @@ async function trata(request, env, ctx, rota) {
     return json({ uf, cidades: CIDADES[uf] }, 200, { "cache-control": "public, max-age=86400" });
   }
   if (a === "cadastro" && m === "POST") return cadastro(request, env, ctx);
+  if (a === "confirmar" && m === "POST") return confirma(request, env, ctx);
   if (a === "login" && m === "POST") return loginSenha(request, env);
   if (a === "google" && m === "POST") return loginGoogle(request, env);
   if (a === "esqueci" && m === "POST") return esqueci(request, env);

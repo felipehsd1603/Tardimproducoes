@@ -260,6 +260,35 @@
     });
   }
 
+  // Cadastro com e-mail e senha: só vale depois de abrir o link do e-mail
+  function telaConfirmeEmail(email) {
+    app.innerHTML = "";
+    var c = card("Cadastro de parceiro", "Confira o seu e-mail");
+    c.append(el("p", "parc-google-ok", "Mandamos um link para " + email + ". Abra o link para concluir o cadastro: ele vale por 24 horas."));
+    c.append(el("p", "muted", "Não chegou em alguns minutos? Confira a caixa de spam. Se este e-mail já tiver cadastro, a mensagem explica como entrar."));
+    var p = el("p", "muted parc-ajuda");
+    p.append(botao("Voltar para entrar", "orc__email", function () { telaAcesso("entrar"); }));
+    c.append(p);
+    app.append(c);
+  }
+  // Aberta pelo link do e-mail: parceiro.html#confirmar=<token>
+  function telaConfirmando(token) {
+    app.innerHTML = "";
+    var c = card("Cadastro de parceiro", "Confirmando o seu cadastro...");
+    app.append(c);
+    return api("POST", "confirmar", { token: token }).then(inicio).catch(function (err) {
+      app.innerHTML = "";
+      var c2 = card("Cadastro de parceiro", "Não deu para confirmar");
+      c2.append(el("p", "assess-alerta", err.message));
+      var p = el("p", "muted parc-ajuda");
+      p.append(botao(err.status === 409 ? "Entrar" : "Fazer o cadastro de novo", "orc__email", function () {
+        telaAcesso(err.status === 409 ? "entrar" : "cadastro");
+      }));
+      c2.append(p);
+      app.append(c2);
+    });
+  }
+
   function telaCadastro(google) {
     var c = card("Cadastro de parceiro", google ? "Complete o seu cadastro" : "Quero ser parceiro");
     c.append(el("p", "muted", "Preencha os dados abaixo. A Tardim Produções confere o cadastro e avisa quando for aprovado."));
@@ -401,7 +430,9 @@
       if (google) dados.credential = google.credential;
       else { dados.email = email.value.trim(); dados.senha = senha.value; }
       ir.disabled = true; ir.textContent = "Enviando...";
-      api("POST", "cadastro", dados).then(inicio).catch(function (err) {
+      api("POST", "cadastro", dados).then(function (r) {
+        return r && r.confirmar ? telaConfirmeEmail(r.email || dados.email) : inicio();
+      }).catch(function (err) {
         ir.disabled = false; ir.textContent = "Enviar cadastro";
         // Token do Google vence em 1 hora: pede para entrar de novo
         if (google && err.status === 401) return telaAcesso("cadastro");
@@ -531,9 +562,10 @@
       app.append(c);
     });
   }
-  // Link do e-mail de senha nova: tira o código do endereço (não fica no histórico) e abre o formulário
+  // Links dos e-mails (senha nova, confirmar cadastro): tira o código do endereço (não fica no histórico)
   var redefinir = /^#redefinir=([\w.-]+)$/.exec(location.hash);
-  if (redefinir) history.replaceState(null, "", location.pathname + location.search);
+  var confirmar = /^#confirmar=([\w.-]+)$/.exec(location.hash);
+  if (redefinir || confirmar) history.replaceState(null, "", location.pathname + location.search);
   api("GET", "config").then(function (c) { googleId = c.google || ""; }, function () {})
-    .then(function () { return redefinir ? telaNovaSenha(redefinir[1]) : inicio(); });
+    .then(function () { return redefinir ? telaNovaSenha(redefinir[1]) : confirmar ? telaConfirmando(confirmar[1]) : inicio(); });
 })();
