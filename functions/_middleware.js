@@ -135,6 +135,21 @@ const SEGURANCA = {
   "x-frame-options": "SAMEORIGIN",
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000",
+  // De fora, só o login do Google (parceiro.html), o Swagger (/api/*/docs, jsdelivr) e a previsão do tempo
+  // (open-meteo). 'unsafe-inline' fica por causa dos scripts e estilos inline das páginas.
+  "content-security-policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://api.open-meteo.com https://accounts.google.com",
+    "frame-src https://accounts.google.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join("; "),
 };
 function protege(resp) {
   try {
