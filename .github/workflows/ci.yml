@@ -26,5 +26,7 @@ jobs:
       - run: npm ci
       - name: Sintaxe das Functions
         run: for f in $(find functions -name '*.js'); do node --check "$f" || exit 1; done
+      - name: Gerador de páginas
+        run: node scripts/gerar-paginas.js
       - name: Testes de integração
         run: npm test

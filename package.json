@@ -2,7 +2,6 @@
   "name": "tardim-producoes",
   "private": true,
   "description": "Site e painel da Tardim Produções: Cloudflare Pages + Functions + D1",
-  "type": "module",
   "engines": {
     "node": ">=20"
   },
