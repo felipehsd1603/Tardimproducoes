@@ -7,7 +7,8 @@ Hospedado no **Cloudflare Pages** (plano gratuito), com funções em `functions/
 ## Estrutura
 
 ```
-index.html          página inicial
+index.html          página inicial (para quem corre)
+empresas.html       página de quem contrata: serviços, "Sua corrida do começo ao fim", simulador e orçamento
 prova.html          página de cada prova (prova.html?id=...)
 portfolio.html      portfólio de trabalhos (eventos e serviços)
 evento.html         página de cada trabalho do portfólio (evento.html?id=...)
@@ -35,11 +36,17 @@ assets/demo/        imagens fictícias do modo demonstração
 assets/corridas/    logos e artes das provas
 assets/fotos/       fotos dos eventos
 functions/api/orcamento.js  função POST /api/orcamento: valida e grava o pedido de orçamento no D1
+d1/migracoes/012-contratos.sql  do orçamento ao contrato assinado (aba "Propostas"): dados da empresa e modelo do contrato (tabela configuracoes) e o PDF assinado de cada proposta (tabela contratos_assinados, só sai pela API do painel). Banco já criado: rode esta migração
+d1/migracoes/011-minutario.sql  minutário (botão na aba "Propostas"): itens padrão das propostas, com descrição, valor unitário e quantidade de referência; a proposta traz os itens de lá e mostra tudo em tabela. Banco já criado: rode esta migração
+d1/migracoes/010-propostas.sql  aba "Propostas" do painel: monta o orçamento do cliente (itens, somas, valor por extenso), imprime em PDF e copia os dados para o contrato. Banco já criado: rode esta migração
+_redirects          endereços curtos para divulgar (ex.: /copmbm leva à página da prova)
+functions/api/evento.js     função POST /api/evento: medição do site (js/ui.js): soma totais por dia de visitas e cliques, sem identificar ninguém; o painel mostra na aba "Medição". Banco já criado: rode d1/migracoes/009-medicao-faq.sql (cria a medição e as perguntas frequentes das provas)
 functions/api/inscricao.js  função POST /api/inscricao: valida e grava a inscrição coletiva (equipe + atletas) no D1
 admin.html          painel da Tardim Produções (fora do menu e do Google): js/admin.js + css/painel.css
 kit.html            kit de divulgação de cada parceiro: js/kit.js
 programa-embaixadores.html  regras do programa de embaixadores
-js/provas-db.js     provas do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
+js/provas-db.js     provas e depoimentos do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
+                    depoimentos: aba "Depoimentos" do painel; aparecem na página inicial e ao lado do orçamento em empresas.html (js/ui.js). Banco já criado: rode d1/migracoes/008-depoimentos.sql
 functions/api/admin/[[rota]].js  API do painel: login, provas, parceiros, convites, imagens, orçamentos e inscrições
 parceiro.html       área do parceiro: cadastro, login (e-mail/senha ou Google) e convites: js/parceiro.js
 functions/api/parceiro/[[rota]].js  API da área do parceiro: cadastro, login, Google e "minha área"
@@ -55,11 +62,14 @@ _routes.json        quais endereços passam pelas funções (o resto é servido 
 
 A página inicial é organizada por público:
 
-1. **Abertura**, com dois caminhos: "Quero correr" e "Quero contratar uma corrida".
+1. **Abertura**, com dois caminhos: "Quero correr" e "Quero contratar uma corrida" (leva a `empresas.html`). O fundo é um mosaico com fotos das provas da Tardim (`assets/fotos/`, cerca de 400 px cada); com uma foto própria em alta resolução, dá para voltar a uma foto só. O card do lado destaca a próxima prova **com inscrição aberta**; esgotadas antes dela aparecem numa linha "Esgotada: ...".
 2. **Para quem corre**: Calendário e galeria de fotos.
 3. **Quem confia**: números e clientes, mapa "Onde já corremos" e Portfólio.
-4. **Para quem contrata**: Serviços (com as ofertas para empresas), "Sua corrida do começo ao fim", "Monte sua corrida" (passo 1) e "Peça seu orçamento" (passo 2).
-5. **Contato**.
+4. **Para quem contrata**: um resumo dos serviços com os botões "Conhecer os serviços" e "Pedir orçamento", que levam a `empresas.html`.
+
+O contato fica no rodapé de todas as páginas (`id="contato"`, alvo do item "Contato" do menu) e no botão flutuante do WhatsApp.
+
+`empresas.html` reúne o que é de quem contrata: Serviços (com as ofertas para empresas e a locação de estrutura), "Sua corrida do começo ao fim", "Monte sua corrida" (passo 1) e "Peça seu orçamento" (passo 2). Os links "Pedir orçamento" do site apontam para `empresas.html#orcamento`.
 
 O conteúdo institucional (credenciais e instituições atendidas) fica em `institucional.html`, com link no rodapé e no Portfólio.
 
@@ -71,13 +81,13 @@ Abra `js/eventos.js` (calendário, contatos e galeria) ou `js/realizadas.js` (po
 - O **calendário** da página inicial tem duas abas: *Próximas* (de `PROXIMAS`) e *Edições anteriores* (todas as edições/etapas das corridas em `REALIZADAS`, da mais recente para a mais antiga), com busca e filtros por ano, mês e distância.
 - `REALIZADAS` (em `js/realizadas.js`): portfólio de trabalhos realizados, separados por área (eventos esportivos ou prevenção contra incêndio). Cada trabalho ganha uma página (`evento.html?id=...`) com ficha técnica (cliente, data, local, percursos, participantes), serviços prestados, destaques, fotos e depoimento. Campos vazios não aparecem. Os números do topo do portfólio (trabalhos, eventos, serviços de prevenção, instituições atendidas e participantes) são calculados sozinhos.
 - `GALERIA`: fotos do carrossel "Na rua com a Tardim Produções" (foto, legenda e descrição). Coloque as fotos em `assets/fotos/`.
-- `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (padrão: 3).
+- `SITE.carrosselMinimo`: a partir de quantas provas abertas o carrossel com as artes aparece no calendário (hoje: 7). Com menos provas, a lista do calendário já mostra a arte de cada uma.
 
 No `js/eventos.js`, o objeto `SITE` guarda o **WhatsApp** (DDI + DDD + número, só dígitos) e os **dados da empresa** (razão social, CNPJ, endereço). Campos vazios não aparecem no site.
 
 ## Pedido de orçamento
 
-A seção "Peça seu orçamento" da página inicial monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
+A seção "Peça seu orçamento" (`empresas.html#orcamento`) monta a mensagem no aparelho da pessoa e abre o WhatsApp (`SITE.whatsapp`) ou o e-mail (`SITE.email`) com o texto pronto. Botões com `data-orc="corrida"` (ou outro serviço) levam ao formulário com a opção já marcada.
 
 Quando a pessoa toca em enviar, o site também manda uma cópia do pedido para `POST /api/orcamento`, que grava na tabela `orcamentos` do D1 (serviço, nome, contratante, empresa, cidade, data prevista, público, detalhes e o canal escolhido). Enquanto a pessoa só preenche, nada é enviado. Se a função falhar ou não existir (por exemplo, abrindo o `index.html` direto do computador), o WhatsApp e o e-mail abrem normalmente. O formulário não pede telefone nem e-mail, então o registro serve para contar e acompanhar pedidos, não para retornar o contato.
 
@@ -105,10 +115,20 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 
 - **Provas**: cadastro completo da prova (dados, arte, valores, kit, programação, links). A arte enviada é reduzida para JPG de até 1600 px e guardada no banco. Marcou como publicada e salvou, a prova já está no site (até 1 minuto de cache): o calendário, a página `prova-<id>.html` com a prévia certa e o kit de divulgação são servidos na hora pelo banco (`functions/_middleware.js`), sem publicar o site de novo. Desmarcou, ela sai. As provas do `js/eventos.js` aparecem como "No código" e podem ser trazidas para o painel; a versão do painel vale no site.
 - **Parceiros**: embaixadores, influenciadores, assessorias e equipes (contato, CPF/CNPJ e Pix para a comissão). Embaixador e influenciador têm o tipo de profissional; para "Profissional de Educação Física (CREF6/MG)" o número do CREF6 é obrigatório e o botão "Validar no CREF6" consulta o registro na página pública do CREF6 (`functions/_cref6.js`, pela rota `api/admin/cref6`, só para quem está no painel). O painel avisa, sem impedir o cadastro, quando o registro não existe, não está ativo ou está em nome de outra pessoa; se o CREF6 estiver fora do ar, salva como "não conferido". A lista mostra "CREF6 ativo", "CREF6 não conferido" ou a situação devolvida. Assessoria e equipe têm logo (PNG até 400 px) e cor, usadas na inscrição coletiva e na página da equipe. As imagens ficam na tabela `arquivos` e são servidas em `/arquivos/<caminho>`; cada envio ganha nome novo, e o antigo continua valendo para links já enviados.
+- **Instagram dos parceiros** (`functions/_instagram.js`): o painel confere os seguidores reais pela API oficial da Meta (Business Discovery), usando a conta do Instagram configurada em `IG_USER_ID` (hoje a do Felipe; para passar à @tardimproducoes, basta gerar token e id dela e trocar os dois segredos). O parceiro não faz nada. Todo cadastro novo com Instagram já é conferido na hora. Na aprovação e na lista aparece "Instagram: N seguidores", com alerta quando o número informado passa 30% do real, ou "Instagram não encontrado" (conta pessoal, privada ou @ errado: só conta Comercial ou Criador de conteúdo aparece). O botão "Conferir Instagram" atualiza (rota `api/admin/parceiros/<id>/instagram`). Trocar o @ apaga a conferência antiga. A API é gratuita. Sem os segredos abaixo, tudo segue como antes, só sem a conferência.
+  Configuração, uma vez:
+  1. A conta do Instagram que consulta precisa ser profissional (Comercial ou Criador de conteúdo) e estar ligado a uma Página do Facebook.
+  2. Em developers.facebook.com, app **Tardim Parceiros** (id 1131643113075137, portfólio Felipe Helison), caso de uso "Gerenciar mensagens e conteúdo no Instagram", com as permissões `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`, `pages_show_list` e `business_management`. O app antigo "Tardimproducoes" não aceita esse caso de uso.
+  3. Em business.facebook.com > Configurações > Usuários do sistema, crie um usuário do sistema (administrador), atribua a ele o app e a Página, e gere um token com validade **Nunca**, com as permissões `instagram_basic`, `instagram_manage_insights`, `pages_show_list`, `pages_read_engagement` e `business_management`.
+  4. Descubra o id da conta do Instagram: abra `https://graph.facebook.com/v23.0/me/accounts?fields=name,instagram_business_account&access_token=<TOKEN>` e copie `instagram_business_account.id`.
+  5. Grave os segredos: `npx wrangler pages secret put IG_USER_ID --project-name <projeto>` e `npx wrangler pages secret put IG_TOKEN --project-name <projeto>`.
+  Como o app só usa uma conta própria, o acesso padrão costuma bastar. Se o botão responder erro de permissão, peça acesso avançado a `instagram_basic` e `pages_read_engagement` na Análise do app da Meta. Token inválido ou revogado aparece no painel com aviso.
 - **Convites**: um parceiro numa prova, com o cupom criado na Ticket Sports (Promover > Cupons de desconto, tipo individual), desconto, comissão, cortesias e contrapartida. O convite gera o link para os atletas (`prova-<id>.html?cupom=CODIGO`), o link do kit de divulgação, o link de inscrição coletiva (assessoria/equipe) e a mensagem pronta para o WhatsApp.
 - **Apuração**: solte o relatório de inscritos exportado da Ticket Sports (Excel ou CSV), escolha as colunas de cupom, valor e situação e marque quais situações contam como pagas. O painel soma por cupom, calcula a comissão de cada parceiro e baixa a planilha de pagamento. O arquivo é lido só no navegador.
+- **Ticket Sports (post automático)**: em painel.ticketsports.com.br > Integração > Aplicativos, o campo "Url do post" aponta para `https://<site>/api/ticketsports?token=<TICKETSPORTS_TOKEN>` (`functions/api/ticketsports.js`). Cada post chega cru na tabela `ticketsports_posts` (banco antigo: `d1/migracoes/007-ticketsports.sql`). O token vai em `npx wrangler pages secret put TICKETSPORTS_TOKEN --project-name <projeto>`; sem ele, a rota recusa tudo. Para ver o que chegou: `npx wrangler d1 execute tardim --remote --command "SELECT id, recebido_em, tipo, substr(corpo,1,500) FROM ticketsports_posts ORDER BY id DESC LIMIT 5"`.
 - **Inscrições coletivas**: os envios das assessorias (tabelas `inscricoes` e `atletas`), com filtro por prova e botão para baixar os atletas de cada envio em Excel.
 - **Orçamentos**: a cópia de cada pedido do formulário "Peça seu orçamento" (tabela `orcamentos`), com download em Excel.
+- **Propostas**: cada proposta vai do orçamento ao contrato assinado em cinco passos, numa tela só (`#proposta/<id>`): 1) montar a proposta com os itens do **Minutário** (itens padrão com descrição, valor e quantidade de referência); 2) baixar o PDF e registrar o envio; 3) registrar se o cliente aprovou ou recusou; 4) completar os dados do contratante e gerar o contrato (valor em algarismos e por extenso sempre iguais, cláusulas numeradas sozinhas, Anexo I com os itens e, se marcado, Anexo II com o valor por número de participantes); 5) assinar (gratuito no gov.br, assinador.iti.br) e registrar o PDF assinado (até 1,9 MB) ou o link dele. Os dados das empresas que assinam e o texto do contrato ficam em "Empresa e modelo do contrato"; o modelo padrão deve ser revisado pelo advogado antes do uso. Com o contrato assinado, a proposta trava; mudanças viram uma proposta de aditivo (Duplicar). Preços, custos e o simulador ficam só no painel.
 
 ## Área do parceiro (cadastro e login)
 
@@ -118,11 +138,11 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 - **Aprovação**: o cadastro chega como parceiro com situação "pendente" e inativo. O painel abre na aba Parceiros, mostra "Parceiros (N novos)" e o bloco "Cadastros aguardando aprovação" com **Aprovar** e **Recusar** (o motivo da recusa aparece para o parceiro). Aprovado, o painel oferece a mensagem de aviso pelo WhatsApp.
 - **Aviso por e-mail**: a cada cadastro novo a Tardim recebe um e-mail com os dados e o link do painel, se `RESEND_API_KEY` e `AVISO_EMAIL` estiverem definidos (veja abaixo). Sem eles, o aviso fica só no painel.
 - **Minha área**: pendente vê "Em análise"; recusado vê o motivo; aprovado vê os convites que a Tardim criou para ele no painel (prova, cupom, condições, link para os atletas, kit de divulgação e, para assessoria, o link da inscrição coletiva).
-- **Segurança**: cookie HttpOnly, Secure e SameSite=Lax (`tardim_parceiro`, 30 dias), assinado com `SESSAO_SEGREDO`. 5 senhas erradas em 15 minutos bloqueiam o IP por 15 minutos; no máximo 5 cadastros por IP por hora. O token do Google é conferido no servidor (assinatura, site, validade e e-mail confirmado). Excluir o parceiro no painel apaga a conta de acesso. Esqueceu a senha: por enquanto, a página manda falar com a Tardim pelo WhatsApp.
+- **Segurança**: cookie HttpOnly, Secure e SameSite=Lax (`tardim_parceiro`, 30 dias), assinado com `SESSAO_SEGREDO`. 5 senhas erradas em 15 minutos bloqueiam o IP por 15 minutos; no máximo 5 cadastros por IP por hora. O token do Google é conferido no servidor (assinatura, site, validade e e-mail confirmado). Excluir o parceiro no painel apaga a conta de acesso. Esqueceu a senha: o botão "Esqueci minha senha" manda por e-mail (Resend) um link para criar senha nova (`parceiro.html#redefinir=...`, rotas `esqueci` e `nova-senha`). O link vale 1 hora e uma vez só (é assinado com `SESSAO_SEGREDO` e amarrado à senha atual, sem tabela nova). Sem `RESEND_API_KEY`, a página manda falar com a Tardim pelo WhatsApp. **Atenção:** sem domínio verificado no Resend, o e-mail só chega ao dono da conta Resend; para os parceiros receberem, verifique o domínio e defina `AVISO_REMETENTE`.
 
 **Configurar (uma vez por projeto):**
 
-1. Atualize o banco com `d1/migracoes/002-contas-parceiros.sql` e `d1/migracoes/003-parceiros-uf-seguidores.sql` (`npx wrangler d1 execute tardim --remote --file <arquivo>`, uma vez cada; banco novo: basta o `d1/painel.sql`).
+1. Atualize o banco com `d1/migracoes/002-contas-parceiros.sql`, `d1/migracoes/003-parceiros-uf-seguidores.sql` e `d1/migracoes/004-parceiros-instagram.sql` (`npx wrangler d1 execute tardim --remote --file <arquivo>`, uma vez cada; banco novo: basta o `d1/painel.sql`).
 2. **Google**: no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie uma credencial "ID do cliente OAuth" do tipo "Aplicativo da Web", com as origens JavaScript autorizadas `https://tardim-teste.pages.dev` (e depois o domínio definitivo). Configure a tela de consentimento (nome "Tardim Produções", e-mail de suporte). Copie o ID do cliente e grave: `npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name <projeto>`. Sem ele, a página mostra só e-mail e senha.
 3. **E-mail de aviso**: crie uma conta gratuita no [Resend](https://resend.com), gere uma chave de API e grave `RESEND_API_KEY` e `AVISO_EMAIL` (o e-mail que recebe os avisos; vários separados por vírgula) com `npx wrangler pages secret put`. Sem domínio verificado no Resend, o remetente é `onboarding@resend.dev` e o Resend só entrega para o e-mail da própria conta Resend; com o domínio verificado, defina `AVISO_REMETENTE` (ex.: `Tardim Produções <avisos@tardimproducoes.com.br>`).
 4. Publique o site de novo.
@@ -131,7 +151,7 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 
 **Cupom na página da prova**: quem entra pelo link do parceiro vê o cupom em destaque, e o botão de inscrição copia o código antes de abrir a Ticket Sports, onde a pessoa cola no campo de cupom. A Ticket Sports não aceita cupom pelo endereço; se um dia aceitar, coloque o nome do parâmetro em `SITE.cupomParam` (`js/eventos.js`).
 
-As regras do programa ficam em `programa-embaixadores.html` (fora do menu e do Google); o link vai na mensagem de cada convite.
+As regras do programa ficam em `programa-embaixadores.html` (no menu do topo como "Seja parceiro", fora do Google); o link também vai na mensagem de cada convite. Os botões "Quero ser parceiro" (programa e `assessorias.html`) levam a `parceiro.html#cadastro`, que abre direto no formulário.
 
 ### Personalização por assessoria
 
@@ -225,6 +245,7 @@ E as do painel, em `d1/painel.sql`:
 | `contas` | Acesso dos parceiros à `parceiro.html`: e-mail, hash da senha e/ou conta Google |
 | `convites` | Um parceiro numa prova: cupom da Ticket Sports, desconto, comissão, cortesias |
 | `arquivos` | Imagens enviadas pelo painel (artes e logos, até 1,9 MB cada), servidas em `/arquivos/...` |
+| `ticketsports_posts` | Posts automáticos da Ticket Sports ("Url do post"), guardados crus |
 | `login_erros` | Senhas erradas no painel e na área do parceiro (bloqueio de 15 minutos) e limite de cadastros por IP |
 
 Para criar ou atualizar as tabelas (pode rodar de novo sem perder dados):
