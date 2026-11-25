@@ -11,3 +11,6 @@
 
 # Dependências (npm install)
 /node_modules/
+
+# Pasta que o deploy sobe (scripts/montar-publico.mjs)
+/publico/

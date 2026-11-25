@@ -12,7 +12,7 @@
     "db:migracoes:local": "wrangler d1 migrations apply tardim --local",
     "db:migracoes:producao": "wrangler d1 migrations apply tardim --remote",
     "db:migracoes:lista": "wrangler d1 migrations list tardim --remote",
-    "publicar": "node scripts/gerar-paginas.js --versao && wrangler pages deploy --project-name tardim-teste --branch main"
+    "publicar": "node scripts/gerar-paginas.js --versao && node scripts/montar-publico.mjs && wrangler pages deploy publico --project-name tardim-teste --branch main"
   },
   "devDependencies": {
     "wrangler": "4.168.0"
