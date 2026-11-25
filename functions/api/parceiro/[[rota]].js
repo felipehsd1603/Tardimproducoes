@@ -228,6 +228,8 @@ async function cadastro(request, env, ctx) {
     senha = await hashSenha(s);
   }
   if (await env.DB.prepare("SELECT 1 FROM contas WHERE email = ?").bind(email).first()) {
+    // Conta no limite por IP: sem isso, dá para testar à vontade quais e-mails têm cadastro
+    await marca(env, "cad:" + ip);
     throw new Erro(409, "Já existe um cadastro com este e-mail. Use \"Entrar\".");
   }
   const cid = crypto.randomUUID();

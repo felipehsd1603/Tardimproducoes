@@ -12,9 +12,9 @@ export function json(corpo, status, extra) {
   });
 }
 
-/** A chamada veio de uma página do próprio site? (cabeçalho Origin com o mesmo host) */
+/** A chamada veio de uma página do próprio site? (cabeçalho Origin com o mesmo protocolo, host e porta) */
 export function mesmaOrigem(request) {
-  try { return new URL(request.headers.get("Origin")).host === new URL(request.url).host; } catch (e) { return false; }
+  try { return new URL(request.headers.get("Origin")).origin === new URL(request.url).origin; } catch (e) { return false; }
 }
 
 export function b64url(bytes) {

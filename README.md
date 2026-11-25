@@ -244,7 +244,7 @@ npm run db:migracoes:producao   # só se houver migração nova em d1/migracoes/
 npm run publicar                # gera as páginas com a versão nova e publica
 ```
 
-(`npm run publicar` = `node scripts/gerar-paginas.js --versao` + `wrangler pages deploy --project-name tardim-teste --branch main`.)
+(`npm run publicar` = `node scripts/gerar-paginas.js --versao` + `node scripts/montar-publico.mjs` + `wrangler pages deploy publico --project-name tardim-teste --branch main`. Só a pasta `publico/` sobe: código, banco, docs, testes e `.dev.vars` nunca vão para o ar.)
 
 - Hoje existe só o projeto de teste `tardim-teste`, em `https://tardim-teste.pages.dev`. O projeto definitivo (`tardim-producoes`, o nome que está no `wrangler.toml`) ainda não foi criado; crie com `npx wrangler pages project create tardim-producoes --production-branch main` e passe a publicar com esse nome.
 - A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.js` responde 404 para `functions/`, `d1/`, `docs/`, `scripts/`, `tests/`, `.github/`, `node_modules/`, `wrangler.toml`, `README.md`, `CHANGELOG.md`, `package.json`, `package-lock.json`, `.gitignore`, `.editorconfig` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas; o teste "arquivos privados" (`npm test`) confere. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.

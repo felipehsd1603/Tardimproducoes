@@ -1,6 +1,6 @@
 # Cloudflare Pages: site estático + funções em functions/ + banco D1.
 name = "tardim-producoes"
-pages_build_output_dir = "."
+pages_build_output_dir = "publico"
 compatibility_date = "2026-11-01"
 
 [[d1_databases]]
