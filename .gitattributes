@@ -1,0 +1,12 @@
+# Texto sempre com LF no repositório (o Cloudflare e o CI rodam em Linux)
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.xlsx binary

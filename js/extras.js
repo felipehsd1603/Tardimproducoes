@@ -84,8 +84,10 @@
   }
 
   // Card da próxima prova na página inicial
-  var proxima = provas.filter(function (p) { return p.data && diasAte(p) >= 0; })
-    .sort(function (a, b) { return a.data.localeCompare(b.data); })[0];
+  // Mesma regra do js/main.js: o card destaca a próxima prova com inscrição aberta
+  var futuras = provas.filter(function (p) { return p.data && diasAte(p) >= 0; })
+    .sort(function (a, b) { return a.data.localeCompare(b.data); });
+  var proxima = futuras.filter(function (p) { return !p.esgotado && p.inscricao; })[0] || futuras[0];
   var corpoCard = document.querySelector("#next .next-card__body");
   if (proxima && corpoCard) {
     var lugar = el("div", "clima-slot");
@@ -191,6 +193,7 @@
       var i = new Image();
       i.onload = function () { ok(i); };
       i.onerror = function () { ok(null); };
+      if (/^https?:/i.test(src)) i.crossOrigin = "anonymous"; // imagem do banco: precisa disso para o card poder ser salvo
       i.src = src;
     });
   }
@@ -209,6 +212,13 @@
     if (atual) linhas.push(atual);
     return linhas;
   }
+  // Quem chega pela página da equipe (equipe.html) leva o nome e a logo da assessoria para o card
+  var qsEquipe = new URLSearchParams(location.search);
+  var equipeNome = (qsEquipe.get("equipe") || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  var equipeLogo = (function (l) {
+    if (/^assessorias\/[\w-][\w.-]*\.(png|jpe?g|webp)$/i.test(l)) return "arquivos/" + l;
+    return /^[\w-][\w.-]*\.(png|jpe?g|webp)$/i.test(l) ? "assets/assessorias/" + l : "";
+  })(qsEquipe.get("logo") || "");
   function desenhaCard(nomeTxt) {
     var W = 1080, H = 1920;
     var fontes = document.fonts ? Promise.all([
@@ -217,9 +227,9 @@
       document.fonts.load('600 40px "Barlow"'),
     ]) : Promise.resolve();
     return fontes.then(function () {
-      return Promise.all([carrega(ev.poster), carrega("assets/logo-tardim.webp")]);
+      return Promise.all([carrega(ev.poster), carrega("assets/logo-tardim.webp"), carrega(equipeNome ? equipeLogo : "")]);
     }).then(function (imgs) {
-      var arte = imgs[0], logo = imgs[1];
+      var arte = imgs[0], logo = imgs[1], logoEq = imgs[2];
       var cv = document.createElement("canvas");
       cv.width = W; cv.height = H;
       var c = cv.getContext("2d");
@@ -275,6 +285,29 @@
       }
       // Marca
       var by = H - 2 * q - 70;
+      // Equipe (assessoria), acima da marca
+      if (equipeNome) {
+        c.textAlign = "center";
+        c.fillStyle = "#c3cbe3";
+        c.font = '600 30px "Barlow"';
+        c.fillText("CORRO COM A EQUIPE", W / 2, by - 178);
+        var te = cabe(c, equipeNome, 'italic 800 {t}px "Barlow Condensed"', W - 320, 68);
+        var we = c.measureText(equipeNome).width;
+        var raio = 38, sobra = logoEq ? raio * 2 + 20 : 0;
+        var x0 = (W - (we + sobra)) / 2;
+        if (logoEq) {
+          c.save();
+          c.beginPath(); c.arc(x0 + raio, by - 128, raio, 0, Math.PI * 2); c.fillStyle = "#fff"; c.fill(); c.clip();
+          var lado = raio * 2, lw = lado, lh = lado;
+          if (logoEq.width > logoEq.height) lh = lado * logoEq.height / logoEq.width; else lw = lado * logoEq.width / logoEq.height;
+          c.drawImage(logoEq, x0 + raio - lw / 2, by - 128 - lh / 2, lw, lh);
+          c.restore();
+        }
+        c.textAlign = "left";
+        c.fillStyle = "#ffffff";
+        c.fillText(equipeNome, x0 + sobra, by - 128 + te * 0.32);
+        c.textAlign = "center";
+      }
       c.font = 'italic 800 52px "Barlow Condensed"';
       var marca = "Tardim Produções";
       var mw = c.measureText(marca).width;
@@ -295,16 +328,19 @@
   }
 
   // ---------- Calculadora de ritmo ----------
-  if (corpo) {
+  // Só as distâncias da própria prova (caminhada fica de fora). Prova sem km informado não mostra a calculadora.
+  var kms = [];
+  if (ev) (Array.isArray(ev.percursos) ? ev.percursos : [ev.percursos || ""]).forEach(function (p) {
+    if (/caminhada/i.test(p)) return;
+    var m = String(p).match(/(\d+(?:[.,]\d+)?)\s*km/i);
+    if (m) { var v = parseFloat(m[1].replace(",", ".")); if (v >= 3 && kms.indexOf(v) < 0) kms.push(v); }
+  });
+  kms.sort(function (a, b) { return a - b; });
+  if (corpo && kms.length) {
     var sr = novaSecao("ritmo", "Calcule seu ritmo");
-    sr.append(el("p", "muted", "Escolha a distância e o tempo que você quer fazer. O site mostra o ritmo por km e as passagens."));
-    var kms = [];
-    (Array.isArray(ev.percursos) ? ev.percursos : [ev.percursos || ""]).forEach(function (p) {
-      var m = String(p).match(/(\d+(?:[.,]\d+)?)\s*km/i);
-      if (m) { var v = parseFloat(m[1].replace(",", ".")); if (v >= 3 && kms.indexOf(v) < 0) kms.push(v); }
-    });
-    [5, 10, 21.1, 42.2].forEach(function (v) { if (kms.indexOf(v) < 0) kms.push(v); });
-    kms.sort(function (a, b) { return a - b; });
+    sr.append(el("p", "muted", kms.length > 1
+      ? "Escolha a distância e o tempo que você quer fazer. O site mostra o ritmo por km e as passagens."
+      : "Informe o tempo que você quer fazer nos " + String(kms[0]).replace(".", ",") + " km. O site mostra o ritmo por km e as passagens."));
     var estado = { km: kms[0], seg: 0 };
     var calc = el("div", "pace");
     var distG = el("div", "pace__chips");
@@ -340,6 +376,7 @@
     var velEl = el("p", "pace__sub");
     var tabela = el("ol", "pace__splits");
     res.append(ritmoEl, velEl, tabela);
+    if (kms.length < 2) distG.style.display = "none";
     calc.append(distG, tempoG, res);
     sr.append(calc);
 

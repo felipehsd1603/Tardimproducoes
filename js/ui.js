@@ -14,13 +14,60 @@
     window.addEventListener("scroll", aoRolar, { passive: true });
   }
 
+  // ---------- Medição (functions/api/evento.js): só soma totais por dia, sem identificar ninguém ----------
+  // Conta cliques em [data-medir] (data-ref opcional) e em links do WhatsApp; o painel mostra na aba "Medição".
+  var pagina = window.PAGINA_ID || (location.pathname.split("/").pop() || "index").replace(/\.html$/, "") || "index";
+  var medeAqui = /^https?:$/.test(location.protocol) && !window.DEMO && !document.getElementById("painel");
+  function medir(evento, ref) {
+    if (!medeAqui) return;
+    ref = String(ref || pagina).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+    if (!ref) return;
+    try {
+      fetch("/api/evento", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ e: evento, r: ref }) })
+        .catch(function () {});
+    } catch (e) {}
+  }
+  window.MEDIR = medir;
+  document.addEventListener("click", function (e) {
+    var alvo = e.target.closest ? e.target.closest("[data-medir], a[href*='wa.me/']") : null;
+    if (!alvo) return;
+    medir(alvo.getAttribute("data-medir") || "whatsapp", alvo.getAttribute("data-ref"));
+  });
+  // Visitas só das páginas onde se decide: cada prova e a página de quem contrata
+  if (document.getElementById("prova") || document.getElementById("orc-form")) medir("visita");
+
+  // ---------- Depoimentos cadastrados no painel (chegam pelo js/provas-db.js) ----------
+  // <div data-depoimentos="empresas|inicio" data-max="2">: o bloco (ou a seção em volta) fica oculto até ter o que mostrar
+  var depo = typeof DEPOIMENTOS !== "undefined" && Array.isArray(DEPOIMENTOS) ? DEPOIMENTOS : [];
+  document.querySelectorAll("[data-depoimentos]").forEach(function (box) {
+    var onde = box.getAttribute("data-depoimentos");
+    var lista = depo.filter(function (d) { return d.onde === onde || d.onde === "ambas"; })
+      .slice(0, Number(box.getAttribute("data-max")) || 6);
+    if (!lista.length) return;
+    lista.forEach(function (d) {
+      var fig = document.createElement("figure");
+      fig.className = "depo";
+      var q = document.createElement("blockquote");
+      q.textContent = d.texto;
+      var cap = document.createElement("figcaption");
+      var n = document.createElement("strong");
+      n.textContent = d.nome;
+      cap.append(n);
+      if (d.cargo) { var s = document.createElement("span"); s.textContent = d.cargo; cap.append(s); }
+      fig.append(q, cap);
+      box.append(fig);
+    });
+    var oculto = box.closest("[hidden]");
+    if (oculto) oculto.hidden = false;
+  });
+
   if (!("IntersectionObserver" in window)) return;
 
   // ---------- Elementos aparecem ao entrar na tela ----------
   var seletores = [
     ".block__head", ".carousel-head", ".race-card", ".case-card", ".logos li", ".offers article",
     ".bento__item", ".creds li", ".steps li", ".event-sec", ".slide", ".inst > div", ".trust__stat",
-    ".contact__grid > *", ".other-race", ".month-title", ".highlights li", ".testimonial",
+    ".contact__grid > *", ".other-race", ".month-title", ".highlights li", ".testimonial", ".depo",
   ];
   if (!reduz) {
     document.documentElement.classList.add("anim");

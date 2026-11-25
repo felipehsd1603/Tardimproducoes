@@ -111,13 +111,32 @@
     var percursos = Array.isArray(ev.percursos) ? ev.percursos : (ev.percursos ? [ev.percursos] : []);
     if (percursos.length) corpo.append(el("p", "race-card__dist", percursos.join(" • ")));
     if (ev.local) corpo.append(el("p", "race-card__place", ev.local));
+    // Menor preço que vale hoje e o lote (LOTES fica no js/eventos.js, igual à página da prova)
+    var preco = !ev.esgotado && ev.inscricao && typeof LOTES === "function" ? LOTES(ev).menor : null;
+    if (preco) {
+      var pp = el("p", "race-card__preco");
+      pp.append("A partir de ", el("b", null, preco.txt));
+      if (preco.ate) { var pa = preco.ate.split("-"); pp.append(" · " + preco.nome + " até " + pa[2] + "/" + pa[1]); }
+      else if (/lote/i.test(preco.nome)) pp.append(" · " + preco.nome);
+      corpo.append(pp);
+    }
 
     var acoes = el("div", "race-card__actions");
-    var a = el("a", "btn btn--red btn--sm", "Inscreva-se ↗");
-    a.href = ev.inscricao || linkPadrao;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.setAttribute("aria-label", "Inscreva-se na " + ev.nome + " (abre em nova aba)");
+    var a;
+    if (ev.esgotado) {
+      a = el("span", "btn btn--sm btn--esgotado", "Inscrições esgotadas");
+    } else if (!ev.inscricao && !ev.demo && typeof AVISE !== "undefined") {
+      // Sem link da Ticket Sports ainda: "Inscrições em breve" + "Me avise"
+      a = AVISE.bloco(ev, "btn btn--sm");
+    } else {
+      a = el("a", "btn btn--red btn--sm", "Inscreva-se ↗");
+      a.href = ev.inscricao || linkPadrao;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.setAttribute("data-medir", "inscricao"); // js/ui.js conta o clique
+      a.setAttribute("data-ref", ev.id || "");
+      a.setAttribute("aria-label", "Inscreva-se na " + ev.nome + " (abre em nova aba)");
+    }
     var ver = el("a", "race-card__more", "Saber mais");
     ver.href = detalhe;
     ver.setAttribute("aria-label", "Saber mais sobre a " + ev.nome);
@@ -294,10 +313,16 @@
     var algumFiltro = !!(termo || estado.ano || estado.mes !== "" || estado.dist);
     limpar.hidden = !algumFiltro;
 
-    // Lista agrupada por mês
     lista.innerHTML = "";
+    // Próximas: vitrine contínua (a data está em cada card), sem buracos entre meses.
+    // Edições anteriores: agrupadas por mês, que ajuda a navegar no histórico.
+    if (estado.aba === "prox") {
+      var vitrine = el("div", "races races--vitrine");
+      filtrados.slice(0, estado.limite).forEach(function (it) { vitrine.append(cardProx(it)); });
+      if (filtrados.length) lista.append(vitrine);
+    }
     var grupos = {};
-    filtrados.slice(0, estado.limite).forEach(function (it) {
+    if (estado.aba !== "prox") filtrados.slice(0, estado.limite).forEach(function (it) {
       var chave, titulo;
       if (it.mes !== null) { chave = it.ano + "-" + it.mes; titulo = cap(MESES[it.mes]) + " " + it.ano; }
       else if (it.ano) { chave = it.ano + "-x"; titulo = it.ano + " · mês não informado"; }
@@ -335,7 +360,22 @@
 
   // ---------- Card "próxima prova" na abertura ----------
   if (proximas.length) {
-    var p = proximas[0];
+    // Destaque vai para a próxima prova com inscrição aberta; esgotada não ocupa o lugar mais visível
+    var abertas = proximas.filter(function (e) { return !e.esgotado && e.inscricao; });
+    var p = abertas[0] || proximas[0];
+    var esgotadasAntes = proximas.filter(function (e) { return e.esgotado && e !== p && e.data <= p.data; });
+    if (p !== proximas[0] && !p.esgotado) document.querySelector(".next-card__label").textContent = "Inscrições abertas";
+    if (esgotadasAntes.length) {
+      var nota = el("p", "next-card__esgotada");
+      esgotadasAntes.forEach(function (e, i) {
+        var de = data(e.data);
+        var a = el("a", null, e.nome);
+        a.href = linkProva(e.id);
+        if (i) nota.append(" · ");
+        nota.append(i ? "" : "Esgotada: ", a, " (" + de.getDate() + "/" + (de.getMonth() + 1) + ")");
+      });
+      document.querySelector(".next-card__body").append(nota);
+    }
     var dp = data(p.data);
     var dias = Math.round((dp - hoje) / 86400000);
     var nomeEl = document.getElementById("next-name");
@@ -371,8 +411,23 @@
     var poster = document.getElementById("next-poster");
     if (p.poster) { poster.src = p.poster; poster.alt = "Arte de divulgação: " + p.nome; }
     else { poster.remove(); }
-    document.getElementById("next-link").href = p.inscricao || linkPadrao;
-    document.getElementById("next-link").target = "_blank";
+    var nl = document.getElementById("next-link");
+    if (p.esgotado) {
+      // Esgotada: o botão vira aviso e leva para a página da prova
+      nl.textContent = "Inscrições esgotadas";
+      nl.classList.remove("btn--red");
+      nl.classList.add("btn--esgotado");
+      nl.href = "prova-" + p.id + ".html";
+    } else if (!p.inscricao && !p.demo) {
+      // Sem link ainda: leva ao "Me avise" da página da prova
+      nl.textContent = "Inscrições em breve · Me avise";
+      nl.href = "prova-" + p.id + ".html#avise";
+    } else {
+      nl.href = p.inscricao || linkPadrao;
+      nl.target = "_blank";
+      nl.setAttribute("data-medir", "inscricao");
+      nl.setAttribute("data-ref", p.id || "");
+    }
     document.getElementById("next").hidden = false;
   }
 
@@ -506,8 +561,8 @@
         a.href = "https://wa.me/" + SITE.whatsapp + "?text=" + encodeURIComponent(a.getAttribute("data-wa"));
       });
       var n = SITE.whatsapp.replace(/^55/, "");
-      document.getElementById("wa-number").textContent =
-        "(" + n.slice(0, 2) + ") " + n.slice(2, -4) + "-" + n.slice(-4);
+      var waNum = document.getElementById("wa-number");
+      if (waNum) waNum.textContent = "(" + n.slice(0, 2) + ") " + n.slice(2, -4) + "-" + n.slice(-4);
     } else {
       waLinks.forEach(function (a) {
         (a.closest("li") || a).hidden = true;
@@ -522,8 +577,8 @@
         (SITE.razaoSocial || "Tardim Produções e Eventos Ltda") + " · CNPJ " + SITE.cnpj;
     }
 
-    if (SITE.email) {
-      var m = document.getElementById("email-link");
+    var m = document.getElementById("email-link");
+    if (SITE.email && m) {
       m.href = "mailto:" + SITE.email;
       m.textContent = SITE.email;
     }
