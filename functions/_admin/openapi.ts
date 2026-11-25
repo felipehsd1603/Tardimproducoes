@@ -1,6 +1,6 @@
 // Especificação OpenAPI 3.1 das APIs internas (painel, área do parceiro e rotas do site).
 // Servida só com login no painel: /api/admin/openapi.json e /api/admin/docs (Swagger UI).
-// A API pública para parceiros tem a própria: /api/v1/docs (functions/_api-v1/openapi.js).
+// A API pública para parceiros tem a própria: /api/v1/docs (functions/_api-v1/openapi.ts).
 
 const ref = (n) => ({ $ref: "#/components/schemas/" + n });
 const j = (schema) => ({ content: { "application/json": { schema } } });

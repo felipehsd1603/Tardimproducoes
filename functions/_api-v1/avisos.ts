@@ -1,11 +1,11 @@
 // Mensagens da Tardim para as plataformas das assessorias (docs/api-v1-parceiros.md):
-//  - convite de conexão: JWS assinado (functions/_lib/assinatura.js) para {plataforma}/api/integracoes/organizadoras/convites
+//  - convite de conexão: JWS assinado (functions/_lib/assinatura.ts) para {plataforma}/api/integracoes/organizadoras/convites
 //  - avisos (webhooks): POST no webhook_url da integração, assinado com HMAC-SHA256 do webhook_segredo
 // Uma tentativa por vez; o resultado fica no banco para o painel mostrar "Reenviar".
 
-import { assinaJws } from "../_lib/assinatura.js";
-import { hmacHex } from "../_lib/http.js";
-import { linhasProvas, formataProva, conviteApi, integracaoAtiva } from "./provas.js";
+import { assinaJws } from "../_lib/assinatura.ts";
+import { hmacHex } from "../_lib/http.ts";
+import { linhasProvas, formataProva, conviteApi, integracaoAtiva } from "./provas.ts";
 
 const ESPERA = 10000;
 

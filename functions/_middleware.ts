@@ -5,8 +5,8 @@
 // Qualquer outra rota (ou banco fora do ar) segue para os arquivos estáticos.
 // As rotas que passam por aqui estão limitadas em _routes.json.
 
-import { processaFila } from "./_api-v1/avisos.js";
-import { conferePendentes } from "./_lib/inscricoes-site.js";
+import { processaFila } from "./_api-v1/avisos.ts";
+import { conferePendentes } from "./_lib/inscricoes-site.ts";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

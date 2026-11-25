@@ -1,6 +1,6 @@
 // "Me avise quando abrir": e-mail de inscrições abertas pelo Resend (segredos RESEND_API_KEY e AVISO_REMETENTE).
 
-import { Erro, RE_ID_PROVA } from "./comum.js";
+import { Erro, RE_ID_PROVA } from "./comum.ts";
 
 // ---------- "Me avise": e-mail de inscrições abertas ----------
 const escHtml = (s) => String(s || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);

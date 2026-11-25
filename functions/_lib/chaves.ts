@@ -2,7 +2,7 @@
 // e vai direto para o servidor da plataforma; o banco guarda só o SHA-256 dela (tabela integracoes).
 // O segredo do webhook assina os avisos (HMAC-SHA256).
 
-import { aleatorioHex, sha256 } from "./http.js";
+import { aleatorioHex, sha256 } from "./http.ts";
 
 export { sha256 };
 

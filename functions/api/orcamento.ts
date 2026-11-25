@@ -1,8 +1,8 @@
 // POST /api/orcamento — guarda o pedido de orçamento no D1 (binding DB).
 // Limite: 10 pedidos por IP por hora.
 
-import { dentroDoLimite } from "../_lib/limite.js";
-import { json, mesmaOrigem } from "../_lib/http.js";
+import { dentroDoLimite } from "../_lib/limite.ts";
+import { json, mesmaOrigem } from "../_lib/http.ts";
 
 const LIMITES = { servico: 60, nome: 120, contratante: 60, empresa: 120, cidade: 120, quando: 40, publico: 40, detalhes: 2000 };
 

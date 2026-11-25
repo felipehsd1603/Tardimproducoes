@@ -1,11 +1,11 @@
 // Inscrição direta no site da Tardim (tabela inscricoes_site, d1/migracoes/016-inscricoes-site.sql):
 // quem chega pelo link de embaixador ou influenciador (com o cupom) e o próprio parceiro (área do parceiro, com as
-// cortesias do convite). Pagamento por PIX (functions/_lib/pix.js); a confirmação vem da consulta da cobrança no banco
+// cortesias do convite). Pagamento por PIX (functions/_lib/pix.ts); a confirmação vem da consulta da cobrança no banco
 // (na tela do QR Code, nas visitas ao site e no botão "Conferir no banco" do painel).
 
-import { sha256, aleatorioHex, cpfValido } from "./http.js";
-import { pixConfigurado, criaCobranca, consultaCobranca, ErroPix } from "./pix.js";
-import { mpConfigurado, criaCheckout, pagamentoDaReferencia, ErroMp } from "./mercadopago.js";
+import { sha256, aleatorioHex, cpfValido } from "./http.ts";
+import { pixConfigurado, criaCobranca, consultaCobranca, ErroPix } from "./pix.ts";
+import { mpConfigurado, criaCheckout, pagamentoDaReferencia, ErroMp } from "./mercadopago.ts";
 
 export class ErroInscricao extends Error {
   constructor(status, message) { super(message); this.status = status; }

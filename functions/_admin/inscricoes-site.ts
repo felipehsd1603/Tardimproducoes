@@ -1,8 +1,8 @@
-// Painel > Inscrições no site: lista, conferir o PIX no banco e cancelar (functions/_lib/inscricoes-site.js).
+// Painel > Inscrições no site: lista, conferir o PIX no banco e cancelar (functions/_lib/inscricoes-site.ts).
 
-import { json } from "../_lib/http.js";
-import { confere } from "../_lib/inscricoes-site.js";
-import { Erro } from "./comum.js";
+import { json } from "../_lib/http.ts";
+import { confere } from "../_lib/inscricoes-site.ts";
+import { Erro } from "./comum.ts";
 
 const CAMPOS = "i.id, i.prova_id, i.convite_id, i.parceiro_id, i.cupom, i.origem, i.nome, i.cpf, i.email, i.telefone, i.nascimento, i.sexo, " +
   "i.camiseta, i.modalidade, i.lote, i.valor_cheio, i.desconto, i.acrescimo, i.valor, i.forma, i.situacao, i.txid, i.e2e_id, i.mp_preferencia, i.mp_pagamento, " +

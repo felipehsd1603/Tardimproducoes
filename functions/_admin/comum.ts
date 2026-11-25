@@ -1,6 +1,6 @@
 // Peças comuns da API do painel: erro ({ erro: <status>, mensagem }), leitura do corpo e regras compartilhadas.
 
-import { json } from "../_lib/http.js";
+import { json } from "../_lib/http.ts";
 
 export { json };
 

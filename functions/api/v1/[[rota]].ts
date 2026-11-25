@@ -8,14 +8,14 @@
 // A chave nasce no aceite da conexão e vai direto para o servidor da plataforma: ninguém a copia.
 // O banco guarda só o SHA-256 dela. Só servidor chama esta API: não há CORS.
 
-import { json } from "../../_lib/http.js";
-import { chavesPublicas } from "../../_lib/assinatura.js";
-import { ErroApi } from "../../_api-v1/comum.js";
-import { autentica } from "../../_api-v1/autenticacao.js";
-import { respondeConexao, desconecta } from "../../_api-v1/conexoes.js";
-import { eu, listaProvas, umaProva, listaConvites, respondeConvite } from "../../_api-v1/catalogo.js";
-import { recebeEnvio, consultaEnvio, situacaoAtletas } from "../../_api-v1/envios.js";
-import { OPENAPI_V1, paginaSwagger } from "../../_api-v1/openapi.js";
+import { json } from "../../_lib/http.ts";
+import { chavesPublicas } from "../../_lib/assinatura.ts";
+import { ErroApi } from "../../_api-v1/comum.ts";
+import { autentica } from "../../_api-v1/autenticacao.ts";
+import { respondeConexao, desconecta } from "../../_api-v1/conexoes.ts";
+import { eu, listaProvas, umaProva, listaConvites, respondeConvite } from "../../_api-v1/catalogo.ts";
+import { recebeEnvio, consultaEnvio, situacaoAtletas } from "../../_api-v1/envios.ts";
+import { OPENAPI_V1, paginaSwagger } from "../../_api-v1/openapi.ts";
 
 const MAX_ENVIO = 1500000;
 

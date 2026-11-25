@@ -6,8 +6,8 @@
 // O e-mail sai pelo painel (functions/api/admin, POST avisos/<prova>/enviar) quando a prova
 // ganha o link da Ticket Sports. Limite: 10 pedidos por IP por hora.
 
-import { dentroDoLimite } from "../_lib/limite.js";
-import { json, mesmaOrigem } from "../_lib/http.js";
+import { dentroDoLimite } from "../_lib/limite.ts";
+import { json, mesmaOrigem } from "../_lib/http.ts";
 
 const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i;
 const RE_ID_PROVA = /^[a-z0-9]+(-[a-z0-9]+)*$/;

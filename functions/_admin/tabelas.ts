@@ -1,9 +1,9 @@
 // Tabelas que o painel edita (provas, parceiros, convites, propostas, minutário, depoimentos):
 // campos permitidos, validação por tabela, conversão de saída e o CRUD genérico.
 
-import { numeroCref } from "../_lib/cref6.js";
-import { Erro, PROFISSOES, RE_ID_PROVA, TIPOS_PARCEIRO } from "./comum.js";
-import { validaConfig, ErroInscricao } from "../_lib/inscricoes-site.js";
+import { numeroCref } from "../_lib/cref6.ts";
+import { Erro, PROFISSOES, RE_ID_PROVA, TIPOS_PARCEIRO } from "./comum.ts";
+import { validaConfig, ErroInscricao } from "../_lib/inscricoes-site.ts";
 
 // Campos que o painel pode gravar em cada tabela: número = tamanho máximo do texto
 const TABELAS = {
@@ -13,7 +13,7 @@ const TABELAS = {
       valores: "json", kit: "json", programacao: "json", premiacao: 300, percurso_mapa: 500, regulamento: 500,
       resultados: 500, fotos: 500, realizacao: 120, texto_divulgacao: 1500, hashtags: 200, publicada: "bool",
       faq: "json", // [["pergunta", "resposta"]]; o painel só envia quando há o que gravar (banco sem a coluna continua salvando)
-      inscricao_site: "json", // inscrição direta no site com PIX (functions/_lib/inscricoes-site.js); só vai quando o painel mexe nela
+      inscricao_site: "json", // inscrição direta no site com PIX (functions/_lib/inscricoes-site.ts); só vai quando o painel mexe nela
     },
     obrigatorios: ["nome", "data"], ordem: "data",
   },
@@ -45,7 +45,7 @@ const TABELAS = {
     campos: { categoria: 80, descricao: 2000, dados: "json" },
     obrigatorios: ["descricao"], ordem: "categoria COLLATE NOCASE, criado_em, rowid",
   },
-  // Depoimentos mostrados no site (functions/_middleware.js entrega os publicados)
+  // Depoimentos mostrados no site (functions/_middleware.ts entrega os publicados)
   depoimentos: {
     campos: { nome: 120, cargo: 160, texto: 600, onde: 10, publicado: "bool" },
     obrigatorios: ["nome", "texto"], ordem: "criado_em DESC",

@@ -5,7 +5,7 @@
 // Não há CAPTCHA nem login. Se o CREF6 mudar a página, a consulta passa a devolver
 // { ok: false } e o cadastro segue sem a validação automática (confira à mão).
 //
-// Uso (numa Function):  import { consultaCref6 } from "../../_lib/cref6.js";
+// Uso (numa Function):  import { consultaCref6 } from "../../_lib/cref6.ts";
 //   const r = await consultaCref6("012345-G/MG");
 //   r = { ok: true, encontrado: true, registro: "MG-012345", nome, categoria, situacao, ativo }
 //     | { ok: true, encontrado: false, registro: "MG-012345" }

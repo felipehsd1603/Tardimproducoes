@@ -9,20 +9,20 @@
 // Cadastros feitos pelo site (parceiro.html) chegam como parceiros "pendente";
 // aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
-import { json, mesmaOrigem } from "../../_lib/http.js";
-import { consultaCref6 } from "../../_lib/cref6.js";
-import { confereInstagramParceiro } from "../../_lib/instagram.js";
-import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.js";
-import { Erro, corpo } from "../../_admin/comum.js";
-import { sessaoValida, login, cookie } from "../../_admin/sessao.js";
-import { TABELAS, lista, uma, cria, altera, apaga } from "../../_admin/tabelas.js";
-import { CONFIGS, config, contratoAssinado, enviaArquivo } from "../../_admin/arquivos.js";
-import { enviaAvisos } from "../../_admin/avisos-email.js";
-import { listaIntegracoes, convidaConexao, alteraConexao, desconecta } from "../../_admin/integracoes.js";
-import { listaOrcamentos, listaInscricoes, atletasDoEnvio, alteraAtleta, confirmaEnvio, medicao, resumoAvisos } from "../../_admin/inscricoes.js";
-import { OPENAPI_ADMIN } from "../../_admin/openapi.js";
-import { listaInscricoesSite, confereInscricaoSite, cancelaInscricaoSite } from "../../_admin/inscricoes-site.js";
-import { paginaSwagger } from "../../_api-v1/openapi.js";
+import { json, mesmaOrigem } from "../../_lib/http.ts";
+import { consultaCref6 } from "../../_lib/cref6.ts";
+import { confereInstagramParceiro } from "../../_lib/instagram.ts";
+import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.ts";
+import { Erro, corpo } from "../../_admin/comum.ts";
+import { sessaoValida, login, cookie } from "../../_admin/sessao.ts";
+import { TABELAS, lista, uma, cria, altera, apaga } from "../../_admin/tabelas.ts";
+import { CONFIGS, config, contratoAssinado, enviaArquivo } from "../../_admin/arquivos.ts";
+import { enviaAvisos } from "../../_admin/avisos-email.ts";
+import { listaIntegracoes, convidaConexao, alteraConexao, desconecta } from "../../_admin/integracoes.ts";
+import { listaOrcamentos, listaInscricoes, atletasDoEnvio, alteraAtleta, confirmaEnvio, medicao, resumoAvisos } from "../../_admin/inscricoes.ts";
+import { OPENAPI_ADMIN } from "../../_admin/openapi.ts";
+import { listaInscricoesSite, confereInscricaoSite, cancelaInscricaoSite } from "../../_admin/inscricoes-site.ts";
+import { paginaSwagger } from "../../_api-v1/openapi.ts";
 
 // [método ("*" = qualquer), padrão, função]. ":x" casa um segmento. Todas exigem login (as de entrar e sair ficam antes).
 const ROTAS = [

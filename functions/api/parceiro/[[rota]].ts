@@ -5,7 +5,7 @@
 // configurado, por e-mail (Resend). Cookie HttpOnly assinado com SESSAO_SEGREDO.
 //
 //   GET  config                 { google: client id ou "" }
-//   GET  cidades?uf=MG          { uf, cidades }  (municípios do IBGE, functions/_lib/cidades.js)
+//   GET  cidades?uf=MG          { uf, cidades }  (municípios do IBGE, functions/_lib/cidades.ts)
 //   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], nome, whatsapp, uf, cidade, instagram, seguidores,
 //                                 assessoria_nome, cnpj, assessoria_instagram, email, senha | credential, aceite }
 //                               Um perfil (linha em parceiros) por tipo marcado, todos no mesmo login (parceiros.conta_id).
@@ -26,10 +26,10 @@
 // Segredos/variáveis: SESSAO_SEGREDO (obrigatório), GOOGLE_CLIENT_ID (login com Google),
 // RESEND_API_KEY + AVISO_EMAIL (+ AVISO_REMETENTE opcional) para o e-mail de novo cadastro.
 
-import { CIDADES } from "../../_lib/cidades.js";
-import { confereInstagramParceiro } from "../../_lib/instagram.js";
-import { ErroInscricao, provaAberta, validaAtleta, criaInscricao, publica, confere } from "../../_lib/inscricoes-site.js";
-import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.js";
+import { CIDADES } from "../../_lib/cidades.ts";
+import { confereInstagramParceiro } from "../../_lib/instagram.ts";
+import { ErroInscricao, provaAberta, validaAtleta, criaInscricao, publica, confere } from "../../_lib/inscricoes-site.ts";
+import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.ts";
 
 const COOKIE = "tardim_parceiro";
 const DURACAO = 60 * 60 * 24 * 30; // 30 dias
@@ -71,7 +71,7 @@ function cnpjValido(v) {
 }
 const limpaInsta = (v) => texto(v, 100).replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, "");
 
-// ---------- criptografia (comuns em functions/_lib/http.js) ----------
+// ---------- criptografia (comuns em functions/_lib/http.ts) ----------
 async function pbkdf2(senha, sal, iter) {
   const k = await crypto.subtle.importKey("raw", enc.encode(senha), "PBKDF2", false, ["deriveBits"]);
   return b64url(new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: sal, iterations: iter }, k, 256)));
@@ -437,7 +437,7 @@ async function loginGoogle(request, env) {
   return entra(env, conta);
 }
 
-// ---------- inscrição pelo site, feita pelo próprio parceiro (functions/_lib/inscricoes-site.js) ----------
+// ---------- inscrição pelo site, feita pelo próprio parceiro (functions/_lib/inscricoes-site.ts) ----------
 // Usa as cortesias do convite enquanto houver; depois, paga por PIX com o desconto do cupom.
 async function conviteDaConta(env, conta, conviteId) {
   return env.DB.prepare(

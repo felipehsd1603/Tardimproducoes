@@ -5,11 +5,11 @@
 // Cada envio vira uma linha em inscricoes (origem 'api'); cada atleta é único por
 // prova + assessoria + id_externo: reenviar o mesmo id_externo atualiza.
 
-import { sha256, cpfValido } from "../_lib/http.js";
-import { linhasProvas, formataProva, isoBanco } from "./provas.js";
-import { atletaApi } from "./avisos.js";
+import { sha256, cpfValido } from "../_lib/http.ts";
+import { linhasProvas, formataProva, isoBanco } from "./provas.ts";
+import { atletaApi } from "./avisos.ts";
 
-import { ErroApi } from "./comum.js";
+import { ErroApi } from "./comum.ts";
 
 const MAX_ATLETAS = 1000;
 const ATIVAS = ["recebido", "aguardando_pagamento", "inscrito"];

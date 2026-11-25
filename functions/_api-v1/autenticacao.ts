@@ -1,9 +1,9 @@
 // Autenticação da API v1: "Authorization: Bearer tdm_live_..." (ou tdm_test_).
 // A chave é comparada pelo SHA-256 (tabela integracoes); a assessoria precisa estar aprovada e ativa.
 
-import { RE_CHAVE, sha256 } from "../_lib/chaves.js";
-import { isoBanco } from "./provas.js";
-import { ErroApi, contaUso, LIMITE_MINUTO } from "./comum.js";
+import { RE_CHAVE, sha256 } from "../_lib/chaves.ts";
+import { isoBanco } from "./provas.ts";
+import { ErroApi, contaUso, LIMITE_MINUTO } from "./comum.ts";
 
 export async function autentica(request, env, waitUntil) {
   const m = (request.headers.get("Authorization") || "").match(/^Bearer\s+(\S+)$/i);

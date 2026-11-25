@@ -1,10 +1,10 @@
 // Conexão por convite (docs/api-v1-parceiros.md, "Conexão"): a plataforma aceita ou recusa o
 // convite assinado com o código de uso único; no aceite a chave nasce e volta só nesta resposta.
 
-import { sha256, novaChave, novoSegredo } from "../_lib/chaves.js";
-import { json } from "../_lib/http.js";
-import { isoBanco, hojeBR } from "./provas.js";
-import { ErroApi, corpoJson, texto, contaUso, LIMITE_CONEXAO_IP } from "./comum.js";
+import { sha256, novaChave, novoSegredo } from "../_lib/chaves.ts";
+import { json } from "../_lib/http.ts";
+import { isoBanco, hojeBR } from "./provas.ts";
+import { ErroApi, corpoJson, texto, contaUso, LIMITE_CONEXAO_IP } from "./comum.ts";
 
 const ABERTAS = ["enviado", "enviando", "falhou"];
 

@@ -1,10 +1,10 @@
 // Integrações (API v1 para parceiros): o painel convida o sistema da assessoria, reenvia ou cancela o
 // convite e desconecta. Ver docs/api-v1-parceiros.md.
 
-import { json, sha256 } from "../_lib/http.js";
-import { assinaturaConfigurada } from "../_lib/assinatura.js";
-import { enviaConviteConexao, enviaAviso, origemPublica } from "../_api-v1/avisos.js";
-import { Erro, corpo } from "./comum.js";
+import { json, sha256 } from "../_lib/http.ts";
+import { assinaturaConfigurada } from "../_lib/assinatura.ts";
+import { enviaConviteConexao, enviaAviso, origemPublica } from "../_api-v1/avisos.ts";
+import { Erro, corpo } from "./comum.ts";
 
 // ---------- integrações (API v1 para parceiros, docs/api-v1-parceiros.md) ----------
 // Tudo por convite: o painel convida a plataforma da assessoria (convite assinado),

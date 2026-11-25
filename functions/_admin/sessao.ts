@@ -1,8 +1,8 @@
 // Sessão do painel: senha única (segredo ADMIN_SENHA) e cookie HttpOnly assinado (SESSAO_SEGREDO).
 // Trocar a senha derruba todas as sessões. Bloqueio: 5 erros em 15 minutos por IP.
 
-import { json, hmacB64url as hmac, iguais } from "../_lib/http.js";
-import { Erro } from "./comum.js";
+import { json, hmacB64url as hmac, iguais } from "../_lib/http.ts";
+import { Erro } from "./comum.ts";
 
 const COOKIE = "tardim_painel";
 const DURACAO = 60 * 60 * 24 * 14; // 14 dias

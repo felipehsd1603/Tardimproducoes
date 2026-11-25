@@ -1,5 +1,5 @@
 // /api/inscricao-site/* — inscrição direta no site, para quem chega pelo link de embaixador ou influenciador
-// (inscricao.html?prova=<id>&cupom=<CUPOM>). Lógica em functions/_lib/inscricoes-site.js.
+// (inscricao.html?prova=<id>&cupom=<CUPOM>). Lógica em functions/_lib/inscricoes-site.ts.
 //
 //   GET  prova/<id>?cupom=X     { prova, lote: { nome, valor_cheio, desconto, valor }, modalidades, camisetas, parceiro }
 //   POST criar                  { prova, cupom, nome, cpf, email, telefone, nascimento, sexo, camiseta, modalidade, aceite, forma: pix|cartao }
@@ -8,12 +8,12 @@
 //
 // Erros: { erro: <status>, mensagem }. Limite: 20 inscrições criadas por hora por IP (dados inválidos não contam).
 
-import { json, mesmaOrigem } from "../../_lib/http.js";
-import { dentroDoLimite } from "../../_lib/limite.js";
+import { json, mesmaOrigem } from "../../_lib/http.ts";
+import { dentroDoLimite } from "../../_lib/limite.ts";
 import {
   ErroInscricao, provaAberta, conviteDoCupom, loteAtual, descontoDe, validaAtleta, criaInscricao, confere, publica, inscricaoComCodigo,
   acrescimoCartao, cartaoAtivo,
-} from "../../_lib/inscricoes-site.js";
+} from "../../_lib/inscricoes-site.ts";
 
 async function corpo(request) {
   const t = await request.text();

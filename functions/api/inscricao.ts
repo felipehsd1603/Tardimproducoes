@@ -1,8 +1,8 @@
 // POST /api/inscricao — guarda a inscrição coletiva (equipe + atletas) no D1 (binding DB).
 // Limite: 10 envios por IP por hora.
 
-import { dentroDoLimite } from "../_lib/limite.js";
-import { json, mesmaOrigem, cpfValido } from "../_lib/http.js";
+import { dentroDoLimite } from "../_lib/limite.ts";
+import { json, mesmaOrigem, cpfValido } from "../_lib/http.ts";
 
 const MAX_ATLETAS = 1000;
 const POR_LOTE = 10; // 10 atletas x 10 colunas = 100 parâmetros, o teto do D1 por comando

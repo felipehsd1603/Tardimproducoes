@@ -2,8 +2,8 @@
 // o par evento + referência (tabela medicao). Não guarda IP, cookie nem nada
 // que identifique o visitante; o painel lê os totais na aba "Medição".
 
-import { json } from "../_lib/http.js";
-import { dentroDoLimite } from "../_lib/limite.js";
+import { json } from "../_lib/http.ts";
+import { dentroDoLimite } from "../_lib/limite.ts";
 
 // Até 60 eventos por hora por IP: um visitante real fica muito abaixo; quem tenta inflar os números para aqui
 const MAX_POR_HORA = 60;

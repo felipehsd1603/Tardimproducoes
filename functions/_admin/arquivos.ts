@@ -1,7 +1,7 @@
 // Configurações do painel, imagens enviadas (tabela arquivos) e o PDF do contrato assinado.
 
-import { json } from "../_lib/http.js";
-import { Erro, corpo, MAX_ARQUIVO, RE_ARQUIVO } from "./comum.js";
+import { json } from "../_lib/http.ts";
+import { Erro, corpo, MAX_ARQUIVO, RE_ARQUIVO } from "./comum.ts";
 
 // Configurações do painel: chave -> tamanho máximo do JSON
 const CONFIGS = { contrato: 120000 };

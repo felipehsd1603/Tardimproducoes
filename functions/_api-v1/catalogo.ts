@@ -1,8 +1,8 @@
 // Consultas da assessoria conectada: quem é a chave, provas com convite e convites de prova.
 
-import { json } from "../_lib/http.js";
-import { linhasProvas, formataProva, conviteApi, absoluto, isoBanco } from "./provas.js";
-import { ErroApi, corpoJson, texto } from "./comum.js";
+import { json } from "../_lib/http.ts";
+import { linhasProvas, formataProva, conviteApi, absoluto, isoBanco } from "./provas.ts";
+import { ErroApi, corpoJson, texto } from "./comum.ts";
 
 /** GET /eu */
 export function eu(integ, url) {

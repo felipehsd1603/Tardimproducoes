@@ -1,9 +1,9 @@
 // O que chega pelo site e pelos sistemas das assessorias: orçamentos, inscrições coletivas (planilha e
 // API v1), a conferência dos atletas (cada mudança avisa a plataforma com atleta.situacao) e a medição.
 
-import { json } from "../_lib/http.js";
-import { avisaAtletas } from "../_api-v1/avisos.js";
-import { Erro, corpo } from "./comum.js";
+import { json } from "../_lib/http.ts";
+import { avisaAtletas } from "../_api-v1/avisos.ts";
+import { Erro, corpo } from "./comum.ts";
 
 const SITUACOES = ["recebido", "aguardando_pagamento", "inscrito", "recusado", "cancelado"];
 const agora = () => new Date().toISOString().slice(0, 19) + "Z";
@@ -51,7 +51,7 @@ export async function confirmaEnvio(env, inscricaoId) {
   return json({ confirmados: ids.length, avisos: await avisaAtletas(env, ids) });
 }
 
-/** GET medicao?dias=30 (functions/api/evento.js): totais por evento e página */
+/** GET medicao?dias=30 (functions/api/evento.ts): totais por evento e página */
 export async function medicao(env, url) {
   const dias = Math.min(Math.max(parseInt(url.searchParams.get("dias"), 10) || 30, 1), 365);
   const desde = new Date(Date.now() - 3 * 3600 * 1000 - (dias - 1) * 86400000).toISOString().slice(0, 10);
