@@ -1,10 +1,13 @@
 // "Me avise quando abrir": e-mail de inscrições abertas pelo Resend (segredos RESEND_API_KEY e AVISO_REMETENTE).
 
 import { Erro, RE_ID_PROVA } from "./comum.ts";
+import type { Env, Dados } from "../_lib/tipos.ts";
+
+interface PedidoAviso { id: string; nome: string; email: string }
 
 // ---------- "Me avise": e-mail de inscrições abertas ----------
-const escHtml = (s) => String(s || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
-async function enviaAvisos(env, provaId, d, origem) {
+const escHtml = (s: unknown): string => String(s || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as Record<string, string>)[ch]);
+async function enviaAvisos(env: Env, provaId: string, d: Dados, origem: string): Promise<{ enviados: number; falhas: number }> {
   if (!RE_ID_PROVA.test(provaId)) throw new Erro(400, "Prova inválida.");
   if (!env.RESEND_API_KEY) throw new Erro(503, "O envio de e-mail ainda não foi configurado (falta o segredo RESEND_API_KEY).");
   const nome = String(d.nome || "").trim().slice(0, 160);
@@ -14,7 +17,7 @@ async function enviaAvisos(env, provaId, d, origem) {
   if (!nome) throw new Erro(400, "Falta o nome da prova.");
   if (!/^https:\/\/[^\s"<>]+$/.test(link)) throw new Erro(400, "A prova ainda não tem o link de inscrição.");
   const fila = (await env.DB.prepare("SELECT id, nome, email FROM avisos WHERE prova_id = ? AND enviado_em = '' LIMIT 500")
-    .bind(provaId).all()).results;
+    .bind(provaId).all<PedidoAviso>()).results;
   if (!fila.length) return { enviados: 0, falhas: 0 };
   const remetente = env.AVISO_REMETENTE || "Tardim Produções <onboarding@resend.dev>";
   // pagina_id: avisar quem pediu a "próxima edição" de uma prova realizada com o link da prova nova
@@ -45,7 +48,7 @@ async function enviaAvisos(env, provaId, d, origem) {
       body: JSON.stringify(msgs),
     });
     if (!r.ok) {
-      const msg = ((await r.json().catch(() => ({}))).message || "erro " + r.status);
+      const msg = ((await r.json<Dados>().catch((): Dados => ({}))).message || "erro " + r.status);
       if (!enviados) throw new Erro(502, "O Resend recusou o envio: " + msg);
       falhas += lote.length;
       break;

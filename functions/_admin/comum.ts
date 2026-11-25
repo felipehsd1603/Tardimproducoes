@@ -1,6 +1,7 @@
 // Peças comuns da API do painel: erro ({ erro: <status>, mensagem }), leitura do corpo e regras compartilhadas.
 
 import { json } from "../_lib/http.ts";
+import type { Dados } from "../_lib/tipos.ts";
 
 export { json };
 
@@ -17,10 +18,11 @@ const RE_ARQUIVO = /^(provas|assessorias)\/[\w-][\w.-]*\.(jpe?g|png|webp)$/;
 const TIPOS_PARCEIRO = ["embaixador", "influenciador", "assessoria", "equipe"];
 
 class Erro extends Error {
-  constructor(status, mensagem) { super(mensagem); this.status = status; }
+  status: number;
+  constructor(status: number, mensagem: string) { super(mensagem); this.status = status; }
 }
 
-async function corpo(request) {
+async function corpo(request: Request): Promise<Dados> {
   const t = await request.text();
   if (t.length > 200000) throw new Erro(413, "Dados grandes demais.");
   try { const d = JSON.parse(t); if (d && typeof d === "object" && !Array.isArray(d)) return d; } catch (e) { /* cai no erro abaixo */ }

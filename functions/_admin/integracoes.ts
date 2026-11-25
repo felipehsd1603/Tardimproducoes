@@ -5,6 +5,7 @@ import { json, sha256 } from "../_lib/http.ts";
 import { assinaturaConfigurada } from "../_lib/assinatura.ts";
 import { enviaConviteConexao, enviaAviso, origemPublica } from "../_api-v1/avisos.ts";
 import { Erro, corpo } from "./comum.ts";
+import type { Env, Conexao, Integracao, Parceiro } from "../_lib/tipos.ts";
 
 // ---------- integrações (API v1 para parceiros, docs/api-v1-parceiros.md) ----------
 // Tudo por convite: o painel convida a plataforma da assessoria (convite assinado),
@@ -13,8 +14,8 @@ const CAMPOS_INTEGRACAO = "id, parceiro_id, nome, plataforma_url, ambiente, pref
 const CAMPOS_CONEXAO = "id, parceiro_id, plataforma_url, ambiente, situacao, erro, motivo, respondido_por, integracao_id, expira_em, enviado_em, respondido_em, criado_em";
 const VALIDADE_CONVITE = 7 * 86400000;
 
-function urlPlataforma(valor, request) {
-  let u;
+function urlPlataforma(valor: unknown, request: Request): string {
+  let u: URL;
   try { u = new URL(String(valor || "").trim()); } catch (e) { throw new Erro(400, "Endereço do sistema inválido. Exemplo: https://im3-eventos.vercel.app"); }
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
   const painelLocal = /^(localhost|127\.0\.0\.1)$/.test(new URL(request.url).hostname);
@@ -22,7 +23,7 @@ function urlPlataforma(valor, request) {
   return u.origin;
 }
 
-async function listaIntegracoes(env, parceiroId) {
+async function listaIntegracoes(env: Env, parceiroId: string) {
   const [cx, it] = await Promise.all([
     env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE parceiro_id = ? ORDER BY criado_em DESC LIMIT 20").bind(parceiroId).all(),
     env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE parceiro_id = ? ORDER BY criada_em DESC").bind(parceiroId).all(),
@@ -31,8 +32,9 @@ async function listaIntegracoes(env, parceiroId) {
 }
 
 // Gera código novo, grava e entrega o convite assinado à plataforma
-async function entregaConvite(env, cx, url) {
-  const p = await env.DB.prepare("SELECT id, nome, responsavel, email FROM parceiros WHERE id = ?").bind(cx.parceiro_id).first();
+async function entregaConvite(env: Env, cx: Conexao, url: URL) {
+  const p = await env.DB.prepare("SELECT id, nome, responsavel, email FROM parceiros WHERE id = ?").bind(cx.parceiro_id)
+    .first<Pick<Parceiro, "id" | "nome" | "responsavel" | "email">>();
   const codigo = Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) => x.toString(16).padStart(2, "0")).join("");
   const expira = new Date(Date.now() + VALIDADE_CONVITE).toISOString().slice(0, 19) + "Z";
   await env.DB.prepare("UPDATE conexoes SET codigo_hash = ?, expira_em = ?, situacao = 'enviando', erro = '' WHERE id = ?")
@@ -43,8 +45,9 @@ async function entregaConvite(env, cx, url) {
   return env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE id = ?").bind(cx.id).first();
 }
 
-async function convidaConexao(request, env, parceiroId, url) {
-  const p = await env.DB.prepare("SELECT id, tipo, situacao, ativo FROM parceiros WHERE id = ?").bind(parceiroId).first();
+async function convidaConexao(request: Request, env: Env, parceiroId: string, url: URL): Promise<Response> {
+  const p = await env.DB.prepare("SELECT id, tipo, situacao, ativo FROM parceiros WHERE id = ?").bind(parceiroId)
+    .first<Pick<Parceiro, "id" | "tipo" | "situacao" | "ativo">>();
   if (!p) throw new Erro(404, "Registro não encontrado.");
   if (p.tipo !== "assessoria") throw new Erro(400, "Só assessoria pode ser conectada.");
   if (p.situacao !== "aprovado" || !p.ativo) throw new Erro(400, "Aprove e ative a assessoria antes de convidar.");
@@ -58,12 +61,12 @@ async function convidaConexao(request, env, parceiroId, url) {
     .bind(parceiroId, plataforma).run();
   await env.DB.prepare("INSERT INTO conexoes (id, parceiro_id, plataforma_url, ambiente, codigo_hash, expira_em) VALUES (?, ?, ?, ?, '', '')")
     .bind(id, parceiroId, plataforma, ambiente).run();
-  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first();
-  return json(await entregaConvite(env, cx, url), 201);
+  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first<Conexao>();
+  return json(await entregaConvite(env, cx as Conexao, url), 201);
 }
 
-async function alteraConexao(env, m, id, acao, url) {
-  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first();
+async function alteraConexao(env: Env, m: string, id: string, acao: string, url: URL): Promise<Response> {
+  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first<Conexao>();
   if (!cx) throw new Erro(404, "Registro não encontrado.");
   if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
   const aberta = ["enviando", "enviado", "falhou"].includes(cx.situacao);
@@ -79,11 +82,11 @@ async function alteraConexao(env, m, id, acao, url) {
 }
 
 // Desconectar: avisa a plataforma (com o segredo desta conexão) e revoga a chave
-async function desconecta(env, m, id) {
+async function desconecta(env: Env, m: string, id: string): Promise<Response> {
   if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
-  const atual = await env.DB.prepare("SELECT * FROM integracoes WHERE id = ?").bind(id).first();
+  const atual = await env.DB.prepare("SELECT * FROM integracoes WHERE id = ?").bind(id).first<Integracao>();
   if (!atual) throw new Erro(404, "Registro não encontrado.");
-  let aviso = null;
+  let aviso: Awaited<ReturnType<typeof enviaAviso>> | null = null;
   if (!atual.revogada_em) {
     aviso = await enviaAviso(env, atual, "conexao.encerrada", { motivo: "Desconectado pela Tardim Produções." }).catch(() => null);
     await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(new Date().toISOString().slice(0, 19) + "Z", id).run();

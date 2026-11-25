@@ -4,9 +4,14 @@
 import { numeroCref } from "../_lib/cref6.ts";
 import { Erro, PROFISSOES, RE_ID_PROVA, TIPOS_PARCEIRO } from "./comum.ts";
 import { validaConfig, ErroInscricao } from "../_lib/inscricoes-site.ts";
+import type { Env, Dados } from "../_lib/tipos.ts";
+
+/** Regra de cada campo: número = tamanho máximo do texto; o resto, o tipo guardado. */
+type Regra = number | "json" | "bool" | "num" | "int" | "grande";
+interface DefTabela { campos: Record<string, Regra>; obrigatorios: string[]; ordem: string }
 
 // Campos que o painel pode gravar em cada tabela: número = tamanho máximo do texto
-const TABELAS = {
+const TABELAS: Record<string, DefTabela> = {
   provas: {
     campos: {
       nome: 120, data: 10, hora: 10, local: 200, percursos: "json", resumo: 400, poster: 300, inscricao: 500,
@@ -53,9 +58,9 @@ const TABELAS = {
 };
 
 // ---------- validação ----------
-function limpa(tabela, d, criando) {
+function limpa(tabela: string, d: Dados, criando: boolean): Dados {
   const def = TABELAS[tabela];
-  const v = {};
+  const v: Dados = {};
   for (const campo in def.campos) {
     if (!(campo in d)) continue;
     const regra = def.campos[campo];
@@ -123,7 +128,7 @@ function limpa(tabela, d, criando) {
 }
 
 // Linha do banco -> objeto do painel (JSON e 0/1 convertidos)
-function saida(tabela, r) {
+function saida(tabela: string, r: Dados | null): Dados | null {
   if (!r) return r;
   const def = TABELAS[tabela];
   const o = Object.assign({}, r);
@@ -134,15 +139,15 @@ function saida(tabela, r) {
   return o;
 }
 
-async function lista(env, tabela) {
-  const r = await env.DB.prepare(`SELECT * FROM ${tabela} ORDER BY ${TABELAS[tabela].ordem}`).all();
+async function lista(env: Env, tabela: string): Promise<(Dados | null)[]> {
+  const r = await env.DB.prepare(`SELECT * FROM ${tabela} ORDER BY ${TABELAS[tabela].ordem}`).all<Dados>();
   return r.results.map((x) => saida(tabela, x));
 }
-async function uma(env, tabela, id) {
-  return saida(tabela, await env.DB.prepare(`SELECT * FROM ${tabela} WHERE id = ?`).bind(id).first());
+async function uma(env: Env, tabela: string, id: string): Promise<Dados | null> {
+  return saida(tabela, await env.DB.prepare(`SELECT * FROM ${tabela} WHERE id = ?`).bind(id).first<Dados>());
 }
 
-async function cria(env, tabela, d) {
+async function cria(env: Env, tabela: string, d: Dados): Promise<Dados | null> {
   const v = limpa(tabela, d, true);
   if (tabela === "provas") {
     v.id = typeof d.id === "string" ? d.id.trim() : "";
@@ -158,12 +163,12 @@ async function cria(env, tabela, d) {
   return uma(env, tabela, v.id);
 }
 
-async function altera(env, tabela, id, d) {
+async function altera(env: Env, tabela: string, id: string, d: Dados): Promise<Dados> {
   const v = limpa(tabela, d, false);
   // Proposta: o andamento (etapa, datas e contrato) não some quando uma tela antiga salva só os itens
   if (tabela === "propostas" && "dados" in v) {
-    const atual = await env.DB.prepare("SELECT dados FROM propostas WHERE id = ?").bind(id).first();
-    let antes = {}, nova = {};
+    const atual = await env.DB.prepare("SELECT dados FROM propostas WHERE id = ?").bind(id).first<{ dados: string }>();
+    let antes: Dados = {}, nova: Dados = {};
     try { antes = JSON.parse((atual && atual.dados) || "{}"); nova = JSON.parse(v.dados); } catch (e) { /* segue com o que veio */ }
     let mudou = false;
     for (const k of ["etapa", "marcos", "contrato"]) if (!(k in nova) && k in antes) { nova[k] = antes[k]; mudou = true; }
@@ -171,7 +176,7 @@ async function altera(env, tabela, id, d) {
   }
   // Trocou o @: a conferência antiga do Instagram deixa de valer
   if (tabela === "parceiros" && "instagram" in v) {
-    const atual = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first();
+    const atual = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first<{ instagram: string }>();
     if (atual && atual.instagram.replace(/^@/, "").toLowerCase() !== v.instagram.replace(/^@/, "").toLowerCase()) {
       Object.assign(v, { ig_situacao: "", ig_seguidores: 0, ig_posts: 0, ig_conferido_em: "" });
     }
@@ -188,8 +193,8 @@ async function altera(env, tabela, id, d) {
   return o;
 }
 
-async function apaga(env, tabela, id) {
-  const passos = [];
+async function apaga(env: Env, tabela: string, id: string): Promise<{ ok: true }> {
+  const passos: D1PreparedStatement[] = [];
   if (tabela === "parceiros") {
     passos.push(env.DB.prepare("DELETE FROM convites WHERE parceiro_id = ?").bind(id));
     // Se o login tem outros perfis, o principal passa a ser um deles; senão o login some junto

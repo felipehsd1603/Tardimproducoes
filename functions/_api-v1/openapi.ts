@@ -1,12 +1,15 @@
 // Especificação OpenAPI 3.1 da API v1 (servida em /api/v1/openapi.json) e a página Swagger UI
 // (/api/v1/docs). Texto de referência completo: docs/api-v1-parceiros.md. Mudou a API, muda aqui.
 
-const ref = (n) => ({ $ref: "#/components/schemas/" + n });
-const erro = (descricao, ...codigos) => ({ description: descricao + (codigos.length ? " (" + codigos.join(", ") + ")" : ""), content: { "application/json": { schema: ref("Erro") } } });
-const ok = (descricao, schema, exemplo) => ({ description: descricao, content: { "application/json": Object.assign({ schema }, exemplo ? { example: exemplo } : {}) } });
+/** Pedaço de esquema OpenAPI (objeto JSON livre). */
+type Esquema = Record<string, unknown>;
+
+const ref = (n: string): Esquema => ({ $ref: "#/components/schemas/" + n });
+const erro = (descricao: string, ...codigos: string[]): Esquema => ({ description: descricao + (codigos.length ? " (" + codigos.join(", ") + ")" : ""), content: { "application/json": { schema: ref("Erro") } } });
+const ok = (descricao: string, schema: Esquema, exemplo?: unknown): Esquema => ({ description: descricao, content: { "application/json": Object.assign({ schema }, exemplo ? { example: exemplo } : {}) } });
 const ERROS_CHAVE = { 401: erro("Sem chave, chave inválida ou conexão encerrada", "chave_ausente", "chave_invalida", "chave_revogada"), 403: erro("Assessoria inativa", "assessoria_inativa"), 429: erro("Limite de 120 chamadas por minuto (cabeçalho retry-after)", "limite_de_uso") };
-const idPath = (nome, descricao) => ({ name: nome, in: "path", required: true, schema: { type: "string" }, description: descricao });
-const corpo = (schema, exemplo) => ({ required: true, content: { "application/json": Object.assign({ schema }, exemplo ? { example: exemplo } : {}) } });
+const idPath = (nome: string, descricao: string): Esquema => ({ name: nome, in: "path", required: true, schema: { type: "string" }, description: descricao });
+const corpo = (schema: Esquema, exemplo?: unknown): Esquema => ({ required: true, content: { "application/json": Object.assign({ schema }, exemplo ? { example: exemplo } : {}) } });
 
 export const OPENAPI_V1 = {
   openapi: "3.1.0",
@@ -81,7 +84,9 @@ export const OPENAPI_V1 = {
         description: "Reenviar o mesmo `id_externo` atualiza o atleta. Mesma `Idempotency-Key` com o mesmo corpo devolve a mesma resposta por 7 dias; com outro corpo, 409. Atletas com erro vão em `rejeitados` e os outros seguem.",
         parameters: [{ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", maxLength: 120 }, description: "Id do lote na plataforma" }],
         requestBody: corpo(ref("Envio")),
-        responses: { 202: ok("Recebido", ref("EnvioResposta")), 400: erro("Envio inválido", "json_invalido", "campo_obrigatorio"), 403: erro("Sem convite aceito nesta prova", "sem_convite"), 409: erro("Conflito", "idempotencia_conflito", "prazo_encerrado"), 413: erro("Mais de 1.000 atletas", "muitos_atletas"), ...ERROS_CHAVE } },
+        // Antes havia aqui 403 "sem_convite", mas o ...ERROS_CHAVE abaixo o sobrescrevia (o JSON publicado mostra o 403 de
+        // assessoria_inativa). Ficou como sai hoje para não mudar a especificação; ver o relatório da migração para TypeScript.
+        responses: { 202: ok("Recebido", ref("EnvioResposta")), 400: erro("Envio inválido", "json_invalido", "campo_obrigatorio"), 409: erro("Conflito", "idempotencia_conflito", "prazo_encerrado"), 413: erro("Mais de 1.000 atletas", "muitos_atletas"), ...ERROS_CHAVE } },
     },
     "/envios/{id}": { get: { tags: ["Inscrições"], summary: "Um envio e a situação dos atletas dele", parameters: [idPath("id", "env_...")],
       responses: { 200: ok("Envio", { type: "object", properties: { envio: ref("EnvioInfo"), prova_id: { type: "string" }, atletas: { type: "array", items: ref("SituacaoAtleta") }, rejeitados: { type: "array", items: ref("Rejeitado") } } }), 404: erro("Envio não existe", "nao_encontrado"), ...ERROS_CHAVE } } },
@@ -128,7 +133,7 @@ export const OPENAPI_V1 = {
 const SWAGGER = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14";
 
 /** Página Swagger UI que lê a especificação em `specUrl`. O CSP dela libera só o script de início pelo hash. */
-export async function paginaSwagger(specUrl, titulo) {
+export async function paginaSwagger(specUrl: string, titulo: string): Promise<Response> {
   const inicio = `SwaggerUIBundle({ url: ${JSON.stringify(specUrl)}, dom_id: "#swagger", deepLinking: true, docExpansion: "list", defaultModelsExpandDepth: 0, tryItOutEnabled: false });`;
   const hash = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(inicio)))));
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

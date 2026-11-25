@@ -2,12 +2,13 @@
 
 import { json } from "../_lib/http.ts";
 import { Erro, corpo, MAX_ARQUIVO, RE_ARQUIVO } from "./comum.ts";
+import type { Env } from "../_lib/tipos.ts";
 
 // Configurações do painel: chave -> tamanho máximo do JSON
-const CONFIGS = { contrato: 120000 };
-async function config(request, env, m, chave) {
+const CONFIGS: Record<string, number> = { contrato: 120000 };
+async function config(request: Request, env: Env, m: string, chave: string): Promise<Response> {
   if (m === "GET") {
-    const r = await env.DB.prepare("SELECT valor FROM configuracoes WHERE chave = ?").bind(chave).first();
+    const r = await env.DB.prepare("SELECT valor FROM configuracoes WHERE chave = ?").bind(chave).first<{ valor: string }>();
     try { return json(r ? JSON.parse(r.valor) : {}); } catch (e) { return json({}); }
   }
   if (m === "PUT") {
@@ -22,10 +23,10 @@ async function config(request, env, m, chave) {
 }
 
 // PDF do contrato assinado de uma proposta (só com login)
-async function contratoAssinado(request, env, m, id) {
+async function contratoAssinado(request: Request, env: Env, m: string, id: string): Promise<Response> {
   if (!(await env.DB.prepare("SELECT 1 FROM propostas WHERE id = ?").bind(id).first())) throw new Erro(404, "Proposta não encontrada.");
   if (m === "GET") {
-    const r = await env.DB.prepare("SELECT nome, dados FROM contratos_assinados WHERE proposta_id = ?").bind(id).first();
+    const r = await env.DB.prepare("SELECT nome, dados FROM contratos_assinados WHERE proposta_id = ?").bind(id).first<{ nome: string; dados: ArrayBuffer | number[] }>();
     if (!r) throw new Erro(404, "Nenhum contrato assinado foi enviado para esta proposta.");
     const bytes = r.dados instanceof ArrayBuffer ? r.dados : new Uint8Array(r.dados).buffer;
     const nome = String(r.nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w.-]+/g, "-").replace(/^-+/, "") || "contrato-assinado.pdf";
@@ -57,7 +58,7 @@ async function contratoAssinado(request, env, m, id) {
   throw new Erro(405, "Método não permitido.");
 }
 
-async function enviaArquivo(request, env, url) {
+async function enviaArquivo(request: Request, env: Env, url: URL): Promise<Response> {
   const caminho = url.searchParams.get("caminho") || "";
   if (!RE_ARQUIVO.test(caminho)) throw new Erro(400, "Nome de arquivo inválido.");
   const tipo = (request.headers.get("content-type") || "").split(";")[0].trim();

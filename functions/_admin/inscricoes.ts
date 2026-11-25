@@ -4,31 +4,32 @@
 import { json } from "../_lib/http.ts";
 import { avisaAtletas } from "../_api-v1/avisos.ts";
 import { Erro, corpo } from "./comum.ts";
+import type { Env, Atleta } from "../_lib/tipos.ts";
 
 const SITUACOES = ["recebido", "aguardando_pagamento", "inscrito", "recusado", "cancelado"];
 const agora = () => new Date().toISOString().slice(0, 19) + "Z";
 
 /** GET orcamentos */
-export async function listaOrcamentos(env) {
+export async function listaOrcamentos(env: Env): Promise<Response> {
   return json((await env.DB.prepare("SELECT * FROM orcamentos ORDER BY id DESC LIMIT 500").all()).results);
 }
 
 /** GET inscricoes (cada envio, com o total de atletas) */
-export async function listaInscricoes(env) {
+export async function listaInscricoes(env: Env): Promise<Response> {
   return json((await env.DB.prepare(
     "SELECT i.*, (SELECT COUNT(*) FROM atletas t WHERE t.inscricao_id = i.id) AS atletas FROM inscricoes i ORDER BY i.criado_em DESC LIMIT 500"
   ).all()).results);
 }
 
 /** GET inscricoes/<id>/atletas */
-export async function atletasDoEnvio(env, inscricaoId) {
+export async function atletasDoEnvio(env: Env, inscricaoId: string): Promise<Response> {
   return json((await env.DB.prepare("SELECT * FROM atletas WHERE inscricao_id = ? ORDER BY id").bind(inscricaoId).all()).results);
 }
 
 /** PUT atletas/<id> { situacao, numero_peito, motivo } */
-export async function alteraAtleta(request, env, id) {
+export async function alteraAtleta(request: Request, env: Env, id: string): Promise<Response> {
   const d = await corpo(request);
-  const at = await env.DB.prepare("SELECT * FROM atletas WHERE id = ?").bind(Number(id)).first();
+  const at = await env.DB.prepare("SELECT * FROM atletas WHERE id = ?").bind(Number(id)).first<Atleta>();
   if (!at) throw new Erro(404, "Registro não encontrado.");
   const situacao = d.situacao === undefined ? at.situacao : String(d.situacao);
   if (at.origem === "api" && !SITUACOES.includes(situacao)) throw new Erro(400, "Situação inválida.");
@@ -41,9 +42,9 @@ export async function alteraAtleta(request, env, id) {
 }
 
 /** POST inscricoes/<id>/confirmar: recebidos e aguardando deste envio viram inscritos */
-export async function confirmaEnvio(env, inscricaoId) {
+export async function confirmaEnvio(env: Env, inscricaoId: string): Promise<Response> {
   const ids = (await env.DB.prepare("SELECT id FROM atletas WHERE inscricao_id = ? AND origem = 'api' AND situacao IN ('recebido', 'aguardando_pagamento')")
-    .bind(inscricaoId).all()).results.map((x) => x.id);
+    .bind(inscricaoId).all<{ id: number }>()).results.map((x) => x.id);
   if (ids.length) {
     await env.DB.prepare("UPDATE atletas SET situacao = 'inscrito', motivo = '', atualizado_em = ? WHERE id IN (" + ids.map(() => "?").join(",") + ")")
       .bind(agora(), ...ids).run();
@@ -52,14 +53,14 @@ export async function confirmaEnvio(env, inscricaoId) {
 }
 
 /** GET medicao?dias=30 (functions/api/evento.ts): totais por evento e página */
-export async function medicao(env, url) {
-  const dias = Math.min(Math.max(parseInt(url.searchParams.get("dias"), 10) || 30, 1), 365);
+export async function medicao(env: Env, url: URL): Promise<Response> {
+  const dias = Math.min(Math.max(parseInt(url.searchParams.get("dias") as string, 10) || 30, 1), 365);
   const desde = new Date(Date.now() - 3 * 3600 * 1000 - (dias - 1) * 86400000).toISOString().slice(0, 10);
   return json((await env.DB.prepare("SELECT evento, ref, SUM(n) AS n FROM medicao WHERE dia >= ? GROUP BY evento, ref").bind(desde).all()).results);
 }
 
 /** GET avisos: pedidos de "Me avise" por prova */
-export async function resumoAvisos(env) {
+export async function resumoAvisos(env: Env): Promise<Response> {
   return json((await env.DB.prepare(
     "SELECT prova_id, SUM(enviado_em = '') AS pendentes, SUM(enviado_em <> '') AS enviados FROM avisos GROUP BY prova_id"
   ).all()).results);

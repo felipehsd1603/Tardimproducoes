@@ -2,9 +2,12 @@
 // Servida só com login no painel: /api/admin/openapi.json e /api/admin/docs (Swagger UI).
 // A API pública para parceiros tem a própria: /api/v1/docs (functions/_api-v1/openapi.ts).
 
-const ref = (n) => ({ $ref: "#/components/schemas/" + n });
-const j = (schema) => ({ content: { "application/json": { schema } } });
-const res = (descricao, schema) => Object.assign({ description: descricao }, schema ? j(schema) : {});
+/** Pedaço de esquema OpenAPI (objeto JSON livre). */
+type Esquema = Record<string, unknown>;
+
+const ref = (n: string): Esquema => ({ $ref: "#/components/schemas/" + n });
+const j = (schema: Esquema): Esquema => ({ content: { "application/json": { schema } } });
+const res = (descricao: string, schema?: Esquema): Esquema => Object.assign({ description: descricao }, schema ? j(schema) : {});
 const id = (n = "id") => ({ name: n, in: "path", required: true, schema: { type: "string" } });
 const PADRAO = { 401: res("Sem login", ref("ErroPainel")), 403: res("Escrita de outra origem", ref("ErroPainel")) };
 const TABELAS = ["provas", "parceiros", "convites", "propostas", "minutario", "depoimentos"];
