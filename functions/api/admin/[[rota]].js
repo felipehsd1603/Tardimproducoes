@@ -71,6 +71,8 @@ const ROTAS = [
   ["POST", ":tabela", async ({ request, env, url, p, avisa }) => {
     const novo = await cria(env, p.tabela, await corpo(request));
     if (p.tabela === "convites") avisa(() => avisaConvite(env, novo.id, origemPublica(url)));
+    // Prova trazida para o painel depois do convite: os convites dela passam a aparecer para as assessorias
+    if (p.tabela === "provas") avisa(() => avisaConvitesDaProva(env, novo.id, origemPublica(url)));
     return json(novo, 201);
   }],
   ["PUT", ":tabela/:id", async ({ request, env, url, p, avisa }) => {
