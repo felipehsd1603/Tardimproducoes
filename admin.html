@@ -15,8 +15,8 @@
     <meta name="application-name" content="Tardim Produções" />
     <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="css/style.css?v=20261123-0750" />
-    <link rel="stylesheet" href="css/painel.css?v=20261123-0750" />
+    <link rel="stylesheet" href="css/style.css?v=20261124-1729" />
+    <link rel="stylesheet" href="css/painel.css?v=20261124-1729" />
   </head>
   <body>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -29,84 +29,29 @@
 
     <header class="topbar">
       <div class="wrap topbar__inner">
-        <a href="index.html" class="brand">
+        <a href="admin.html" class="brand">
           <img src="assets/logo-tardim.webp" alt="" width="42" height="42" />
-          <span>Tardim <b>Produções</b></span>
+          <span>Tardim <b>Painel</b></span>
         </a>
-        <button class="menu-btn" aria-expanded="false" aria-controls="menu">Menu</button>
-        <nav id="menu" class="nav">
-          <a href="index.html#calendario">Calendário</a>
-          <a href="portfolio.html">Portfólio</a>
-          <a href="index.html#servicos">Serviços</a>
-          <a href="index.html#contato">Contato</a>
-          <a href="index.html#orcamento" class="nav__cta">Pedir orçamento</a>
-        </nav>
+        <!-- O site abre em outra aba: o painel continua aberto onde estava -->
+        <a class="btn btn--line btn--sm" href="index.html" target="_blank" rel="noopener">Ver o site ↗</a>
       </div>
     </header>
 
     <main id="conteudo" class="assess">
-      <section class="assess-hero">
-        <div class="wrap">
-          <p class="eyebrow">Área da Tardim Produções</p>
-          <h1>Painel</h1>
-          <p class="assess-hero__lead">Provas, parceiros, convites com cupom e apuração das comissões.</p>
-        </div>
-      </section>
       <div class="wrap assess-body painel" id="painel"><p class="muted">Carregando...</p></div>
     </main>
 
-
     <footer class="footer">
-      <div class="wrap footer__top">
-        <div class="footer__brand">
-          <a href="index.html" class="brand brand--light">
-            <img src="assets/logo-tardim.webp" alt="" width="42" height="42" loading="lazy" />
-            <span>Tardim <b>Produções</b></span>
-          </a>
-          <p>Corridas de rua e eventos esportivos do começo ao fim: planejamento, licenças, prevenção contra incêndio e equipe no dia da prova.</p>
-          <p class="footer__motto">Fazendo bem feito!</p>
-        </div>
-        <nav class="footer__col" aria-label="Mapa do site">
-          <p class="footer__title">Navegue</p>
-          <ul>
-            <li><a href="index.html#calendario">Calendário</a></li>
-            <li><a href="portfolio.html">Portfólio</a></li>
-            <li><a href="index.html#servicos">Serviços</a></li>
-            <li><a href="institucional.html">Institucional</a></li>
-            <li><a href="parceiro.html">Área do parceiro</a></li>
-            <li><a href="index.html#orcamento">Pedir orçamento</a></li>
-          </ul>
-        </nav>
-        <div class="footer__col">
-          <p class="footer__title">Contato</p>
-          <ul>
-            <li><a href="https://wa.me/5531984289667" target="_blank" rel="noopener">WhatsApp (31) 98428-9667</a></li>
-            <li><a href="mailto:tardimproducoes.corridas@gmail.com">tardimproducoes.corridas@gmail.com</a></li>
-            <li><a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">Instagram @tardimproducoes</a></li>
-            <li>Belo Horizonte, MG</li>
-          </ul>
-        </div>
-      </div>
       <div class="wrap footer__bottom">
-        <span id="footer-legal">Tardim Produções e Eventos Ltda · CNPJ 33.787.309/0001-22</span>
-        <span><a href="privacidade.html">Política de privacidade</a> · © <span id="ano">2026</span></span>
+        <span>Tardim Produções · Painel interno</span>
+        <span><a href="index.html" target="_blank" rel="noopener">Ver o site ↗</a></span>
       </div>
     </footer>
-    <script>
-      (function () {
-        var btn = document.querySelector(".menu-btn");
-        btn.addEventListener("click", function () {
-          var open = document.body.classList.toggle("menu-open");
-          btn.setAttribute("aria-expanded", String(open));
-          btn.textContent = open ? "Fechar" : "Menu";
-        });
-        document.getElementById("ano").textContent = new Date().getFullYear();
-      })();
-    </script>
-    <script src="js/eventos.js?v=20261123-0750"></script>
-    <script src="js/convite.js?v=20261123-0750"></script>
+    <script src="js/eventos.js?v=20261124-1729"></script>
+    <script src="js/convite.js?v=20261124-1729"></script>
     <script src="js/vendor/xlsx-0.18.5.min.js"></script>
-    <script src="js/admin.js?v=20261123-0750"></script>
-    <script src="js/ui.js?v=20261123-0750"></script>
+    <script src="js/admin.js?v=20261124-1729"></script>
+    <script src="js/ui.js?v=20261124-1729"></script>
   </body>
 </html>
