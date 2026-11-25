@@ -3,24 +3,25 @@
 
 import { dentroDoLimite } from "../_lib/limite.ts";
 import { json, mesmaOrigem, cpfValido } from "../_lib/http.ts";
+import type { Contexto, Dados } from "../_lib/tipos.ts";
 
 const MAX_ATLETAS = 1000;
 const POR_LOTE = 10; // 10 atletas x 10 colunas = 100 parâmetros, o teto do D1 por comando
 
-function txt(valor, max) {
+function txt(valor: unknown, max: number): string | null {
   const s = typeof valor === "string" ? valor.trim() : "";
   return s.length > max ? null : s;
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env }: Contexto): Promise<Response> {
   if (!mesmaOrigem(request)) return json({ erro: "origem" }, 403);
   const texto = await request.text();
   if (texto.length > 600000) return json({ erro: "tamanho" }, 413);
-  let d;
+  let d: Dados | null;
   try { d = JSON.parse(texto); } catch (e) { return json({ erro: "json" }, 400); }
   if (!d || typeof d !== "object" || !d.prova || !Array.isArray(d.atletas)) return json({ erro: "json" }, 400);
 
-  const cab = {
+  const cab: Record<string, string | null> = {
     prova_id: txt(d.prova.id, 80), prova_nome: txt(d.prova.nome, 160), convite: txt(d.convite, 400),
     equipe: txt(d.equipe, 120), responsavel: txt(d.responsavel, 120), telefone: txt(d.telefone, 30),
   };
@@ -30,7 +31,7 @@ export async function onRequestPost({ request, env }) {
   const canal = d.canal === "email" ? "email" : "whatsapp";
 
   const id = crypto.randomUUID();
-  const linhas = [];
+  const linhas: (string | null)[][] = [];
   for (let i = 0; i < d.atletas.length; i++) {
     const a = d.atletas[i] || {};
     const l = [
@@ -38,7 +39,7 @@ export async function onRequestPost({ request, env }) {
       txt(a.cam, 10), txt(a.email, 160), txt(a.tel, 20), txt(a.equipe, 120),
     ];
     const faltou = l.slice(1, 9).some(function (c) { return !c; });
-    if (faltou || l[9] === null || !cpfValido(l[2].replace(/\D/g, ""))) return json({ erro: "atleta", linha: i + 1 }, 400);
+    if (faltou || l[9] === null || !cpfValido((l[2] as string).replace(/\D/g, ""))) return json({ erro: "atleta", linha: i + 1 }, 400);
     linhas.push(l);
   }
 

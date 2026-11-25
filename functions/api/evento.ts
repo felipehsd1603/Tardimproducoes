@@ -4,19 +4,20 @@
 
 import { json } from "../_lib/http.ts";
 import { dentroDoLimite } from "../_lib/limite.ts";
+import type { Contexto, Dados } from "../_lib/tipos.ts";
 
 // Até 60 eventos por hora por IP: um visitante real fica muito abaixo; quem tenta inflar os números para aqui
 const MAX_POR_HORA = 60;
 
 const EVENTOS = ["visita", "inscricao", "whatsapp", "orcamento", "agenda", "compartilhar"];
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env }: Contexto): Promise<Response> {
   let origem = "";
-  try { origem = new URL(request.headers.get("Origin")).host; } catch (e) { origem = ""; }
+  try { origem = new URL(request.headers.get("Origin") as string).host; } catch (e) { origem = ""; }
   if (origem !== new URL(request.url).host) return json({ erro: "origem" }, 403);
   const texto = await request.text();
   if (texto.length > 300) return json({ erro: "tamanho" }, 413);
-  let d;
+  let d: Dados | null;
   try { d = JSON.parse(texto); } catch (e) { return json({ erro: "json" }, 400); }
   if (!d || EVENTOS.indexOf(d.e) < 0) return json({ erro: "evento" }, 400);
   const ref = typeof d.r === "string" ? d.r : "";

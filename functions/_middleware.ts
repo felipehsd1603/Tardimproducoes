@@ -7,14 +7,15 @@
 
 import { processaFila } from "./_api-v1/avisos.ts";
 import { conferePendentes } from "./_lib/inscricoes-site.ts";
+import type { Env, Contexto, Prova } from "./_lib/tipos.ts";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const dataBR = (iso) => { const p = String(iso).split("-").map(Number); return p[2] + " de " + MESES[p[1] - 1] + " de " + p[0]; };
-const lerJson = (t, padrao) => { try { return JSON.parse(t); } catch (e) { return padrao; } };
+const esc = (s: unknown): string => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const dataBR = (iso: string): string => { const p = String(iso).split("-").map(Number); return p[2] + " de " + MESES[p[1] - 1] + " de " + p[0]; };
+const lerJson = <T>(t: string, padrao: T): T => { try { return JSON.parse(t); } catch (e) { return padrao; } };
 
 // Linha do banco -> formato do js/eventos.js
-function daLinha(r) {
+function daLinha(r: Prova) {
   return {
     id: r.id, nome: r.nome, data: r.data, hora: r.hora, local: r.local,
     percursos: lerJson(r.percursos, []), resumo: r.resumo, poster: r.poster, inscricao: r.inscricao,
@@ -25,11 +26,11 @@ function daLinha(r) {
   };
 }
 
-async function provasJs(env) {
-  const r = await env.DB.prepare("SELECT * FROM provas WHERE publicada = 1 ORDER BY data").all();
+async function provasJs(env: Env): Promise<Response> {
+  const r = await env.DB.prepare("SELECT * FROM provas WHERE publicada = 1 ORDER BY data").all<Prova>();
   const lista = r.results.map(daLinha);
   // Depoimentos publicados no painel (js/ui.js mostra). Banco sem a tabela: segue sem eles.
-  let depo = [];
+  let depo: Record<string, unknown>[] = [];
   try {
     depo = (await env.DB.prepare("SELECT nome, cargo, texto, onde FROM depoimentos WHERE publicado = 1 ORDER BY criado_em DESC").all()).results;
   } catch (e) { depo = []; }
@@ -41,16 +42,16 @@ async function provasJs(env) {
 }
 
 // Lê um arquivo estático (o Pages pode redirecionar /x.html para /x)
-async function estatico(env, url) {
+async function estatico(env: Env, url: URL): Promise<Response> {
   let r = await env.ASSETS.fetch(url);
   for (let i = 0; i < 3 && r.status >= 300 && r.status < 400 && r.headers.get("location"); i++) {
-    r = await env.ASSETS.fetch(new URL(r.headers.get("location"), url));
+    r = await env.ASSETS.fetch(new URL(r.headers.get("location") as string, url));
   }
   return r;
 }
 
-async function paginaProva(env, id, url) {
-  const linha = await env.DB.prepare("SELECT * FROM provas WHERE id = ? AND publicada = 1").bind(id).first();
+async function paginaProva(env: Env, id: string, url: URL): Promise<Response | null> {
+  const linha = await env.DB.prepare("SELECT * FROM provas WHERE id = ? AND publicada = 1").bind(id).first<Prova>();
   if (!linha) return null;
   const tpl = await estatico(env, new URL("/prova.html", url));
   if (!tpl.ok) return null;
@@ -87,8 +88,8 @@ async function paginaProva(env, id, url) {
 // O deploy sobe só publico/ (scripts/montar-publico.mjs), mas o Pages guarda em cache respostas
 // de deploys antigos, que publicavam a pasta inteira. Por isso o _routes.json manda quase tudo
 // para cá e o caminho é normalizado antes de conferir (//, \, /./, %2f, maiúsculas).
-const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
-function caminhoNormal(pathname) {
+const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore|tsconfig\.json)$/i;
+function caminhoNormal(pathname: string): string {
   let p = pathname;
   for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch (e) { break; } }
   p = p.replace(/\\/g, "/").replace(/\/{2,}/g, "/");
@@ -102,7 +103,7 @@ function caminhoNormal(pathname) {
 
 // Avisos às plataformas que falharam: tentados de novo em segundo plano (Pages não tem tarefa agendada).
 // Sempre nas chamadas do painel e da API v1; numa fração das visitas ao site, para não pesar.
-function cuidaDaFila(env, url, waitUntil) {
+function cuidaDaFila(env: Env, url: URL, waitUntil: (p: Promise<unknown>) => void): void {
   if (!env.DB || !waitUntil) return;
   const api = /^\/api\/(admin|v1)\//.test(url.pathname);
   if (api || Math.random() < 0.1) waitUntil(processaFila(env).catch(() => {}));
@@ -110,14 +111,14 @@ function cuidaDaFila(env, url, waitUntil) {
   if (Math.random() < 0.2) waitUntil(conferePendentes(env, 5).catch(() => {}));
 }
 
-export async function onRequest({ request, env, next, waitUntil }) {
+export async function onRequest({ request, env, next, waitUntil }: Contexto): Promise<Response> {
   const url = new URL(request.url);
   if (PRIVADO.test(caminhoNormal(url.pathname))) {
     return new Response("Não encontrado", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
   }
   cuidaDaFila(env, url, waitUntil);
   if (request.method !== "GET" || !env.DB) return protege(await next());
-  let resp = null;
+  let resp: Response | null = null;
   try {
     if (url.pathname === "/js/provas-db.js") resp = await provasJs(env);
     else {
@@ -132,7 +133,7 @@ export async function onRequest({ request, env, next, waitUntil }) {
 
 // Cabeçalhos de segurança também nas respostas das funções (o _headers só vale
 // para os arquivos estáticos)
-const SEGURANCA = {
+const SEGURANCA: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "SAMEORIGIN",
@@ -155,7 +156,7 @@ const SEGURANCA = {
     "frame-ancestors 'self'",
   ].join("; "),
 };
-function protege(resp) {
+function protege(resp: Response): Response {
   try {
     const r = new Response(resp.body, resp);
     for (const k in SEGURANCA) if (!r.headers.has(k)) r.headers.set(k, SEGURANCA[k]);
