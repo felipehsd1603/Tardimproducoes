@@ -6,10 +6,30 @@
 import { sha256, aleatorioHex, cpfValido } from "./http.ts";
 import { pixConfigurado, criaCobranca, consultaCobranca, ErroPix } from "./pix.ts";
 import { mpConfigurado, criaCheckout, pagamentoDaReferencia, ErroMp } from "./mercadopago.ts";
+import type { Env, Dados, Prova, ConviteComParceiro, InscricaoSite, Contagem } from "./tipos.ts";
 
 export class ErroInscricao extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
 }
+
+/** Lote de inscrição configurado no painel. */
+export interface LoteConfig { nome: string; valor: number; ate: string; vagas: number }
+/** Configuração da inscrição no site (provas.inscricao_site), já conferida por validaConfig. */
+export interface ConfigInscricao {
+  aberta: boolean; modalidades: string[]; camisetas: string[]; lotes: LoteConfig[];
+  cartao: { ativo: boolean; acrescimo_pct: number; parcelas: number };
+}
+/** O que validaConfig devolve: a configuração completa, ou {} quando a prova não tem nenhuma. */
+export type ConfigLida = Partial<ConfigInscricao>;
+/** Lote que vale agora (centavos). */
+export interface LoteAtual { nome: string; centavos: number; ate: string }
+/** Dados do atleta depois de validaAtleta. */
+export interface AtletaSite {
+  nome: string; cpf: string; email: string; telefone: string; nascimento: string; sexo: string; camiseta: string; modalidade: string;
+}
+/** Quem pode segurar trabalho em segundo plano (contexto do Pages ou do Hono). */
+export interface ComEspera { waitUntil(promessa: Promise<unknown>): void }
 
 export const VALIDADE_PIX = 60 * 60; // a cobrança vale 1 hora; a vaga fica reservada nesse tempo
 const TIPOS_COM_LINK = ["embaixador", "influenciador"];
@@ -17,17 +37,18 @@ const SEXOS = ["F", "M", "O"];
 const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i;
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
 const hojeBR = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10); // Brasília, UTC-3
-const txt = (v, max) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "").slice(0, max);
-export const reais = (c) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const txt = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "").slice(0, max);
+export const reais = (c: number): string => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 // ---------- configuração da prova ----------
 
 /** Confere e normaliza o JSON do painel. Lança ErroInscricao com a mensagem para quem edita. */
-export function validaConfig(c) {
+export function validaConfig(c: unknown): ConfigLida {
   if (c == null) return {};
   if (typeof c !== "object" || Array.isArray(c)) throw new ErroInscricao(400, "Configuração de inscrição inválida.");
-  const lista = (x, max) => (Array.isArray(x) ? x : []).map((s) => txt(String(s == null ? "" : s), max)).filter(Boolean).slice(0, 30);
-  const lotes = (Array.isArray(c.lotes) ? c.lotes : []).slice(0, 20).map((l, i) => {
+  const d = c as Dados;
+  const lista = (x: unknown, max: number): string[] => (Array.isArray(x) ? x : []).map((s: unknown) => txt(String(s == null ? "" : s), max)).filter(Boolean).slice(0, 30);
+  const lotes = (Array.isArray(d.lotes) ? d.lotes : []).slice(0, 20).map((l: Dados, i: number): LoteConfig => {
     const nome = txt(l && l.nome, 60) || (i + 1) + "º lote";
     const valor = Math.round(Number(l && l.valor) * 100) / 100;
     if (!(valor >= 0.01 && valor <= 100000)) throw new ErroInscricao(400, "O valor do " + nome + " precisa ser maior que zero.");
@@ -38,31 +59,31 @@ export function validaConfig(c) {
     return { nome, valor, ate, vagas };
   });
   // Cartão (Mercado Pago): a taxa vai para o atleta como acréscimo em % sobre o valor do PIX; parcelas com juros do comprador
-  const k = c.cartao || {};
+  const k: Dados = d.cartao || {};
   const acrescimo = Math.round(Number(k.acrescimo_pct || 0) * 100) / 100;
   if (!(acrescimo >= 0 && acrescimo <= 30)) throw new ErroInscricao(400, "O acréscimo do cartão precisa estar entre 0% e 30%.");
   const parcelas = parseInt(k.parcelas, 10) || 1;
   if (parcelas < 1 || parcelas > 12) throw new ErroInscricao(400, "O número de parcelas no cartão vai de 1 a 12.");
-  const cfg = { aberta: !!c.aberta, modalidades: lista(c.modalidades, 60), camisetas: lista(c.camisetas, 10), lotes, cartao: { ativo: !!k.ativo, acrescimo_pct: acrescimo, parcelas } };
+  const cfg: ConfigInscricao = { aberta: !!d.aberta, modalidades: lista(d.modalidades, 60), camisetas: lista(d.camisetas, 10), lotes, cartao: { ativo: !!k.ativo, acrescimo_pct: acrescimo, parcelas } };
   if (cfg.aberta && !cfg.lotes.length) throw new ErroInscricao(400, "Para abrir a inscrição no site, cadastre pelo menos um lote com valor.");
   if (cfg.aberta && !cfg.modalidades.length) throw new ErroInscricao(400, "Para abrir a inscrição no site, cadastre pelo menos uma modalidade (ex.: Corrida 5 km).");
   return cfg;
 }
 
-export function lerConfig(prova) {
+export function lerConfig(prova: Prova | null): ConfigLida {
   try { return validaConfig(JSON.parse((prova && prova.inscricao_site) || "{}")); } catch (e) { return {}; }
 }
 
 // Vagas usadas no lote: pagas, cortesias e PIX ainda dentro do prazo (a vaga fica reservada)
-async function usadas(env, provaId, lote) {
+async function usadas(env: Env, provaId: string, lote: string): Promise<number> {
   const r = await env.DB.prepare(
     "SELECT COUNT(*) AS n FROM inscricoes_site WHERE prova_id = ? AND lote = ? AND (situacao IN ('pago','cortesia') OR (situacao = 'aguardando' AND expira_em > ?))"
-  ).bind(provaId, lote, agora()).first();
+  ).bind(provaId, lote, agora()).first<Contagem>();
   return (r && r.n) || 0;
 }
 
 /** Lote que vale agora: o primeiro, na ordem, que não passou da data e ainda tem vaga. null = inscrições encerradas. */
-export async function loteAtual(env, prova, cfg) {
+export async function loteAtual(env: Env, prova: Prova, cfg: ConfigLida): Promise<LoteAtual | null> {
   const hoje = hojeBR();
   for (const l of cfg.lotes || []) {
     if (l.ate && hoje > l.ate) continue;
@@ -74,10 +95,10 @@ export async function loteAtual(env, prova, cfg) {
 
 /** "10%", "10 %", "R$ 15", "15,50" -> centavos de desconto sobre o valor (nunca passa do valor). */
 /** Acréscimo do cartão (centavos) sobre o valor do PIX. */
-export const acrescimoCartao = (cfg, centavos) => Math.round(centavos * ((cfg.cartao && cfg.cartao.acrescimo_pct) || 0) / 100);
-export const cartaoAtivo = (env, cfg) => !!(cfg.cartao && cfg.cartao.ativo && mpConfigurado(env));
+export const acrescimoCartao = (cfg: ConfigLida, centavos: number): number => Math.round(centavos * ((cfg.cartao && cfg.cartao.acrescimo_pct) || 0) / 100);
+export const cartaoAtivo = (env: Env, cfg: ConfigLida): boolean => !!(cfg.cartao && cfg.cartao.ativo && mpConfigurado(env));
 
-export function descontoDe(texto, centavos) {
+export function descontoDe(texto: unknown, centavos: number): number {
   const t = String(texto || "").replace(/\s/g, "");
   let d = 0;
   const pct = /^(\d+(?:[.,]\d+)?)%/.exec(t);
@@ -90,29 +111,30 @@ export function descontoDe(texto, centavos) {
 }
 
 /** Prova publicada com inscrição no site aberta. */
-export async function provaAberta(env, provaId) {
-  const prova = await env.DB.prepare("SELECT * FROM provas WHERE id = ? AND publicada = 1").bind(String(provaId || "")).first();
+export async function provaAberta(env: Env, provaId: unknown): Promise<{ prova: Prova; cfg: ConfigInscricao }> {
+  const prova = await env.DB.prepare("SELECT * FROM provas WHERE id = ? AND publicada = 1").bind(String(provaId || "")).first<Prova>();
   const cfg = lerConfig(prova);
   if (!prova || !cfg.aberta) throw new ErroInscricao(404, "A inscrição pelo site não está aberta para esta prova.");
   if (prova.data < hojeBR()) throw new ErroInscricao(410, "Esta prova já aconteceu.");
-  return { prova, cfg };
+  // aberta = true só sai de validaConfig com a configuração completa
+  return { prova, cfg: cfg as ConfigInscricao };
 }
 
 /** Convite do cupom (embaixador ou influenciador aprovado e ativo, na prova). */
-export async function conviteDoCupom(env, provaId, cupom) {
+export async function conviteDoCupom(env: Env, provaId: string, cupom: unknown): Promise<ConviteComParceiro | null> {
   const c = String(cupom || "").toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40);
   if (!c) return null;
   return env.DB.prepare(
     "SELECT c.*, p.nome AS parceiro_nome, p.tipo AS parceiro_tipo FROM convites c JOIN parceiros p ON p.id = c.parceiro_id " +
     "WHERE UPPER(c.cupom) = ? AND c.prova_id = ? AND p.ativo = 1 AND p.situacao = 'aprovado' AND p.tipo IN ('" + TIPOS_COM_LINK.join("','") + "')"
-  ).bind(c, provaId).first();
+  ).bind(c, provaId).first<ConviteComParceiro>();
 }
 
 // ---------- dados do atleta ----------
 
-export function validaAtleta(d, cfg) {
+export function validaAtleta(d: Dados | null | undefined, cfg: ConfigLida): AtletaSite {
   d = d || {};
-  const a = {
+  const a: AtletaSite = {
     nome: txt(d.nome, 120), cpf: String(d.cpf || "").replace(/\D/g, ""), email: txt(d.email, 120).toLowerCase(),
     telefone: String(d.telefone || "").replace(/\D/g, "").slice(0, 13), nascimento: txt(d.nascimento, 10),
     sexo: txt(d.sexo, 1).toUpperCase(), camiseta: txt(d.camiseta, 10), modalidade: txt(d.modalidade, 60),
@@ -124,7 +146,7 @@ export function validaAtleta(d, cfg) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(a.nascimento) || a.nascimento < "1900-01-01" || a.nascimento > hojeBR()) throw new ErroInscricao(400, "Data de nascimento inválida.");
   if (SEXOS.indexOf(a.sexo) < 0) throw new ErroInscricao(400, "Informe o sexo.");
   if ((cfg.modalidades || []).indexOf(a.modalidade) < 0) throw new ErroInscricao(400, "Escolha a modalidade.");
-  if ((cfg.camisetas || []).length && cfg.camisetas.indexOf(a.camiseta) < 0) throw new ErroInscricao(400, "Escolha o tamanho da camiseta.");
+  if ((cfg.camisetas || []).length && (cfg.camisetas as string[]).indexOf(a.camiseta) < 0) throw new ErroInscricao(400, "Escolha o tamanho da camiseta.");
   if (d.aceite !== true) throw new ErroInscricao(400, "É preciso aceitar o regulamento da prova.");
   return a;
 }
@@ -135,10 +157,15 @@ export function validaAtleta(d, cfg) {
  * Cria a inscrição. cortesia = true: sem pagamento (cortesia do convite do parceiro).
  * Devolve a inscrição pública com { codigo } (a pessoa guarda para acompanhar o pagamento).
  */
-export async function criaInscricao(env, ctx, { prova, cfg, convite, origem, atleta, cortesia, site, forma }) {
+export interface PedidoInscricao {
+  prova: Prova; cfg: ConfigInscricao; convite: ConviteComParceiro | null; origem: string; atleta: AtletaSite;
+  cortesia?: boolean; site?: string; forma?: unknown;
+}
+
+export async function criaInscricao(env: Env, ctx: ComEspera | null | undefined, { prova, cfg, convite, origem, atleta, cortesia, site, forma }: PedidoInscricao): Promise<ReturnType<typeof publica> & { codigo: string }> {
   const ja = await env.DB.prepare(
     "SELECT * FROM inscricoes_site WHERE prova_id = ? AND cpf = ? AND (situacao IN ('pago','cortesia') OR (situacao = 'aguardando' AND expira_em > ?)) ORDER BY criado_em DESC"
-  ).bind(prova.id, atleta.cpf, agora()).all();
+  ).bind(prova.id, atleta.cpf, agora()).all<InscricaoSite>();
   if (ja.results.some((x) => x.situacao !== "aguardando")) throw new ErroInscricao(409, "Este CPF já está inscrito nesta prova.");
 
   const lote = await loteAtual(env, prova, cfg);
@@ -157,8 +184,8 @@ export async function criaInscricao(env, ctx, { prova, cfg, convite, origem, atl
     await env.DB.prepare(
       "UPDATE inscricoes_site SET codigo_hash = ?, nome = ?, email = ?, telefone = ?, nascimento = ?, sexo = ?, camiseta = ?, modalidade = ? WHERE id = ?"
     ).bind(await sha256(codigo), atleta.nome, atleta.email, atleta.telefone, atleta.nascimento, atleta.sexo, atleta.camiseta, atleta.modalidade, aberta.id).run();
-    const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(aberta.id).first();
-    return Object.assign(publica(l, prova), { codigo });
+    const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(aberta.id).first<InscricaoSite>();
+    return Object.assign(publica(l as InscricaoSite, prova), { codigo });
   }
   if (aberta) await env.DB.prepare("UPDATE inscricoes_site SET situacao = 'expirado' WHERE id = ?").bind(aberta.id).run();
 
@@ -197,9 +224,9 @@ export async function criaInscricao(env, ctx, { prova, cfg, convite, origem, atl
     atleta.nome, atleta.cpf, atleta.email, atleta.telefone, atleta.nascimento, atleta.sexo, atleta.camiseta, atleta.modalidade,
     lote.nome, lote.centavos, desconto, valor, situacao, txid, copia,
     gratis ? "" : expira, gratis ? agora() : "", forma, acrescimo, checkout.id, checkout.url).run();
-  const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(id).first();
+  const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(id).first<InscricaoSite>();
   if (gratis && ctx) ctx.waitUntil(avisaConfirmada(env, l, prova, site).catch(() => {}));
-  return Object.assign(publica(l, prova), { codigo });
+  return Object.assign(publica(l as InscricaoSite, prova), { codigo });
 }
 
 // ---------- pagamento ----------
@@ -208,7 +235,7 @@ export async function criaInscricao(env, ctx, { prova, cfg, convite, origem, atl
  * Consulta a cobrança no banco e atualiza a inscrição (pago ou expirado). No máximo uma consulta a cada 10 s
  * por inscrição, salvo forcar. Devolve a linha atualizada.
  */
-export async function confere(env, l, { forcar, ctx, site } = {}) {
+export async function confere<T extends InscricaoSite | null>(env: Env, l: T, { forcar, ctx, site }: { forcar?: boolean; ctx?: ComEspera; site?: string } = {}): Promise<T> {
   if (!l) return l;
   const cartao = l.forma === "cartao";
   if (cartao ? !(l.mp_preferencia && mpConfigurado(env)) : !(l.txid && pixConfigurado(env))) return l;
@@ -216,7 +243,7 @@ export async function confere(env, l, { forcar, ctx, site } = {}) {
   if (!vigente) return l;
   if (!forcar && l.conferido_em && Date.now() - Date.parse(l.conferido_em) < 10000) return l;
   await env.DB.prepare("UPDATE inscricoes_site SET conferido_em = ? WHERE id = ?").bind(agora(), l.id).run();
-  let c;
+  let c: { pago: boolean; centavos: number; e2e: string; status: string; mp?: string; horario?: string };
   try {
     if (cartao) {
       const p = await pagamentoDaReferencia(env, l.id);
@@ -227,37 +254,37 @@ export async function confere(env, l, { forcar, ctx, site } = {}) {
     const r = await env.DB.prepare(
       "UPDATE inscricoes_site SET situacao = 'pago', pago_em = ?, e2e_id = ?, mp_pagamento = ? WHERE id = ? AND situacao IN ('aguardando','expirado')"
     ).bind(c.horario || agora(), c.e2e || "", c.mp || "", l.id).run();
-    const novo = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(l.id).first();
+    const novo = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(l.id).first<InscricaoSite>();
     if (r.meta && r.meta.changes) {
-      const prova = await env.DB.prepare("SELECT * FROM provas WHERE id = ?").bind(l.prova_id).first();
+      const prova = await env.DB.prepare("SELECT * FROM provas WHERE id = ?").bind(l.prova_id).first<Prova>();
       const envio = avisaConfirmada(env, novo, prova, site).catch(() => {});
       if (ctx) ctx.waitUntil(envio); else await envio;
     }
-    return novo;
+    return novo as T;
   }
   // Vence só se o banco removeu a cobrança ou o prazo passou sem pagamento (pago a menos fica aguardando, para o painel ver)
   if (l.situacao === "aguardando" && !c.pago && (/^REMOVIDA/.test(c.status || "") || l.expira_em <= agora())) {
     await env.DB.prepare("UPDATE inscricoes_site SET situacao = 'expirado' WHERE id = ? AND situacao = 'aguardando'").bind(l.id).run();
-    return env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(l.id).first();
+    return (await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(l.id).first<InscricaoSite>()) as T;
   }
   return l;
 }
 
 /** Em segundo plano (visitas ao site): confere alguns PIX em aberto que não foram consultados no último minuto. */
-export async function conferePendentes(env, max) {
+export async function conferePendentes(env: Env, max?: number): Promise<void> {
   if (!pixConfigurado(env) && !mpConfigurado(env)) return;
   const limite = new Date(Date.now() - 60000).toISOString().replace(/\.\d+Z$/, "Z");
   const r = await env.DB.prepare(
     "SELECT * FROM inscricoes_site WHERE (txid <> '' OR mp_preferencia <> '') AND (situacao = 'aguardando' OR (situacao = 'expirado' AND expira_em > ?)) AND conferido_em < ? ORDER BY conferido_em LIMIT ?"
-  ).bind(agora(), limite, max || 5).all();
+  ).bind(agora(), limite, max || 5).all<InscricaoSite>();
   for (const l of r.results) await confere(env, l, { forcar: true });
 }
 
 // ---------- saída ----------
 
-const PRIMEIRO = (n) => String(n || "").split(" ")[0];
+const PRIMEIRO = (n: unknown): string => String(n || "").split(" ")[0];
 /** O que a própria pessoa vê da inscrição (sem CPF, e-mail ou telefone). */
-export function publica(l, prova) {
+export function publica(l: InscricaoSite, prova?: Pick<Prova, "id" | "nome" | "data" | "local"> | null) {
   const aguardando = l.situacao === "aguardando" && l.expira_em > agora();
   return {
     id: l.id, situacao: aguardando || l.situacao !== "aguardando" ? l.situacao : "expirado",
@@ -271,15 +298,15 @@ export function publica(l, prova) {
 }
 
 /** Busca pela id + código (quem fez a inscrição). */
-export async function inscricaoComCodigo(env, id, codigo) {
+export async function inscricaoComCodigo(env: Env, id: string, codigo: string | null): Promise<InscricaoSite | null> {
   if (!/^[0-9a-f-]{36}$/.test(String(id || "")) || !/^[0-9a-f]{32}$/.test(String(codigo || ""))) return null;
-  const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(id).first();
-  return l && l.codigo_hash === (await sha256(codigo)) ? l : null;
+  const l = await env.DB.prepare("SELECT * FROM inscricoes_site WHERE id = ?").bind(id).first<InscricaoSite>();
+  return l && l.codigo_hash === (await sha256(codigo as string)) ? l : null;
 }
 
 // ---------- e-mail de confirmação (Resend) ----------
 
-async function avisaConfirmada(env, l, prova, site) {
+async function avisaConfirmada(env: Env, l: InscricaoSite | null, prova: Prova | null, site?: string): Promise<void> {
   if (!env.RESEND_API_KEY || !l || l.aviso_email === "ok") return;
   const dataBR = prova && prova.data ? prova.data.split("-").reverse().join("/") : "";
   const r = await fetch("https://api.resend.com/emails", {
