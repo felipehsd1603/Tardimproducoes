@@ -80,6 +80,11 @@ CREATE TABLE IF NOT EXISTS convites (
   contrapartida TEXT NOT NULL DEFAULT '',
   condicoes     TEXT NOT NULL DEFAULT '',
   coletiva      TEXT NOT NULL DEFAULT '{}',    -- JSON da inscrição coletiva (prazo, limite, valor, faixas...); em banco já criado, rode d1/migracoes/001-convites-coletiva.sql
+  api_situacao       TEXT NOT NULL DEFAULT '',   -- resposta da assessoria na plataforma dela (API v1): '' | pendente | aceito | recusado
+  api_modo_pagamento TEXT NOT NULL DEFAULT '',   -- assessoria | ticketsports
+  api_motivo         TEXT NOT NULL DEFAULT '',
+  api_respondido_em  TEXT NOT NULL DEFAULT '',
+  api_aviso          TEXT NOT NULL DEFAULT '',   -- '' | ok | erro: ... (último aviso enviado à plataforma)
   criado_em     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   atualizado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (prova_id, cupom)
@@ -203,11 +208,33 @@ CREATE INDEX IF NOT EXISTS ticketsports_posts_data ON ticketsports_posts (recebi
 
 -- API v1 para parceiros (docs/api-v1-parceiros.md); em banco já criado, rode d1/migracoes/013-integracoes.sql
 
--- Uma chave por plataforma de cada assessoria. Guarda só o SHA-256 da chave.
+-- Convite de conexão enviado à plataforma da assessoria (JWS assinado pela Tardim).
+-- O código de uso único vai no convite; aqui fica só o SHA-256 dele.
+CREATE TABLE IF NOT EXISTS conexoes (
+  id             TEXT PRIMARY KEY,                 -- cnx_<uuid>
+  parceiro_id    TEXT NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
+  plataforma_url TEXT NOT NULL,                    -- origem da plataforma: https://im3-eventos.vercel.app
+  ambiente       TEXT NOT NULL DEFAULT 'live',     -- live | test
+  codigo_hash    TEXT NOT NULL,
+  situacao       TEXT NOT NULL DEFAULT 'enviando', -- enviando | enviado | falhou | aceito | recusado | cancelado
+  erro           TEXT NOT NULL DEFAULT '',         -- por que a entrega falhou
+  motivo         TEXT NOT NULL DEFAULT '',         -- motivo da recusa
+  respondido_por TEXT NOT NULL DEFAULT '',
+  integracao_id  TEXT,                             -- chave criada no aceite
+  expira_em      TEXT NOT NULL,
+  enviado_em     TEXT NOT NULL DEFAULT '',
+  respondido_em  TEXT NOT NULL DEFAULT '',
+  criado_em      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS conexoes_parceiro ON conexoes (parceiro_id);
+
+-- Uma chave por conexão aceita. Guarda só o SHA-256 da chave.
 CREATE TABLE IF NOT EXISTS integracoes (
   id              TEXT PRIMARY KEY,                -- uuid
   parceiro_id     TEXT NOT NULL REFERENCES parceiros(id) ON DELETE CASCADE,
-  nome            TEXT NOT NULL DEFAULT '',        -- ex.: IM3 (plataforma que usa a chave)
+  nome            TEXT NOT NULL DEFAULT '',        -- ex.: IM3 (nome que a plataforma informou)
+  plataforma_url  TEXT NOT NULL DEFAULT '',
+  conexao_id      TEXT,
   ambiente        TEXT NOT NULL DEFAULT 'live',    -- live | test (test enxerga provas ainda não publicadas)
   prefixo         TEXT NOT NULL,                   -- tdm_live_3f9c (para reconhecer a chave)
   hash            TEXT NOT NULL UNIQUE,            -- sha256 hex da chave inteira

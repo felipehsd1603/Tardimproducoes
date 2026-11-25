@@ -53,13 +53,133 @@ Authorization: Bearer tdm_test_8a21...   (teste: também provas ainda não publi
 - Só servidor chama a API: ela não responde a CORS, então a chave nunca deve ir para o navegador.
 - A assessoria precisa estar aprovada e ativa no painel; se for desativada, todas as chaves dela passam a responder `403 assessoria_inativa`.
 
-- **Quem pode ter chave:** um parceiro do tipo `assessoria`, com cadastro aprovado. A chave é criada no painel da Tardim, em Parceiros, na seção Integração.
-- **O que a Tardim guarda:** só o SHA-256 da chave, mais os 8 primeiros caracteres para identificá-la. Ela é mostrada uma única vez, na criação.
-- **Junto com a chave, a Tardim registra:**
-  - `webhook_url`: o endereço que recebe os avisos, de preferência `https`;
-  - `webhook_segredo`: gerado pela Tardim, mostrado uma vez e usado para assinar os avisos.
-- **Cancelar a chave** bloqueia na hora todas as chamadas dela e os avisos para aquele endereço.
-- **Próxima versão (OAuth 2.0):** o botão "Conectar com a Tardim" no IM3 leva à área do parceiro, onde a assessoria autoriza, e o IM3 recebe a chave sem ninguém copiar e colar. O formato da chave e as rotas não mudam.
+- **Ninguém vê nem copia a chave.** Ela nasce na conexão (abaixo) e vai da Tardim para a plataforma só servidor com servidor. A Tardim guarda só o SHA-256 dela; a plataforma guarda a chave cifrada.
+- **Cancelar a conexão** (de qualquer um dos lados) revoga a chave na hora.
+
+## Conexão (convite da Tardim, aceite na plataforma)
+
+Tudo pelo sistema: a Tardim convida, o admin da assessoria aceita ou recusa na plataforma dele.
+
+```
+Painel Tardim                    Tardim (API)                         Plataforma (IM3)                 Admin da assessoria
+"Convidar para conectar"  ──►  assina o convite (ES256)  ──POST──►  confere a assinatura,
+ (endereço da plataforma)                                            guarda como pendente  ──────►  notificação: Aceitar / Recusar
+                                                                                                           │
+                               cria a chave e responde   ◄──POST──  aceitar_url + codigo   ◄──────────────┘ Aceitar
+painel: "Conectada"  ◄──────   (chave, webhook_segredo)  ─────────►  guarda cifrada; puxa convites pendentes
+```
+
+### 1. Chave pública da Tardim
+
+`GET https://tardimproducoes.com.br/api/v1/chaves-publicas` (sem autenticação, cache de 1 hora)
+
+```json
+{ "keys": [{ "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "tdm-2026-11", "alg": "ES256", "use": "sig" }] }
+```
+
+A plataforma só aceita convites de organizadoras que ela conhece: a lista de emissores fica no código dela (ex.: `https://tardimproducoes.com.br`), e a chave pública é sempre buscada **no endereço do emissor**, nunca num endereço vindo do próprio convite.
+
+### 2. Convite de conexão (Tardim → plataforma)
+
+O admin da Tardim informa o endereço da plataforma da assessoria (ex.: `https://im3-eventos.vercel.app`). A Tardim chama:
+
+```
+POST {plataforma}/api/integracoes/organizadoras/convites
+content-type: application/json
+
+{ "jws": "<cabeçalho>.<conteúdo>.<assinatura>" }
+```
+
+JWS compacto, `alg: ES256`, cabeçalho `{ "alg": "ES256", "kid": "tdm-2026-11", "typ": "tardim-convite+jws" }`. Conteúdo:
+
+```json
+{
+  "iss": "https://tardimproducoes.com.br",
+  "aud": "https://im3-eventos.vercel.app",
+  "tipo": "conexao",
+  "convite_id": "cnx_9b2f...",
+  "codigo": "<64 hex, uso único>",
+  "ambiente": "live",
+  "iat": 1764090000, "exp": 1764694800,
+  "organizadora": { "id": "tardim", "nome": "Tardim Produções", "site": "https://tardimproducoes.com.br", "logo_url": "https://tardimproducoes.com.br/assets/logo-tardim.png" },
+  "assessoria": { "id": "b1f0...", "nome": "IM3", "responsavel": "Igor", "email": "contato@..." },
+  "compartilha": [
+    "Provas em que a assessoria tiver convite da Tardim",
+    "Situação das inscrições que a assessoria enviar",
+    "Resultados dos atletas inscritos pela assessoria"
+  ],
+  "aceitar_url": "https://tardimproducoes.com.br/api/v1/conexoes/cnx_9b2f.../aceitar",
+  "recusar_url": "https://tardimproducoes.com.br/api/v1/conexoes/cnx_9b2f.../recusar"
+}
+```
+
+A plataforma:
+
+1. confere `iss` na lista de emissores conhecidos, busca a chave pública pelo `kid` e valida a assinatura;
+2. confere `aud` (o endereço dela), `exp` e se `aceitar_url`/`recusar_url` começam com `iss`;
+3. guarda o convite como pendente (o mesmo `convite_id` de novo substitui o anterior) e avisa os admins;
+4. responde `202 { "recebido": true }`. Qualquer outra resposta faz o painel da Tardim mostrar "Não entregue", com "Tentar de novo".
+
+`ambiente: "test"` gera uma chave `tdm_test_` (enxerga também provas não publicadas). O convite vale 7 dias.
+
+### 3. Aceitar ou recusar (plataforma → Tardim)
+
+Sem chave ainda: quem autentica é o `codigo` do convite (uso único).
+
+```
+POST /api/v1/conexoes/{convite_id}/aceitar
+{ "codigo": "...", "plataforma": { "nome": "IM3", "url": "https://im3-eventos.vercel.app" },
+  "webhook_url": "https://im3-eventos.vercel.app/api/integracoes/tardim/webhook", "aceito_por": "Igor Silva" }
+```
+
+Resposta `201`:
+
+```json
+{ "chave": "tdm_live_...", "webhook_segredo": "whsec_...", "assessoria": { "id": "b1f0...", "nome": "IM3" }, "ambiente": "live" }
+```
+
+- `webhook_url` precisa ter a mesma origem (`https://host`) do endereço convidado.
+- Erros: `404 nao_encontrado`, `401 codigo_invalido`, `409 convite_respondido`, `409 convite_expirado`.
+- Ao aceitar, os convites de prova futuros da assessoria ficam `pendente` e aparecem em `GET /convites`.
+
+```
+POST /api/v1/conexoes/{convite_id}/recusar
+{ "codigo": "...", "motivo": "opcional", "recusado_por": "Igor Silva" }
+```
+
+Resposta `200 { "ok": true }`. O painel da Tardim mostra "Recusado" com o motivo.
+
+### 4. Desconectar
+
+- **Pela plataforma:** `DELETE /api/v1/conexao` (com a chave) → `200 { "ok": true }`; a chave deixa de valer.
+- **Pela Tardim:** "Desconectar" no painel manda o aviso `conexao.encerrada` (assinado com o segredo daquela conexão) e revoga a chave.
+
+## Convites de prova (aceitar ou recusar na plataforma)
+
+Cada convite que a Tardim cria para a assessoria (cupom, comissão, condições da coletiva) chega na plataforma como **pendente**. O admin aceita (e escolhe o modo de pagamento) ou recusa; a Tardim vê a resposta no painel.
+
+| Situação | Quando |
+|---|---|
+| `pendente` | Criado pela Tardim com a assessoria conectada (ou existente quando ela se conectou) |
+| `aceito` | O admin da assessoria aceitou; a prova vira evento na plataforma |
+| `recusado` | O admin recusou, com motivo opcional |
+
+- Aviso `convite.criado`, `convite.alterado` ou `convite.cancelado` (webhook), com `{ "convite": Convite, "prova": Prova }`.
+- `GET /convites?situacao=pendente` (com a chave): lista para conciliar se algum aviso se perder. Sem filtro, todos os convites de provas futuras.
+- `POST /convites/{id}/aceitar` `{ "modo_pagamento": "assessoria" | "ticketsports", "aceito_por": "Nome" }` → `200 { "convite": Convite }`
+- `POST /convites/{id}/recusar` `{ "motivo": "opcional", "recusado_por": "Nome" }` → `200 { "convite": Convite }`
+- Aceitar ou recusar de novo um convite já respondido troca a resposta (a assessoria pode mudar de ideia até o prazo da coletiva).
+
+`Convite`:
+
+```json
+{
+  "id": "c0a1...", "prova_id": "volta-noturna-da-lagoa-2027", "situacao": "pendente",
+  "modo_pagamento": null, "motivo": null, "respondido_em": null,
+  "cupom": "IM3VOLTA", "desconto": "15%", "comissao_pct": 10, "cortesias": 2,
+  "condicoes": null, "contrapartida": null
+}
+```
 
 ## Recursos
 
@@ -120,6 +240,9 @@ Provas cadastradas no painel em que **esta assessoria tem convite** e que ainda 
       "ponto_encontro": null
     },
     "convite": {
+      "id": "c0a1...",
+      "situacao": "aceito",
+      "modo_pagamento": "assessoria",
       "cupom": "IM3VOLTA",
       "desconto": "15%",
       "comissao_pct": 10,
@@ -277,11 +400,15 @@ x-tardim-assinatura: t=1764090000,v1=5d41402abc4b2a76b9719d911017c592...
 - Recusa o aviso se `t` estiver a mais de 5 minutos do relógio.
 
 **Resposta esperada:** qualquer `2xx` em até 10 segundos.
-- Se der erro ou não responder, a Tardim tenta de novo em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h.
-- Depois disso, a entrega fica como falhada no painel. A plataforma concilia pelas rotas `GET` acima.
+- Nesta versão a Tardim tenta uma vez; se falhar, o painel mostra "Aviso não entregue" com "Reenviar". A plataforma concilia pelas rotas `GET` (`/convites`, `/atletas`) ao abrir as telas dela.
+- Próxima versão: novas tentativas em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h.
 
 | Evento | `dados` |
 |---|---|
+| `convite.criado` | `{ "convite": Convite, "prova": Prova }` |
+| `convite.alterado` | mesmo formato (cupom, comissão, condições ou a prova mudaram) |
+| `convite.cancelado` | `{ "convite_id", "prova_id" }`: a Tardim apagou o convite |
+| `conexao.encerrada` | `{ "motivo" }`: a Tardim desconectou; a chave já não vale |
 | `prova.publicada` | a prova, no formato de `GET /provas/{id}` (só para quem tem convite) |
 | `prova.alterada` | a prova inteira, já atualizada, e `campos_alterados: ["largada", "percursos"]` |
 | `prova.cancelada` | `{ "prova_id", "motivo" }` |
@@ -311,6 +438,8 @@ Corpo:
 |---|---|
 | Rotas da v1 | `functions/api/v1/[[rota]].js` (separada de `/api/inscricao`, que continua para a planilha) |
 | Chaves | tabela `integracoes` (parceiro_id, prefixo, hash, webhook_url, webhook_segredo, ambiente, criada_em, revogada_em) |
+| Conexão | tabela `conexoes` (convite assinado: endereço da plataforma, hash do código, situação, expira); segredo `TARDIM_ASSINATURA_JWK` (chave privada ES256, gerada por `scripts/gerar-chave-assinatura.mjs`); `functions/_assinatura.js` e `functions/_avisos.js` |
+| Convites de prova | `convites` ganha `api_situacao`, `api_modo_pagamento`, `api_motivo`, `api_respondido_em`, `api_aviso` (resultado do último aviso) |
 | Envios | tabela `envios_api` (id, integracao_id, prova_id, referencia_externa, idempotency_key, hash do corpo, resposta, criado_em) |
 | Atletas | `atletas` ganha `origem` (`planilha` / `api`), `id_externo`, `situacao`, `motivo`, `numero_peito`, `modo_pagamento` |
 | Resultados | tabela `resultados` (prova_id, numero_peito, percurso, tempos, classificações, parciais); aba **Resultados** no painel importa o arquivo da cronometragem |
@@ -322,7 +451,10 @@ Corpo:
 | Peça | Onde |
 |---|---|
 | Conector | `src/modules/integracoes/organizadoras/` com a interface `Organizadora` (`listarProvas`, `obterProva`, `enviar`, `situacaoAtletas`, `resultados`, `tratarWebhook`) e a implementação `tardim/` |
-| Configuração | tabela `integracoes_organizadora` (organizacao_id, organizadora, chave cifrada, webhook_segredo cifrado, modo_pagamento_padrao); tela **Admin → Ajustes → Integrações** (só o Dono) |
+| Emissores | lista fixa no código: `tardim` → `https://tardimproducoes.com.br` (em desenvolvimento, `ORGANIZADORA_TARDIM_URL` troca o endereço) |
+| Convite de conexão | `src/app/api/integracoes/organizadoras/convites/route.ts` (confere o JWS e guarda pendente); notificação para Dono e admins (alerta no celular + aviso no painel) |
+| Conexões | tabela `integracoes_organizadora` (organizacao_id, organizadora, situacao, convite pendente, chave e webhook_segredo cifrados com `INTEGRACOES_SEGREDO`, modo_pagamento_padrao); tela **Admin → Integrações** com Aceitar/Recusar, desconectar e os convites de prova |
+| Convites de prova | tabela `convites_organizadora` (convite e prova como chegaram, situação); Aceitar cria o evento rascunho com `origem = tardim` |
 | Prova parceira | `eventos` ganha `origem` (`propria` / `tardim`), `origem_id` e `modo_pagamento`; percursos viram `categorias`; camiseta vira campo extra obrigatório |
 | Aluno | `pessoas` ganha `nascimento` e `sexo`, exigidos só na inscrição de prova parceira |
 | Situação | `inscricoes` ganha `situacao_organizadora`, `motivo_organizadora` e `numero_peito`; a tela de inscritos mostra uma coluna "Tardim" |
@@ -332,9 +464,10 @@ Corpo:
 
 ## Ordem de entrega
 
-1. **Tardim** (feito em 25/11/2026):
-   - tabelas novas e a aba Integração do painel;
-   - `GET /eu`, `GET /provas` e `GET /provas/{id}`.
+1. **Tardim e IM3** (25/11/2026):
+   - tabelas novas e a seção Integração do painel;
+   - `GET /eu`, `GET /provas` e `GET /provas/{id}`;
+   - conexão por convite assinado (aceitar/recusar no IM3) e convites de prova (aceitar/recusar no IM3).
 2. **Tardim:**
    - `POST /envios`, `GET /envios/{id}` e `GET /atletas`;
    - a conferência no painel;

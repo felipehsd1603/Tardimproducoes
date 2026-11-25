@@ -132,13 +132,23 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 
 ## API v1 para parceiros (integração com plataformas de assessoria)
 
-Contrato completo em `docs/api-v1-parceiros.md` (mesmo arquivo no repositório do IM3). Cada sistema fica com o seu banco; a plataforma da assessoria (ex.: IM3) conversa com a Tardim só por `https://<site>/api/v1/`.
+Contrato completo em `docs/api-v1-parceiros.md` (mesmo arquivo no repositório do IM3). Cada sistema fica com o seu banco; a plataforma da assessoria (ex.: IM3) conversa com a Tardim só por `https://<site>/api/v1/`. **Tudo pelo sistema, ninguém copia chave:**
 
-- **Chave**: no painel, Parceiros > editar uma assessoria aprovada > **Integração** > Criar chave. A chave (`tdm_live_...` ou `tdm_test_...`) e o segredo dos avisos aparecem uma vez só; o banco guarda só o SHA-256 da chave (tabela `integracoes`). "Cancelar chave" corta o acesso na hora. Chave de teste enxerga também provas não publicadas.
-- **Rotas no ar**: `GET /api/v1/eu`, `GET /api/v1/provas` e `GET /api/v1/provas/<id>` (só provas do painel em que a assessoria tem convite). Envios, situação dos atletas e resultados respondem `501` até a próxima etapa.
-- **Código**: `functions/api/v1/[[rota]].js` (rotas), `functions/_chaves.js` (gera e confere chaves), rotas `parceiros/<id>/integracoes` e `integracoes/<id>` na API do painel. Limite: 120 chamadas por minuto por chave (tabela `api_uso`). Sem CORS: só servidor chama.
+1. **Conectar**: no painel, Parceiros > editar uma assessoria aprovada > **Integração** > informe o endereço do sistema dela (ex.: `https://im3-eventos.vercel.app`) > **Convidar para conectar**. A Tardim manda um convite assinado (ES256); o admin da assessoria recebe a notificação no sistema dele e aceita ou recusa. Aceitando, o sistema dela recebe a chave direto do servidor da Tardim e o painel mostra "Conectada". "Desconectar" avisa o sistema e corta o acesso na hora.
+2. **Convites de prova**: com a assessoria conectada, cada convite criado ou alterado no painel (e cada prova publicada ou alterada) vira aviso no sistema dela, que aceita (escolhendo PIX na assessoria ou pagamento na Ticket Sports) ou recusa. A lista de Convites mostra a resposta; "Aviso não entregue" tem o botão **Reenviar aviso**.
+
+Configuração, uma vez (a chave privada que assina os convites):
+
+```bash
+node scripts/gerar-chave-assinatura.mjs | npx wrangler pages secret put TARDIM_ASSINATURA_JWK --project-name tardim-teste
+```
+
+Para o servidor local, coloque a saída em `.dev.vars` como `TARDIM_ASSINATURA_JWK='...'`. A parte pública sai em `GET /api/v1/chaves-publicas`.
+
+- **Rotas sem chave**: `GET /api/v1/chaves-publicas`, `POST /api/v1/conexoes/<id>/aceitar` e `/recusar` (autenticadas pelo código de uso único do convite).
+- **Rotas com chave**: `GET /eu`, `DELETE /conexao`, `GET /provas`, `GET /provas/<id>`, `GET /convites`, `POST /convites/<id>/aceitar` e `/recusar`. Envios, situação dos atletas e resultados respondem `501` até a próxima etapa.
+- **Código**: `functions/api/v1/[[rota]].js` (rotas), `functions/_assinatura.js` (JWS), `functions/_avisos.js` (convite de conexão e avisos assinados com HMAC), `functions/_provas_api.js` (formato das provas e convites), `functions/_chaves.js`. O banco guarda só o SHA-256 da chave e do código do convite. Limite: 120 chamadas por minuto por chave; aceitar/recusar, 20 por minuto por IP. Sem CORS: só servidor chama.
 - **Banco já criado**: rode `d1/migracoes/013-integracoes.sql`.
-
 ## Área do parceiro (cadastro e login)
 
 `parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias, influenciadores e embaixadores se cadastram e entram. API em `functions/api/parceiro/`.

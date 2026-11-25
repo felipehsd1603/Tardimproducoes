@@ -23,16 +23,22 @@
 //   GET    avisos                                   [{ prova_id, pendentes, enviados }]  ("Me avise", functions/api/aviso.js)
 //   POST   avisos/<prova>/enviar  { nome, data, local, link }  e-mail "inscrições abertas" para quem está pendente
 //          (Resend: RESEND_API_KEY + AVISO_REMETENTE com domínio verificado)
-//   GET    parceiros/<id>/integracoes               chaves da API v1 desta assessoria (sem a chave nem o segredo)
-//   POST   parceiros/<id>/integracoes { nome, ambiente, webhook_url }   cria: a chave e o segredo voltam UMA vez
-//   PUT    integracoes/<id> { nome, webhook_url }  |  POST integracoes/<id>/revogar   (docs/api-v1-parceiros.md)
+//   API v1 para parceiros (docs/api-v1-parceiros.md): tudo por convite, ninguém vê a chave
+//   GET    parceiros/<id>/integracoes               { conexoes, integracoes, assinatura }
+//   POST   parceiros/<id>/conexao { plataforma_url, ambiente }   convite assinado para a plataforma da assessoria
+//   POST   conexoes/<id>/reenviar | conexoes/<id>/cancelar
+//   POST   integracoes/<id>/desconectar             avisa a plataforma e revoga a chave
+//   POST   convites/<id>/avisar                     reenvia o aviso do convite de prova à plataforma
+//   (criar/alterar convite ou prova avisa as plataformas conectadas; apagar convite manda convite.cancelado)
 //
 // Cadastros feitos pelo site (parceiro.html) chegam como parceiros com situacao "pendente";
 // aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
 import { consultaCref6, numeroCref } from "../../_cref6.js";
 import { confereInstagramParceiro } from "../../_instagram.js";
-import { novaChave, novoSegredo, sha256 } from "../../_chaves.js";
+import { sha256 } from "../../_chaves.js";
+import { assinaturaConfigurada } from "../../_assinatura.js";
+import { enviaConviteConexao, enviaAviso, avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_avisos.js";
 
 // O primeiro é o único com registro conferido no CREF6 (js/admin.js usa a mesma lista)
 const PROFISSOES = [
@@ -438,64 +444,92 @@ async function enviaAvisos(env, provaId, d, origem) {
   return { enviados, falhas };
 }
 
-// ---------- integrações (API v1 para parceiros) ----------
-const CAMPOS_INTEGRACAO = "id, parceiro_id, nome, ambiente, prefixo, webhook_url, usada_em, revogada_em, criada_em";
+// ---------- integrações (API v1 para parceiros, docs/api-v1-parceiros.md) ----------
+// Tudo por convite: o painel convida a plataforma da assessoria (convite assinado),
+// o admin dela aceita ou recusa lá, e a chave vai direto para o servidor dela.
+const CAMPOS_INTEGRACAO = "id, parceiro_id, nome, plataforma_url, ambiente, prefixo, webhook_url, usada_em, revogada_em, criada_em";
+const CAMPOS_CONEXAO = "id, parceiro_id, plataforma_url, ambiente, situacao, erro, motivo, respondido_por, integracao_id, expira_em, enviado_em, respondido_em, criado_em";
+const VALIDADE_CONVITE = 7 * 86400000;
 
-function urlWebhook(valor, ambiente) {
-  const s = String(valor || "").trim();
-  if (!s) return "";
+function urlPlataforma(valor, request) {
   let u;
-  try { u = new URL(s); } catch (e) { throw new Erro(400, "Endereço de avisos inválido."); }
+  try { u = new URL(String(valor || "").trim()); } catch (e) { throw new Erro(400, "Endereço do sistema inválido. Exemplo: https://im3-eventos.vercel.app"); }
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
-  if (u.protocol !== "https:" && !(ambiente === "test" && u.protocol === "http:" && local)) {
-    throw new Erro(400, "O endereço de avisos precisa começar com https://.");
-  }
-  if (s.length > 300) throw new Erro(400, "Endereço de avisos longo demais.");
-  return u.toString();
+  const painelLocal = /^(localhost|127\.0\.0\.1)$/.test(new URL(request.url).hostname);
+  if (u.protocol !== "https:" && !(local && painelLocal && u.protocol === "http:")) throw new Erro(400, "O endereço do sistema precisa começar com https://.");
+  return u.origin;
 }
 
-async function integracoes(request, env, m, parceiroId) {
+async function listaIntegracoes(env, parceiroId) {
+  const [cx, it] = await Promise.all([
+    env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE parceiro_id = ? ORDER BY criado_em DESC LIMIT 20").bind(parceiroId).all(),
+    env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE parceiro_id = ? ORDER BY criada_em DESC").bind(parceiroId).all(),
+  ]);
+  return { conexoes: cx.results, integracoes: it.results, assinatura: assinaturaConfigurada(env) };
+}
+
+// Gera código novo, grava e entrega o convite assinado à plataforma
+async function entregaConvite(env, cx, url) {
+  const p = await env.DB.prepare("SELECT id, nome, responsavel, email FROM parceiros WHERE id = ?").bind(cx.parceiro_id).first();
+  const codigo = Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) => x.toString(16).padStart(2, "0")).join("");
+  const expira = new Date(Date.now() + VALIDADE_CONVITE).toISOString().slice(0, 19) + "Z";
+  await env.DB.prepare("UPDATE conexoes SET codigo_hash = ?, expira_em = ?, situacao = 'enviando', erro = '' WHERE id = ?")
+    .bind(await sha256(codigo), expira, cx.id).run();
+  const r = await enviaConviteConexao(env, Object.assign({}, cx, { expira_em: expira }), p, codigo, origemPublica(url));
+  await env.DB.prepare("UPDATE conexoes SET situacao = ?, erro = ?, enviado_em = ? WHERE id = ? AND situacao = 'enviando'")
+    .bind(r.ok ? "enviado" : "falhou", r.ok ? "" : String(r.erro || "").slice(0, 300), new Date().toISOString().slice(0, 19) + "Z", cx.id).run();
+  return env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE id = ?").bind(cx.id).first();
+}
+
+async function convidaConexao(request, env, parceiroId, url) {
   const p = await env.DB.prepare("SELECT id, tipo, situacao, ativo FROM parceiros WHERE id = ?").bind(parceiroId).first();
   if (!p) throw new Erro(404, "Registro não encontrado.");
-  if (m === "GET") {
-    return json((await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE parceiro_id = ? ORDER BY criada_em DESC")
-      .bind(parceiroId).all()).results);
-  }
-  if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
-  if (p.tipo !== "assessoria") throw new Erro(400, "Só assessoria recebe chave de integração.");
-  if (p.situacao !== "aprovado" || !p.ativo) throw new Erro(400, "Aprove e ative a assessoria antes de criar a chave.");
+  if (p.tipo !== "assessoria") throw new Erro(400, "Só assessoria pode ser conectada.");
+  if (p.situacao !== "aprovado" || !p.ativo) throw new Erro(400, "Aprove e ative a assessoria antes de convidar.");
+  if (!assinaturaConfigurada(env)) throw new Erro(503, "Falta configurar a assinatura dos convites (segredo TARDIM_ASSINATURA_JWK). Veja o README.");
   const d = await corpo(request);
+  const plataforma = urlPlataforma(d.plataforma_url, request);
   const ambiente = d.ambiente === "test" ? "test" : "live";
-  const nome = String(d.nome || "").trim().slice(0, 60);
-  const webhook = urlWebhook(d.webhook_url, ambiente);
-  const { chave, prefixo } = novaChave(ambiente);
-  const segredo = novoSegredo();
-  const id = crypto.randomUUID();
-  await env.DB.prepare("INSERT INTO integracoes (id, parceiro_id, nome, ambiente, prefixo, hash, webhook_url, webhook_segredo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, parceiroId, nome, ambiente, prefixo, await sha256(chave), webhook, segredo).run();
-  const integracao = await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first();
-  return json({ integracao, chave, webhook_segredo: segredo }, 201);
+  const id = "cnx_" + crypto.randomUUID();
+  // Convites ainda sem resposta para a mesma plataforma deixam de valer
+  await env.DB.prepare("UPDATE conexoes SET situacao = 'cancelado' WHERE parceiro_id = ? AND plataforma_url = ? AND situacao IN ('enviando', 'enviado', 'falhou')")
+    .bind(parceiroId, plataforma).run();
+  await env.DB.prepare("INSERT INTO conexoes (id, parceiro_id, plataforma_url, ambiente, codigo_hash, expira_em) VALUES (?, ?, ?, ?, '', '')")
+    .bind(id, parceiroId, plataforma, ambiente).run();
+  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first();
+  return json(await entregaConvite(env, cx, url), 201);
 }
 
-async function alteraIntegracao(request, env, m, id, acao) {
+async function alteraConexao(env, m, id, acao, url) {
+  const cx = await env.DB.prepare("SELECT * FROM conexoes WHERE id = ?").bind(id).first();
+  if (!cx) throw new Erro(404, "Registro não encontrado.");
+  if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
+  const aberta = ["enviando", "enviado", "falhou"].includes(cx.situacao);
+  if (acao === "reenviar") {
+    if (!aberta) throw new Erro(400, "Este convite já foi respondido ou cancelado. Faça um convite novo.");
+    return json(await entregaConvite(env, cx, url));
+  }
+  if (acao === "cancelar") {
+    if (aberta) await env.DB.prepare("UPDATE conexoes SET situacao = 'cancelado' WHERE id = ?").bind(id).run();
+    return json(await env.DB.prepare("SELECT " + CAMPOS_CONEXAO + " FROM conexoes WHERE id = ?").bind(id).first());
+  }
+  throw new Erro(404, "Rota não encontrada.");
+}
+
+// Desconectar: avisa a plataforma (com o segredo desta conexão) e revoga a chave
+async function desconecta(env, m, id) {
+  if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
   const atual = await env.DB.prepare("SELECT * FROM integracoes WHERE id = ?").bind(id).first();
   if (!atual) throw new Erro(404, "Registro não encontrado.");
-  if (acao === "revogar" && m === "POST") {
-    if (!atual.revogada_em) await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(new Date().toISOString(), id).run();
-  } else if (!acao && m === "PUT") {
-    if (atual.revogada_em) throw new Erro(400, "Chave cancelada não pode ser alterada.");
-    const d = await corpo(request);
-    const nome = d.nome === undefined ? atual.nome : String(d.nome || "").trim().slice(0, 60);
-    const webhook = d.webhook_url === undefined ? atual.webhook_url : urlWebhook(d.webhook_url, atual.ambiente);
-    await env.DB.prepare("UPDATE integracoes SET nome = ?, webhook_url = ? WHERE id = ?").bind(nome, webhook, id).run();
-  } else {
-    throw new Erro(404, "Rota não encontrada.");
+  let aviso = null;
+  if (!atual.revogada_em) {
+    aviso = await enviaAviso(atual, "conexao.encerrada", { motivo: "Desconectado pela Tardim Produções." }).catch(() => null);
+    await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(new Date().toISOString().slice(0, 19) + "Z", id).run();
   }
-  return json(await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first());
+  return json({ integracao: await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first(), aviso });
 }
-
 // ---------- rotas ----------
-async function trata(request, env, rota, url) {
+async function trata(request, env, rota, url, waitUntil) {
   const m = request.method;
   const [a, b, c] = rota;
 
@@ -522,8 +556,15 @@ async function trata(request, env, rota, url) {
     return json({ resultado: r, parceiro: await uma(env, "parceiros", b) });
   }
 
-  if (a === "parceiros" && b && c === "integracoes" && !rota[3]) return integracoes(request, env, m, b);
-  if (a === "integracoes" && b && !rota[3]) return alteraIntegracao(request, env, m, b, c);
+  if (a === "parceiros" && b && c === "integracoes" && !rota[3] && m === "GET") return json(await listaIntegracoes(env, b));
+  if (a === "parceiros" && b && c === "conexao" && !rota[3] && m === "POST") return convidaConexao(request, env, b, url);
+  if (a === "conexoes" && b && c && !rota[3]) return alteraConexao(env, m, b, c, url);
+  if (a === "integracoes" && b && c === "desconectar" && !rota[3]) return desconecta(env, m, b);
+  if (a === "convites" && b && c === "avisar" && !rota[3] && m === "POST") {
+    const r = await avisaConvite(env, b, origemPublica(url));
+    if (!r) throw new Erro(400, "Nada a avisar: a assessoria não está conectada ou a prova ainda não aparece para ela.");
+    return json({ aviso: r, convite: await uma(env, "convites", b) });
+  }
 
   if (a === "avisos" && !b && m === "GET") {
     return json((await env.DB.prepare(
@@ -536,10 +577,28 @@ async function trata(request, env, rota, url) {
   if (a === "propostas" && b && c === "assinado" && !rota[3]) return contratoAssinado(request, env, m, b);
 
   if (TABELAS[a]) {
+    // Convites e provas avisam as plataformas das assessorias conectadas (API v1), depois da resposta
+    const avisa = (fn) => { if (waitUntil) waitUntil(fn().catch(() => {})); };
+    const origem = origemPublica(url);
     if (!b && m === "GET") return json(await lista(env, a));
-    if (!b && m === "POST") return json(await cria(env, a, await corpo(request)), 201);
-    if (b && !c && m === "PUT") return json(await altera(env, a, b, await corpo(request)));
-    if (b && !c && m === "DELETE") return json(await apaga(env, a, b));
+    if (!b && m === "POST") {
+      const novo = await cria(env, a, await corpo(request));
+      if (a === "convites") avisa(() => avisaConvite(env, novo.id, origem));
+      return json(novo, 201);
+    }
+    if (b && !c && m === "PUT") {
+      const salvo = await altera(env, a, b, await corpo(request));
+      if (a === "convites") avisa(() => avisaConvite(env, b, origem));
+      if (a === "provas") avisa(() => avisaConvitesDaProva(env, b, origem));
+      return json(salvo);
+    }
+    if (b && !c && m === "DELETE") {
+      if (a === "convites") {
+        const antes = await env.DB.prepare("SELECT * FROM convites WHERE id = ?").bind(b).first().catch(() => null);
+        if (antes) await avisaConviteCancelado(env, antes).catch(() => null);
+      }
+      return json(await apaga(env, a, b));
+    }
   }
 
   // Medição do site (functions/api/evento.js): totais por evento e página nos últimos N dias
@@ -574,7 +633,7 @@ async function corpo(request) {
   throw new Erro(400, "Dados inválidos.");
 }
 
-export async function onRequest({ request, env, params }) {
+export async function onRequest({ request, env, params, waitUntil }) {
   if (!env.DB) return json({ erro: "config", mensagem: "O banco D1 (binding DB) não está ligado a este projeto." }, 503);
   if (!env.ADMIN_SENHA || !env.SESSAO_SEGREDO) {
     return json({ erro: "config", mensagem: "Defina os segredos ADMIN_SENHA e SESSAO_SEGREDO no projeto do Cloudflare Pages." }, 503);
@@ -582,7 +641,7 @@ export async function onRequest({ request, env, params }) {
   const url = new URL(request.url);
   const rota = [].concat(params.rota || []).map((x) => decodeURIComponent(x));
   try {
-    return await trata(request, env, rota, url);
+    return await trata(request, env, rota, url, waitUntil);
   } catch (e) {
     if (e instanceof Erro) return json({ erro: e.status, mensagem: e.message }, e.status);
     const msg = String((e && e.message) || e);

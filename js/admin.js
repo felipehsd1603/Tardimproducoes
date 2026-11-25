@@ -995,89 +995,124 @@
     });
   }
 
-  // Integração (API v1, docs/api-v1-parceiros.md): chave para a plataforma da assessoria
-  // (ex.: IM3) puxar as provas e, depois, enviar a inscrição coletiva sem planilha.
-  // A chave e o segredo aparecem uma vez só, na criação.
+  // Integração (API v1, docs/api-v1-parceiros.md): tudo por convite. O painel convida o sistema
+  // da assessoria (ex.: IM3); o admin dela aceita ou recusa lá; a chave vai direto para o servidor
+  // dela e ninguém precisa copiar nada. Convites de prova também são aceitos ou recusados lá.
+  var SIT_CONEXAO = {
+    enviando: ["Enviando...", "is-rasc"], enviado: ["Aguardando resposta", "is-rasc"], falhou: ["Não entregue", "is-off"],
+    aceito: ["Aceito", "is-pub"], recusado: ["Recusado", "is-off"], cancelado: ["Cancelado", "is-off"],
+  };
   function cardIntegracao(p) {
-    var c = card("Integração", "Conectar a plataforma da assessoria");
-    c.append(el("p", "muted", "Para assessorias que usam um sistema próprio (como o IM3). Com a chave, o sistema delas vê as provas em que têm convite e, na próxima etapa, envia a inscrição coletiva sem planilha."));
+    var c = card("Integração", "Conectar o sistema da assessoria");
+    c.append(el("p", "muted", "Se a assessoria usa um sistema próprio (como o IM3), convide-o aqui. O responsável recebe o convite no sistema dele e aceita ou recusa. Conectado, cada convite de prova que você criar chega lá para ele aceitar, e as respostas aparecem aqui."));
     var area = el("div"); c.append(area);
-    var novo = el("div"); c.append(novo);
     if (p.situacao !== "aprovado" || !p.ativo) {
-      area.append(el("p", "assess-alerta", "Aprove e ative esta assessoria para criar uma chave."));
+      area.append(el("p", "assess-alerta", "Aprove e ative esta assessoria para convidar o sistema dela."));
       return c;
     }
     function data(v) { return v ? new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"; }
+    function host(u) { return String(u || "").replace(/^https?:\/\//, ""); }
     function carrega() {
       area.innerHTML = ""; area.append(el("p", "muted", "Carregando..."));
       api("GET", "parceiros/" + encodeURIComponent(p.id) + "/integracoes").then(desenha).catch(function (e) {
         area.innerHTML = "";
-        area.append(el("p", "assess-alerta", /tabelas|503/.test(String(e && e.message)) ? "Falta criar as tabelas da integração no banco (d1/migracoes/013-integracoes.sql)." : "Não consegui carregar as chaves."));
+        area.append(el("p", "assess-alerta", /tabelas|503/.test(String(e && e.message)) ? "Falta criar as tabelas da integração no banco (d1/migracoes/013-integracoes.sql)." : "Não consegui carregar a integração."));
       });
     }
-    function desenha(lista) {
+    function desenha(r) {
       area.innerHTML = "";
-      if (!lista.length) { area.append(el("p", "muted", "Nenhuma chave criada ainda.")); return; }
-      area.append(tabela(["Sistema", "Chave", "Ambiente", "Avisos para", "Criada", "Último uso", "Situação", ""], lista.map(function (k) {
-        var ativa = !k.revogada_em;
-        return [k.nome || "—", el("code", null, k.prefixo + "…"), k.ambiente === "test" ? "Teste" : "Produção",
-          k.webhook_url ? el("small", null, k.webhook_url) : el("small", "muted", "não informado"),
-          data(k.criada_em), data(k.usada_em),
-          ativa ? situacao("Valendo", "is-pub") : situacao("Cancelada em " + data(k.revogada_em), "is-off"),
-          ativa ? acoes(
-            botao("Endereço de avisos", null, function () { trocaWebhook(k); }),
-            botao("Cancelar chave", "orc__email painel-perigo", function () { cancela(k); })) : null];
-      })));
-    }
-    function trocaWebhook(k) {
-      pergunta("Endereço de avisos", "Para onde a Tardim manda os avisos (situação dos atletas e resultados). Deixe vazio para não enviar.", "Salvar", { campo: "Endereço (https://...)", valor: k.webhook_url || "" }).then(function (v) {
-        if (v === null) return;
-        api("PUT", "integracoes/" + encodeURIComponent(k.id), { webhook_url: v.trim() }).then(function () { aviso("Endereço salvo."); carrega(); }).catch(falha);
+      if (!r.assinatura) area.append(el("p", "assess-alerta", "Falta configurar a assinatura dos convites (segredo TARDIM_ASSINATURA_JWK). Veja o README."));
+      var ativas = r.integracoes.filter(function (k) { return !k.revogada_em; });
+      ativas.forEach(function (k) {
+        var b = el("div", "painel-cref");
+        var ok = el("p", "painel-cref__ok");
+        ok.append(el("strong", null, "Conectada a " + (k.nome || host(k.plataforma_url))), document.createTextNode(" · " + host(k.plataforma_url) + (k.ambiente === "test" ? " · teste" : "")),
+          el("small", null, " Desde " + data(k.criada_em) + (k.usada_em ? " · último acesso " + data(k.usada_em) : "") + "."));
+        b.append(ok, acoes(botao("Desconectar", "orc__email painel-perigo", function () { desconecta(k); })));
+        area.append(b);
       });
+      var historico = r.conexoes.filter(function (x) { return !(x.situacao === "aceito" && ativas.some(function (k) { return k.id === x.integracao_id; })); });
+      if (historico.length) {
+        area.append(el("h3", null, "Convites de conexão"));
+        area.append(tabela(["Sistema", "Situação", "Enviado", "Resposta", ""], historico.map(function (x) {
+          var s = SIT_CONEXAO[x.situacao] || [x.situacao, "is-rasc"];
+          var sit = el("div"); sit.append(situacao(s[0], s[1]));
+          if (x.situacao === "falhou" && x.erro) sit.append(el("small", "muted", " " + x.erro));
+          if (x.situacao === "enviado") sit.append(el("small", "muted", " vale até " + data(x.expira_em)));
+          var resp = x.respondido_em ? data(x.respondido_em) + (x.respondido_por ? " por " + x.respondido_por : "") + (x.motivo ? ". Motivo: " + x.motivo : "") : "—";
+          var aberta = ["enviando", "enviado", "falhou"].indexOf(x.situacao) >= 0;
+          return [host(x.plataforma_url) + (x.ambiente === "test" ? " (teste)" : ""), sit, data(x.enviado_em), resp,
+            aberta ? acoes(botao(x.situacao === "falhou" ? "Tentar de novo" : "Reenviar", null, function (e) { reenvia(x, e.currentTarget); }),
+              botao("Cancelar convite", "orc__email painel-perigo", function () { cancelaConvite(x); })) : null];
+        })));
+      }
+      if (!ativas.length) area.append(formConvite(r.conexoes[0]));
     }
-    function cancela(k) {
-      pergunta("Cancelar a chave " + k.prefixo + "…?", "O sistema " + (k.nome || "da assessoria") + " para de acessar na hora. Não dá para desfazer: se precisar, crie uma chave nova.", "Cancelar chave").then(function (sim) {
-        if (!sim) return;
-        api("POST", "integracoes/" + encodeURIComponent(k.id) + "/revogar", {}).then(function () { aviso("Chave cancelada."); carrega(); }).catch(falha);
+    function formConvite(ultimo) {
+      var box = el("div");
+      var f = el("form", "assess-grid"); f.noValidate = true;
+      var end = entrada("url", ultimo ? ultimo.plataforma_url : "https://", { placeholder: "https://im3-eventos.vercel.app", maxLength: 200 });
+      var amb = escolha([["live", "Produção"], ["test", "Teste (o sistema vê também provas não publicadas)"]], "live");
+      f.append(campo("Endereço do sistema da assessoria", end, "O endereço que a assessoria usa para abrir o sistema dela."), campo("Ambiente", amb));
+      var enviar = el("button", "btn btn--red", "Convidar para conectar"); enviar.type = "submit";
+      f.append(barraForm(enviar));
+      var titulo = el("h3", null, "Convidar o sistema da assessoria"); titulo.style.marginTop = "1.5rem";
+      box.append(titulo, f);
+      f.addEventListener("submit", function (e) {
+        e.preventDefault();
+        enviar.disabled = true; enviar.textContent = "Enviando convite...";
+        api("POST", "parceiros/" + encodeURIComponent(p.id) + "/conexao", { plataforma_url: end.value.trim(), ambiente: amb.value }).then(function (x) {
+          aviso(x.situacao === "enviado" ? "Convite entregue. Agora é com a assessoria: ela aceita ou recusa no sistema dela." : "O sistema não recebeu o convite: " + (x.erro || "erro desconhecido") + ".", x.situacao !== "enviado");
+          carrega();
+        }).catch(function (err) { enviar.disabled = false; enviar.textContent = "Convidar para conectar"; falha(err); });
       });
+      return box;
     }
-    // Formulário de nova chave
-    var f = el("form", "assess-grid"); f.noValidate = true;
-    var sistema = entrada("text", "IM3", { maxLength: 60 });
-    var amb = escolha([["live", "Produção"], ["test", "Teste (vê também provas não publicadas)"]], "live");
-    var hook = entrada("url", "", { placeholder: "https://... (pode deixar para depois)", maxLength: 300 });
-    f.append(campo("Sistema da assessoria", sistema), campo("Ambiente", amb), campo("Endereço de avisos", hook, "O sistema da assessoria informa esse endereço. Pode ficar vazio agora.", true));
-    var criar = el("button", "btn btn--red", "Criar chave"); criar.type = "submit";
-    f.append(barraForm(criar));
-    var tituloNovo = el("h3", null, "Nova chave"); tituloNovo.style.marginTop = "1.5rem";
-    novo.append(tituloNovo, f);
-    f.addEventListener("submit", function (e) {
-      e.preventDefault();
-      criar.disabled = true; criar.textContent = "Criando...";
-      api("POST", "parceiros/" + encodeURIComponent(p.id) + "/integracoes", { nome: sistema.value.trim(), ambiente: amb.value, webhook_url: hook.value.trim() }).then(function (r) {
-        criar.disabled = false; criar.textContent = "Criar chave";
-        hook.value = "";
-        mostraSegredos(r);
+    function reenvia(x, btn) {
+      btn.disabled = true;
+      api("POST", "conexoes/" + encodeURIComponent(x.id) + "/reenviar", {}).then(function (r) {
+        aviso(r.situacao === "enviado" ? "Convite entregue de novo." : "Ainda não entregou: " + (r.erro || "erro desconhecido") + ".", r.situacao !== "enviado");
         carrega();
-      }).catch(function (err) { criar.disabled = false; criar.textContent = "Criar chave"; falha(err); });
-    });
-    // A chave e o segredo só existem nesta tela: depois disso o banco guarda só o "resumo" (hash)
-    function mostraSegredos(r) {
-      var box = el("div", "painel-cref");
-      box.append(el("p", "assess-alerta", "Copie agora e entregue à assessoria por um canal seguro. Esta é a única vez que a chave e o segredo aparecem."));
-      [["Chave da API", r.chave], ["Segredo dos avisos", r.webhook_segredo]].forEach(function (x) {
-        var linha = el("div", "painel-acoes-linha");
-        var cod = el("code", null, x[1]);
-        linha.append(el("strong", null, x[0] + ": "), cod, botao("Copiar", null, function (ev) { copiar(x[1], ev.currentTarget); }));
-        box.append(linha);
+      }).catch(function (e) { btn.disabled = false; falha(e); });
+    }
+    function cancelaConvite(x) {
+      pergunta("Cancelar o convite para " + host(x.plataforma_url) + "?", "Se a assessoria tentar aceitar depois, o sistema dela vai receber um erro.", "Cancelar convite").then(function (sim) {
+        if (!sim) return;
+        api("POST", "conexoes/" + encodeURIComponent(x.id) + "/cancelar", {}).then(function () { aviso("Convite cancelado."); carrega(); }).catch(falha);
       });
-      box.append(el("small", "assess-dica", "Endereço da API: " + base() + "api/v1 · Documentação: docs/api-v1-parceiros.md"));
-      novo.insertBefore(box, novo.firstChild);
+    }
+    function desconecta(k) {
+      pergunta("Desconectar " + (k.nome || host(k.plataforma_url)) + "?", "O sistema da assessoria é avisado e perde o acesso na hora. Para voltar, faça um convite novo.", "Desconectar").then(function (sim) {
+        if (!sim) return;
+        api("POST", "integracoes/" + encodeURIComponent(k.id) + "/desconectar", {}).then(function () { aviso("Desconectado."); carrega(); }).catch(falha);
+      });
     }
     carrega();
     return c;
   }
 
+  // Resposta da assessoria ao convite de prova, dada no sistema dela (API v1)
+  function seloConviteApi(cv) {
+    if (!cv.api_situacao) return null;
+    var d = el("span");
+    var t = cv.api_situacao === "aceito" ? situacao("Aceito no sistema" + (cv.api_modo_pagamento === "ticketsports" ? " (paga na Ticket Sports)" : cv.api_modo_pagamento === "assessoria" ? " (PIX na assessoria)" : ""), "is-pub")
+      : cv.api_situacao === "recusado" ? situacao("Recusado no sistema", "is-off")
+      : situacao("Aguardando resposta no sistema", "is-rasc");
+    if (cv.api_motivo) t.title = "Motivo: " + cv.api_motivo;
+    d.append(" ", t);
+    if (/^erro/.test(cv.api_aviso || "")) {
+      var e = situacao("Aviso não entregue", "is-off"); e.title = cv.api_aviso;
+      d.append(" ", e, " ", botao("Reenviar aviso", null, function (ev) {
+        var b = ev.currentTarget; b.disabled = true;
+        api("POST", "convites/" + encodeURIComponent(cv.id) + "/avisar", {}).then(function (r) {
+          S.convites = S.convites.map(function (x) { return x.id === cv.id ? r.convite : x; });
+          aviso(r.aviso && r.aviso.ok ? "Aviso entregue." : "Ainda não entregou: " + ((r.aviso && r.aviso.erro) || "erro") + ".", !(r.aviso && r.aviso.ok));
+          redesenha();
+        }).catch(function (err) { b.disabled = false; falha(err); });
+      }));
+    }
+    return d;
+  }
   // Logo: PNG de até 400 px, mantendo a transparência
   function comprimeLogo(file) {
     return new Promise(function (ok, erro) {
@@ -1130,6 +1165,7 @@
         var pv = provaPorId(cv.prova_id), pa = parceiroPorId(cv.parceiro_id);
         var quem = el("div"); quem.append(el("strong", null, pa ? pa.nome : "(parceiro apagado)"));
         if (pa) quem.append(el("small", "muted", " · " + TIPOS[pa.tipo]));
+        var selo = seloConviteApi(cv); if (selo) quem.append(selo);
         return [pv ? pv.nome : cv.prova_id, quem, el("code", "painel-cupom", cv.cupom),
           Number(cv.comissao_pct) ? String(cv.comissao_pct).replace(".", ",") + "%" : "—",
           cv.cortesias ? String(cv.cortesias) : "—",

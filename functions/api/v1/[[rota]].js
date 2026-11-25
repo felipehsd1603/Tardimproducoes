@@ -1,19 +1,27 @@
 // /api/v1/* — API para parceiros (plataformas de assessoria). Contrato: docs/api-v1-parceiros.md
 //
-//   GET /api/v1/eu                 quem é a chave
-//   GET /api/v1/provas             provas em que a assessoria tem convite (próximas)
-//   GET /api/v1/provas/<id>        uma prova
-//   (envios, atletas e resultados: etapa 2; respondem 501 por enquanto)
+// Sem chave:
+//   GET    /api/v1/chaves-publicas                  JWKS que confere a assinatura dos convites de conexão
+//   POST   /api/v1/conexoes/<id>/aceitar            { codigo, plataforma, webhook_url, aceito_por }  -> chave (uma vez)
+//   POST   /api/v1/conexoes/<id>/recusar            { codigo, motivo, recusado_por }
+// Com "Authorization: Bearer tdm_live_..." (ou tdm_test_):
+//   GET    /api/v1/eu                               quem é a chave
+//   DELETE /api/v1/conexao                          a plataforma desconecta (revoga a chave)
+//   GET    /api/v1/provas  |  /api/v1/provas/<id>   provas em que a assessoria tem convite (próximas)
+//   GET    /api/v1/convites[?situacao=pendente]     convites de prova
+//   POST   /api/v1/convites/<id>/aceitar            { modo_pagamento, aceito_por }
+//   POST   /api/v1/convites/<id>/recusar            { motivo, recusado_por }
+//   (envios, atletas e resultados: próxima etapa; respondem 501)
 //
-// Autenticação: "Authorization: Bearer tdm_live_..." (ou tdm_test_). A chave é criada no
-// painel (Parceiros > assessoria > Integração) e o banco guarda só o SHA-256 dela.
-// Só servidor chama esta API: não há CORS, então a chave nunca vai para um navegador.
+// A chave nasce no aceite da conexão e vai direto para o servidor da plataforma: ninguém a copia.
+// O banco guarda só o SHA-256 dela. Só servidor chama esta API: não há CORS.
 
-import { RE_CHAVE, sha256 } from "../../_chaves.js";
+import { RE_CHAVE, sha256, novaChave, novoSegredo } from "../../_chaves.js";
+import { chavesPublicas } from "../../_assinatura.js";
+import { linhasProvas, formataProva, conviteApi, absoluto, isoBanco, hojeBR } from "../../_provas_api.js";
 
 const LIMITE_MINUTO = 120;
-const TAMANHOS_PADRAO = ["PP", "P", "M", "G", "GG", "XG", "XGG"]; // mesmos de js/assessorias.js
-const BENEFICIOS = { t: "Tenda da equipe", k: "Kits retirados em lote", f: "Foto oficial da equipe", e: "Ponto de encontro" };
+const LIMITE_CONEXAO_IP = 20; // aceitar/recusar por IP por minuto
 
 class Erro extends Error {
   constructor(status, codigo, mensagem, extra) { super(mensagem); this.status = status; this.codigo = codigo; this.extra = extra; }
@@ -26,40 +34,28 @@ function json(corpo, status, extra) {
   });
 }
 
-const lerJson = (t, padrao) => { try { const v = JSON.parse(t); return v == null ? padrao : v; } catch (e) { return padrao; } };
-const hojeBR = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
-const slug = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const absoluto = (origem, caminho) => !caminho ? null : (/^https?:\/\//i.test(caminho) ? caminho : origem + "/" + String(caminho).replace(/^\//, ""));
-const linkOuNulo = (s) => (/^https?:\/\//i.test(String(s || "").trim()) ? String(s).trim() : null);
-// Datas do banco: "2026-11-25T13:00:00Z" (UTC, sem milissegundos)
-const isoBanco = (v) => { const d = new Date(v); return isNaN(d) ? null : d.toISOString().slice(0, 19) + "Z"; };
+async function corpo(request) {
+  const t = await request.text();
+  if (t.length > 20000) throw new Erro(413, "json_invalido", "Corpo grande demais.");
+  if (!t.trim()) return {};
+  try { const d = JSON.parse(t); if (d && typeof d === "object" && !Array.isArray(d)) return d; } catch (e) { /* cai abaixo */ }
+  throw new Erro(400, "json_invalido", "JSON inválido.");
+}
+const texto = (v, max) => String(v == null ? "" : v).trim().slice(0, max);
 
-// "5 km" -> 5000 | "21,1 km" -> 21100 | "800 m" -> 800 | "Caminhada" -> null
-function distancia(texto) {
-  const m = String(texto || "").match(/(\d+(?:[.,]\d+)?)\s*(km|k|m)\b/i);
-  if (!m) return null;
-  const n = parseFloat(m[1].replace(",", "."));
-  return /^m$/i.test(m[2]) ? Math.round(n) : Math.round(n * 1000);
+// Contador por minuto (tabela api_uso); "dono" = id da integração ou "ip:<ip>"
+async function contaUso(env, dono, limite) {
+  const agora = Math.floor(Date.now() / 1000);
+  const uso = await env.DB.prepare(
+    "INSERT INTO api_uso (integracao_id, minuto, n) VALUES (?, ?, 1) ON CONFLICT (integracao_id, minuto) DO UPDATE SET n = n + 1 RETURNING n"
+  ).bind(dono, Math.floor(agora / 60)).first();
+  if (uso && uso.n > limite) {
+    throw new Erro(429, "limite_de_uso", "Limite de " + limite + " chamadas por minuto.", { "retry-after": String(60 - (agora % 60)) });
+  }
+  return agora;
 }
 
-// "07h30", "7h", "19:00" -> "2027-03-14T07:30:00-03:00"
-function largada(data, hora) {
-  const m = String(hora || "").match(/(\d{1,2})\s*[h:]\s*(\d{2})?/i);
-  if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
-  return data + "T" + m[1].padStart(2, "0") + ":" + (m[2] || "00") + ":00-03:00";
-}
-
-// "R$ 89,90" -> 8990 | 89.9 -> 8990 | "Grátis" -> 0 | "" -> null
-function centavos(v) {
-  if (typeof v === "number" && isFinite(v)) return Math.round(v * 100);
-  const s = String(v || "").trim();
-  if (!s) return null;
-  if (/gr[aá]tis|gratuit/i.test(s)) return 0;
-  const m = s.replace(/\./g, "").match(/(\d+)(?:,(\d{1,2}))?/);
-  return m ? Number(m[1]) * 100 + Number((m[2] || "0").padEnd(2, "0")) : null;
-}
-
-// ---------- autenticação e limite de uso ----------
+// ---------- autenticação ----------
 async function autentica(request, env, waitUntil) {
   const m = (request.headers.get("Authorization") || "").match(/^Bearer\s+(\S+)$/i);
   if (!m) throw new Erro(401, "chave_ausente", "Envie a chave no cabeçalho Authorization: Bearer <chave>.");
@@ -69,20 +65,12 @@ async function autentica(request, env, waitUntil) {
     "FROM integracoes i JOIN parceiros p ON p.id = i.parceiro_id WHERE i.hash = ?"
   ).bind(await sha256(m[1])).first();
   if (!r) throw new Erro(401, "chave_invalida", "Chave inválida.");
-  if (r.revogada_em) throw new Erro(401, "chave_revogada", "Esta chave foi cancelada pela Tardim Produções.");
+  if (r.revogada_em) throw new Erro(401, "chave_revogada", "Esta conexão foi encerrada.");
   if (r.p_tipo !== "assessoria" || r.p_situacao !== "aprovado" || !r.p_ativo) {
     throw new Erro(403, "assessoria_inativa", "A assessoria desta chave não está ativa na Tardim Produções.");
   }
-
-  const agora = Math.floor(Date.now() / 1000);
-  const uso = await env.DB.prepare(
-    "INSERT INTO api_uso (integracao_id, minuto, n) VALUES (?, ?, 1) " +
-    "ON CONFLICT (integracao_id, minuto) DO UPDATE SET n = n + 1 RETURNING n"
-  ).bind(r.id, Math.floor(agora / 60)).first();
-  if (uso && uso.n > LIMITE_MINUTO) {
-    throw new Erro(429, "limite_de_uso", "Limite de " + LIMITE_MINUTO + " chamadas por minuto.", { "retry-after": String(60 - (agora % 60)) });
-  }
-  // Manutenção sem bloquear a resposta: última vez usada (no máximo a cada 10 min) e limpeza do contador
+  const agora = await contaUso(env, r.id, LIMITE_MINUTO);
+  // Manutenção sem atrasar a resposta: último uso (no máximo a cada 10 min) e limpeza do contador
   const passos = [];
   if (!r.usada_em || Date.parse(r.usada_em) < Date.now() - 600000) {
     passos.push(env.DB.prepare("UPDATE integracoes SET usada_em = ? WHERE id = ?").bind(isoBanco(Date.now()), r.id).run());
@@ -92,145 +80,154 @@ async function autentica(request, env, waitUntil) {
   return r;
 }
 
-// ---------- provas ----------
-// Uma linha por prova (o convite mais recente da assessoria naquela prova)
-async function linhasProvas(env, chave, id) {
-  const teste = chave.ambiente === "test";
-  const filtros = ["c.parceiro_id = ?1", "p.data >= ?2"];
-  if (!teste) filtros.push("p.publicada = 1");
-  if (id) filtros.push("p.id = ?3");
-  const sql =
-    "SELECT p.*, c.id AS c_id, c.cupom AS c_cupom, c.desconto AS c_desconto, c.comissao_pct AS c_comissao, c.cortesias AS c_cortesias, " +
-    "c.contrapartida AS c_contrapartida, c.condicoes AS c_condicoes, c.coletiva AS c_coletiva, c.atualizado_em AS c_atualizado " +
-    "FROM convites c JOIN provas p ON p.id = c.prova_id WHERE " + filtros.join(" AND ") +
-    " ORDER BY p.data, p.id, c.criado_em DESC";
-  const q = env.DB.prepare(sql);
-  const r = await (id ? q.bind(chave.parceiro_id, hojeBR(), id) : q.bind(chave.parceiro_id, hojeBR())).all();
-  const vistas = new Set();
-  return r.results.filter((l) => !vistas.has(l.id) && vistas.add(l.id));
+// ---------- conexão: aceitar / recusar (autentica pelo código do convite) ----------
+async function respondeConexao(request, env, id, acao) {
+  const ip = request.headers.get("CF-Connecting-IP") || "local";
+  await contaUso(env, "ip:" + ip, LIMITE_CONEXAO_IP);
+  const d = await corpo(request);
+  const cx = await env.DB.prepare(
+    "SELECT x.*, p.nome AS p_nome, p.tipo AS p_tipo, p.situacao AS p_situacao, p.ativo AS p_ativo FROM conexoes x JOIN parceiros p ON p.id = x.parceiro_id WHERE x.id = ?"
+  ).bind(id).first();
+  if (!cx) throw new Erro(404, "nao_encontrado", "Convite não encontrado.");
+  if (!/^[0-9a-f]{64}$/.test(String(d.codigo || "")) || (await sha256(d.codigo)) !== cx.codigo_hash) {
+    throw new Erro(401, "codigo_invalido", "Código do convite inválido.");
+  }
+  if (!["enviado", "enviando", "falhou"].includes(cx.situacao)) throw new Erro(409, "convite_respondido", "Este convite já foi respondido ou cancelado.");
+  if (Date.parse(cx.expira_em) < Date.now()) throw new Erro(409, "convite_expirado", "Este convite expirou. Peça um novo à Tardim Produções.");
+  const agora = isoBanco(Date.now());
+
+  if (acao === "recusar") {
+    await env.DB.prepare("UPDATE conexoes SET situacao = 'recusado', motivo = ?, respondido_por = ?, respondido_em = ? WHERE id = ?")
+      .bind(texto(d.motivo, 300), texto(d.recusado_por, 120), agora, id).run();
+    return json({ ok: true });
+  }
+
+  if (cx.p_tipo !== "assessoria" || cx.p_situacao !== "aprovado" || !cx.p_ativo) {
+    throw new Erro(403, "assessoria_inativa", "A assessoria deste convite não está ativa na Tardim Produções.");
+  }
+  // O endereço de avisos precisa ser da mesma plataforma convidada
+  let webhook = "";
+  if (d.webhook_url) {
+    let u;
+    try { u = new URL(String(d.webhook_url)); } catch (e) { throw new Erro(400, "campo_obrigatorio", "webhook_url inválido."); }
+    if (u.origin !== cx.plataforma_url) throw new Erro(400, "campo_obrigatorio", "webhook_url precisa ser do mesmo endereço convidado (" + cx.plataforma_url + ").");
+    webhook = u.toString();
+  }
+  const plataforma = d.plataforma && typeof d.plataforma === "object" ? d.plataforma : {};
+  const { chave, prefixo } = novaChave(cx.ambiente);
+  const segredo = novoSegredo();
+  const integId = crypto.randomUUID();
+  // Uma conexão valendo por assessoria e plataforma: a anterior é encerrada
+  await env.DB.batch([
+    env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE parceiro_id = ? AND plataforma_url = ? AND revogada_em = ''").bind(agora, cx.parceiro_id, cx.plataforma_url),
+    env.DB.prepare("INSERT INTO integracoes (id, parceiro_id, nome, plataforma_url, conexao_id, ambiente, prefixo, hash, webhook_url, webhook_segredo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(integId, cx.parceiro_id, texto(plataforma.nome, 60) || cx.plataforma_url.replace(/^https?:\/\//, ""), cx.plataforma_url, id, cx.ambiente, prefixo, await sha256(chave), webhook, segredo),
+    env.DB.prepare("UPDATE conexoes SET situacao = 'aceito', respondido_por = ?, respondido_em = ?, integracao_id = ? WHERE id = ?")
+      .bind(texto(d.aceito_por, 120), agora, integId, id),
+    // Convites futuros da assessoria passam a esperar resposta na plataforma
+    env.DB.prepare("UPDATE convites SET api_situacao = 'pendente' WHERE parceiro_id = ? AND api_situacao = '' AND prova_id IN (SELECT id FROM provas WHERE data >= ?)")
+      .bind(cx.parceiro_id, hojeBR()),
+  ]);
+  return json({ chave, webhook_segredo: segredo, assessoria: { id: cx.parceiro_id, nome: cx.p_nome }, ambiente: cx.ambiente }, 201);
 }
 
-// Atletas já enviados por esta equipe na prova (planilha pelo site e, depois, API)
-async function atletasDaEquipe(env, provaId, nomeEquipe) {
-  const r = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM atletas t JOIN inscricoes i ON i.id = t.inscricao_id WHERE i.prova_id = ? AND i.equipe = ? COLLATE NOCASE"
-  ).bind(provaId, nomeEquipe).first();
-  return (r && r.n) || 0;
-}
-
-async function formataProva(env, l, chave, origem) {
-  const co = lerJson(l.c_coletiva, {});
-  const hoje = hojeBR();
-  const percursos = lerJson(l.percursos, []).map((nome) => ({ id: slug(nome) || "percurso", nome: String(nome), distancia_m: distancia(nome) }));
-  const limite = Number(co.m) || null;
-  const vagas = limite ? Math.max(0, limite - (await atletasDaEquipe(env, l.id, chave.p_nome))) : null;
-  const prazo = /^\d{4}-\d{2}-\d{2}$/.test(co.d || "") ? co.d : null;
-  const aberta = l.data >= hoje && (!prazo || prazo >= hoje) && vagas !== 0;
-  const kit = lerJson(l.kit, { itens: [], retirada: "" });
-  const atualizada = [l.atualizado_em, l.c_atualizado].filter(Boolean).sort().pop() || null;
-  const base = origem + "/";
-  return {
-    id: l.id,
-    nome: l.nome,
-    publicada: !!l.publicada,
-    data: l.data,
-    largada: largada(l.data, l.hora),
-    hora: l.hora || null,
-    local: l.local || null,
-    url: base + "prova-" + l.id,
-    poster_url: absoluto(origem, l.poster),
-    resumo: l.resumo || null,
-    regulamento_url: linkOuNulo(l.regulamento),
-    percurso_mapa_url: linkOuNulo(l.percurso_mapa),
-    percursos,
-    camisetas: TAMANHOS_PADRAO,
-    kit: { itens: Array.isArray(kit.itens) ? kit.itens : [], retirada: kit.retirada || null },
-    programacao: lerJson(l.programacao, []).map((x) => ({ hora: String(x[0] || ""), atividade: String(x[1] || "") })),
-    precos_publicos: lerJson(l.valores, []).map((v) => ({
-      nome: v.nome || "", valor: String(v.valor == null ? "" : v.valor), valor_centavos: centavos(v.valor), detalhe: v.detalhe || null, esgotado: !!v.esgotado,
-    })),
-    coletiva: {
-      aberta,
-      prazo: prazo ? prazo + "T23:59:59-03:00" : null,
-      prazo_interno_atletas: /^\d{4}-\d{2}-\d{2}$/.test(co.i || "") ? co.i : null,
-      limite_atletas: limite,
-      vagas_restantes: vagas,
-      modos_pagamento: ["assessoria", "ticketsports"],
-      pagamento_combinado: co.g || null,
-      valor_atleta_centavos: centavos(co.v),
-      faixas_desconto: (Array.isArray(co.f) ? co.f : []).filter((x) => Array.isArray(x) && x.length >= 2)
-        .map((x) => ({ minimo_atletas: Number(x[0]) || 0, desconto_pct: Number(x[1]) || 0 })),
-      cortesias: Number(l.c_cortesias) || 0,
-      beneficios: String(co.b || "").split("").filter((k) => BENEFICIOS[k]).map((k) => BENEFICIOS[k]),
-      retirada_kits_equipe: co.kt || null,
-      ponto_encontro: co.pe || null,
-    },
-    convite: {
-      cupom: l.c_cupom,
-      desconto: l.c_desconto || null,
-      comissao_pct: Number(l.c_comissao) || 0,
-      condicoes: l.c_condicoes || null,
-      contrapartida: l.c_contrapartida || null,
-      link_atleta: base + "prova-" + l.id + ".html?cupom=" + encodeURIComponent(l.c_cupom),
-      link_inscricao: linkOuNulo(l.inscricao),
-      link_kit_divulgacao: base + "kit.html?p=" + encodeURIComponent(l.id) + "&c=" + encodeURIComponent(l.c_cupom) + "&n=" + encodeURIComponent(chave.p_nome) +
-        (l.c_desconto ? "&d=" + encodeURIComponent(l.c_desconto) : ""),
-    },
-    atualizada_em: atualizada ? isoBanco(atualizada) : null,
-  };
-}
-
+// ---------- provas e convites ----------
 function paginacao(url) {
   const limite = Math.min(Math.max(parseInt(url.searchParams.get("limite"), 10) || 100, 1), 500);
   let inicio = 0;
   const c = url.searchParams.get("cursor");
   if (c) {
-    inicio = parseInt(atob(c.replace(/-/g, "+").replace(/_/g, "/")), 10);
+    try { inicio = parseInt(atob(c.replace(/-/g, "+").replace(/_/g, "/")), 10); } catch (e) { inicio = -1; }
     if (!(inicio >= 0)) throw new Erro(400, "campo_obrigatorio", "Cursor inválido.");
   }
   return { limite, inicio };
 }
 const cursor = (n) => btoa(String(n)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-async function listaProvas(env, chave, url) {
+async function listaProvas(env, integ, url) {
   const { limite, inicio } = paginacao(url);
   const desde = url.searchParams.get("desde");
   if (desde && !/^\d{4}-\d{2}-\d{2}$/.test(desde)) throw new Erro(400, "campo_obrigatorio", "Use desde=AAAA-MM-DD.");
   const mudou = url.searchParams.get("atualizadas_desde");
   const mudouIso = mudou ? isoBanco(mudou) : null;
   if (mudou && !mudouIso) throw new Erro(400, "campo_obrigatorio", "Data inválida em atualizadas_desde.");
-  let linhas = await linhasProvas(env, chave, null);
+  let linhas = await linhasProvas(env, integ);
   if (desde) linhas = linhas.filter((l) => l.data >= desde);
   if (mudouIso) linhas = linhas.filter((l) => [l.atualizado_em, l.c_atualizado].some((x) => x && isoBanco(x) >= mudouIso));
   const pagina = linhas.slice(inicio, inicio + limite);
-  const origem = new URL(url).origin;
   const provas = [];
-  for (const l of pagina) provas.push(await formataProva(env, l, chave, origem));
+  for (const l of pagina) provas.push(await formataProva(env, l, integ, url.origin));
   return json({ provas, proximo_cursor: inicio + limite < linhas.length ? cursor(inicio + limite) : null });
+}
+
+const SITUACOES = ["pendente", "aceito", "recusado"];
+async function listaConvites(env, integ, url) {
+  const s = url.searchParams.get("situacao");
+  if (s && !SITUACOES.includes(s)) throw new Erro(400, "campo_obrigatorio", "situacao: pendente, aceito ou recusado.");
+  const linhas = (await linhasProvas(env, integ, { todosConvites: true, situacao: s || null })).filter((l) => l.c_situacao);
+  const convites = [];
+  for (const l of linhas) convites.push(Object.assign(conviteApi(l), { prova: await formataProva(env, l, integ, url.origin) }));
+  return json({ convites });
+}
+
+async function respondeConvite(request, env, integ, id, acao, url) {
+  const [l] = await linhasProvas(env, integ, { conviteId: id, todosConvites: true });
+  if (!l) throw new Erro(404, "nao_encontrado", "Convite não encontrado para esta assessoria.");
+  const d = await corpo(request);
+  const agora = isoBanco(Date.now());
+  if (acao === "aceitar") {
+    if (!["assessoria", "ticketsports"].includes(d.modo_pagamento)) throw new Erro(400, "campo_obrigatorio", "modo_pagamento: assessoria ou ticketsports.");
+    await env.DB.prepare("UPDATE convites SET api_situacao = 'aceito', api_modo_pagamento = ?, api_motivo = '', api_respondido_em = ? WHERE id = ?")
+      .bind(d.modo_pagamento, agora, id).run();
+  } else {
+    await env.DB.prepare("UPDATE convites SET api_situacao = 'recusado', api_modo_pagamento = '', api_motivo = ?, api_respondido_em = ? WHERE id = ?")
+      .bind(texto(d.motivo, 300), agora, id).run();
+  }
+  const [novo] = await linhasProvas(env, integ, { conviteId: id, todosConvites: true });
+  return json({ convite: conviteApi(novo) });
 }
 
 // ---------- rotas ----------
 async function trata(request, env, rota, url, waitUntil) {
   const [a, b, c] = rota;
-  const chave = await autentica(request, env, waitUntil);
   const m = request.method;
+  const so = (metodo) => { if (m !== metodo) throw new Erro(405, "metodo", "Use " + metodo + "."); };
+
+  // Rotas sem chave
+  if (a === "chaves-publicas" && !b) {
+    so("GET");
+    return new Response(JSON.stringify(chavesPublicas(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  }
+  if (a === "conexoes" && b && (c === "aceitar" || c === "recusar") && !rota[3]) {
+    so("POST");
+    return respondeConexao(request, env, b, c);
+  }
+
+  const integ = await autentica(request, env, waitUntil);
 
   if (a === "eu" && !b) {
-    if (m !== "GET") throw new Erro(405, "metodo", "Use GET.");
+    so("GET");
     return json({
-      assessoria: { id: chave.parceiro_id, nome: chave.p_nome, cidade: chave.p_cidade || null, uf: chave.p_uf || null, logo_url: absoluto(url.origin, chave.p_logo ? "arquivos/" + chave.p_logo : "") },
-      chave: { prefixo: chave.prefixo, nome: chave.nome || null, ambiente: chave.ambiente, criada_em: isoBanco(chave.criada_em) },
+      assessoria: { id: integ.parceiro_id, nome: integ.p_nome, cidade: integ.p_cidade || null, uf: integ.p_uf || null, logo_url: absoluto(url.origin, integ.p_logo ? "arquivos/" + integ.p_logo : "") },
+      chave: { prefixo: integ.prefixo, nome: integ.nome || null, ambiente: integ.ambiente, criada_em: isoBanco(integ.criada_em) },
     });
   }
-  if (a === "provas" && !b) {
-    if (m !== "GET") throw new Erro(405, "metodo", "Use GET.");
-    return listaProvas(env, chave, url);
+  if (a === "conexao" && !b) {
+    so("DELETE");
+    await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(isoBanco(Date.now()), integ.id).run();
+    return json({ ok: true });
   }
+  if (a === "provas" && !b) { so("GET"); return listaProvas(env, integ, url); }
   if (a === "provas" && b && !c) {
-    if (m !== "GET") throw new Erro(405, "metodo", "Use GET.");
-    const [l] = await linhasProvas(env, chave, b);
+    so("GET");
+    const [l] = await linhasProvas(env, integ, { provaId: b });
     if (!l) throw new Erro(404, "nao_encontrado", "Prova não encontrada ou sem convite para esta assessoria.");
-    return json(await formataProva(env, l, chave, url.origin));
+    return json(await formataProva(env, l, integ, url.origin));
+  }
+  if (a === "convites" && !b) { so("GET"); return listaConvites(env, integ, url); }
+  if (a === "convites" && b && (c === "aceitar" || c === "recusar") && !rota[3]) {
+    so("POST");
+    return respondeConvite(request, env, integ, b, c, url);
   }
   if ((a === "provas" && b && c === "resultados") || a === "envios" || a === "atletas") {
     throw new Erro(501, "nao_implementado", "Esta rota chega na próxima etapa da API v1.");
@@ -246,7 +243,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
     return await trata(request, env, rota, url, waitUntil);
   } catch (e) {
     if (e instanceof Erro) return json({ erro: { codigo: e.codigo, mensagem: e.message } }, e.status, e.extra);
-    if (/no such table/i.test(String((e && e.message) || e))) {
+    if (/no such (table|column)/i.test(String((e && e.message) || e))) {
       return json({ erro: { codigo: "config", mensagem: "Faltam tabelas no banco: rode d1/migracoes/013-integracoes.sql." } }, 503);
     }
     return json({ erro: { codigo: "erro_interno", mensagem: "Erro no servidor." } }, 500);
