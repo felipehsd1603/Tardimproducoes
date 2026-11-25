@@ -85,7 +85,7 @@ async function desconecta(env, m, id) {
   if (!atual) throw new Erro(404, "Registro não encontrado.");
   let aviso = null;
   if (!atual.revogada_em) {
-    aviso = await enviaAviso(atual, "conexao.encerrada", { motivo: "Desconectado pela Tardim Produções." }).catch(() => null);
+    aviso = await enviaAviso(env, atual, "conexao.encerrada", { motivo: "Desconectado pela Tardim Produções." }).catch(() => null);
     await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(new Date().toISOString().slice(0, 19) + "Z", id).run();
   }
   return json({ integracao: await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first(), aviso });

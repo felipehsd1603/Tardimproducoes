@@ -56,13 +56,75 @@ export async function enviaConviteConexao(env, cx, parceiro, codigo, origem) {
 }
 
 // ---------- avisos (webhooks) ----------
-export async function enviaAviso(integ, evento, dados) {
-  if (!integ || !integ.webhook_url || !integ.webhook_segredo) return { ok: false, status: 0, erro: "sem endereço de avisos" };
-  const id = "ent_" + crypto.randomUUID();
-  const corpo = JSON.stringify({ id, evento, criado_em: new Date().toISOString().slice(0, 19) + "Z", dados });
+// Novas tentativas (minutos depois da 1ª, 2ª... falha). Depois da última, a entrega é dada como perdida.
+const ESPERAS_MIN = [1, 5, 30, 120, 360, 1440];
+const isoAgora = (mais = 0) => new Date(Date.now() + mais * 60000).toISOString().slice(0, 19) + "Z";
+
+async function entrega(integ, evento, id, corpo) {
   const t = Math.floor(Date.now() / 1000);
   const v1 = await hmacHex(integ.webhook_segredo, t + "." + corpo);
   return posta(integ.webhook_url, corpo, { "x-tardim-evento": evento, "x-tardim-entrega": id, "x-tardim-assinatura": "t=" + t + ",v1=" + v1 });
+}
+
+/** Manda um aviso agora; se falhar, entra na fila (avisos_fila) com o mesmo id de entrega. */
+export async function enviaAviso(env, integ, evento, dados) {
+  if (!integ || !integ.webhook_url || !integ.webhook_segredo) return { ok: false, status: 0, erro: "sem endereço de avisos" };
+  const id = "ent_" + crypto.randomUUID();
+  const corpo = JSON.stringify({ id, evento, criado_em: isoAgora(), dados });
+  const r = await entrega(integ, evento, id, corpo);
+  if (!r.ok) {
+    await env.DB.prepare("INSERT INTO avisos_fila (id, integracao_id, evento, corpo, tentativas, proxima_em, ultimo_erro) VALUES (?, ?, ?, ?, 1, ?, ?)")
+      .bind(id, integ.id, evento, corpo, isoAgora(ESPERAS_MIN[0]), String(r.erro || "").slice(0, 300)).run().catch(() => {});
+  }
+  return Object.assign(r, { entrega: id });
+}
+
+// Entregue depois de falhar: as marcas de "aviso não entregue" do painel passam a "ok"
+async function marcaEntregue(env, x) {
+  try {
+    const c = JSON.parse(x.corpo).dados || {};
+    if (x.evento.startsWith("convite.") && (c.convite?.id || c.convite_id)) {
+      await env.DB.prepare("UPDATE convites SET api_aviso = 'ok' WHERE id = ?").bind(c.convite?.id || c.convite_id).run();
+    }
+    if (x.evento === "atleta.situacao" && Array.isArray(c.atletas) && c.atletas.length) {
+      await env.DB.prepare("UPDATE atletas SET aviso = 'ok' WHERE prova_id = ? AND parceiro_id = (SELECT parceiro_id FROM integracoes WHERE id = ?) AND id_externo IN (" +
+        c.atletas.map(() => "?").join(",") + ")").bind(c.prova_id, x.integracao_id, ...c.atletas.map((a) => a.id_externo)).run();
+    }
+  } catch (e) { /* marca é só informativa */ }
+}
+
+/**
+ * Tenta de novo os avisos vencidos da fila (até `limite` por chamada). Roda em segundo plano nas
+ * requisições que chegam (Pages não tem tarefa agendada). Cada linha é "reservada" antes do envio
+ * para duas chamadas simultâneas não mandarem o mesmo aviso.
+ */
+export async function processaFila(env, limite = 10) {
+  const lista = (await env.DB.prepare(
+    "SELECT f.*, i.webhook_url, i.webhook_segredo, i.revogada_em FROM avisos_fila f LEFT JOIN integracoes i ON i.id = f.integracao_id " +
+    "WHERE f.entregue_em = '' AND f.desistido_em = '' AND f.proxima_em <= ? ORDER BY f.proxima_em LIMIT ?"
+  ).bind(isoAgora(), limite).all()).results;
+  let entregues = 0;
+  for (const x of lista) {
+    const reserva = await env.DB.prepare("UPDATE avisos_fila SET proxima_em = ? WHERE id = ? AND proxima_em = ?").bind(isoAgora(2), x.id, x.proxima_em).run();
+    if (!reserva.meta || !reserva.meta.changes) continue;
+    // Conexão encerrada: só o próprio aviso de encerramento ainda vai
+    if (!x.webhook_url || (x.revogada_em && x.evento !== "conexao.encerrada")) {
+      await env.DB.prepare("UPDATE avisos_fila SET desistido_em = ?, ultimo_erro = 'conexão encerrada' WHERE id = ?").bind(isoAgora(), x.id).run();
+      continue;
+    }
+    const r = await entrega(x, x.evento, x.id, x.corpo);
+    if (r.ok) {
+      entregues++;
+      await env.DB.prepare("UPDATE avisos_fila SET entregue_em = ?, tentativas = tentativas + 1 WHERE id = ?").bind(isoAgora(), x.id).run();
+      await marcaEntregue(env, x);
+    } else if (x.tentativas >= ESPERAS_MIN.length) {
+      await env.DB.prepare("UPDATE avisos_fila SET desistido_em = ?, tentativas = tentativas + 1, ultimo_erro = ? WHERE id = ?").bind(isoAgora(), String(r.erro || "").slice(0, 300), x.id).run();
+    } else {
+      await env.DB.prepare("UPDATE avisos_fila SET tentativas = tentativas + 1, proxima_em = ?, ultimo_erro = ? WHERE id = ?")
+        .bind(isoAgora(ESPERAS_MIN[x.tentativas]), String(r.erro || "").slice(0, 300), x.id).run();
+    }
+  }
+  return { vistos: lista.length, entregues };
 }
 
 const marcaAviso = (env, id, r) => env.DB.prepare("UPDATE convites SET api_aviso = ? WHERE id = ?")
@@ -83,7 +145,7 @@ export async function avisaConvite(env, conviteId, origem) {
     await env.DB.prepare("UPDATE convites SET api_situacao = 'pendente' WHERE id = ? AND api_situacao = ''").bind(conviteId).run();
     l.c_situacao = "pendente";
   }
-  const r = await enviaAviso(integ, evento, { convite: conviteApi(l), prova: await formataProva(env, l, integ, origem) });
+  const r = await enviaAviso(env, integ, evento, { convite: conviteApi(l), prova: await formataProva(env, l, integ, origem) });
   await marcaAviso(env, conviteId, r);
   return r;
 }
@@ -93,7 +155,7 @@ export async function avisaConviteCancelado(env, convite) {
   if (!convite || !convite.api_situacao) return null;
   const integ = await integracaoAtiva(env, convite.parceiro_id);
   if (!integ) return null;
-  return enviaAviso(integ, "convite.cancelado", { convite_id: convite.id, prova_id: convite.prova_id });
+  return enviaAviso(env, integ, "convite.cancelado", { convite_id: convite.id, prova_id: convite.prova_id });
 }
 
 // Situação de atletas mudou no painel: um aviso atleta.situacao por assessoria e prova
@@ -111,7 +173,7 @@ export async function avisaAtletas(env, ids) {
   for (const k of Object.keys(grupos)) {
     const g = grupos[k];
     const integ = await integracaoAtiva(env, g[0].parceiro_id);
-    const r = integ ? await enviaAviso(integ, "atleta.situacao", { prova_id: g[0].prova_id, atletas: g.map(atletaApi) }) : { ok: false, erro: "assessoria desconectada" };
+    const r = integ ? await enviaAviso(env, integ, "atleta.situacao", { prova_id: g[0].prova_id, atletas: g.map(atletaApi) }) : { ok: false, erro: "assessoria desconectada" };
     const marca = r.ok ? "ok" : "erro: " + String(r.erro || "").slice(0, 200);
     await env.DB.batch(g.map((a) => env.DB.prepare("UPDATE atletas SET aviso = ? WHERE id = ?").bind(marca, a.id)));
     res.push(Object.assign({ prova_id: g[0].prova_id, atletas: g.length }, r));

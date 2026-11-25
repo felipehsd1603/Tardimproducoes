@@ -111,6 +111,25 @@ describe("painel (api/admin)", () => {
   });
 });
 
+describe("documentação (OpenAPI e Swagger)", () => {
+  test("v1: especificação pública e página Swagger", async () => {
+    const spec = await (await fetch(BASE + "/api/v1/openapi.json")).json();
+    assert.equal(spec.openapi, "3.1.0");
+    for (const p of ["/eu", "/provas", "/convites", "/envios", "/atletas", "/conexoes/{id}/aceitar"]) assert.ok(spec.paths[p], p);
+    assert.equal(spec.servers[0].url, BASE + "/api/v1");
+    const html = await (await fetch(BASE + "/api/v1/docs")).text();
+    assert.match(html, /swagger-ui/);
+  });
+  test("interna: só com login no painel", async () => {
+    assert.equal((await cliente().chama("GET", "/api/admin/openapi.json")).status, 401);
+    await painel.entra();
+    const r = await painel.chama("GET", "/api/admin/openapi.json");
+    assert.equal(r.status, 200);
+    assert.ok(r.json.paths["/api/admin/{tabela}"] && r.json.paths["/api/parceiro/cadastro"] && r.json.paths["/api/orcamento"]);
+    assert.match((await painel.chama("GET", "/api/admin/docs")).texto, /swagger-ui/);
+  });
+});
+
 describe("área do parceiro (api/parceiro)", () => {
   test("config e sessão", async () => {
     const c = await cliente().chama("GET", "/api/parceiro/config");
@@ -241,6 +260,23 @@ describe("API v1 para parceiros", () => {
     const ev = await P.espera(() => { const n = P.estado.avisos.slice(antes).filter((a) => a.evento === "convite.alterado"); return n.length >= 2 ? n : null; });
     assert.ok(ev, "dois convite.alterado");
     assert.ok(ev.every((a) => a.hmac === "ok"));
+  });
+
+  test("aviso que falha entra na fila e é reenviado com o mesmo id de entrega", async () => {
+    P.estado.falhar = 1;
+    const r = await painel.chama("POST", `/api/admin/convites/${conviteId}/avisar`, {});
+    assert.equal(r.json.aviso.ok, false);
+    const fila = T.sql("SELECT id, tentativas, entregue_em FROM avisos_fila WHERE evento = 'convite.alterado' ORDER BY criado_em DESC LIMIT 1")[0];
+    assert.equal(fila.id, r.json.aviso.entrega);
+    assert.equal(fila.entregue_em, "");
+    assert.match(r.json.convite.api_aviso, /^erro/);
+    T.sql("UPDATE avisos_fila SET proxima_em = '2000-01-01T00:00:00Z' WHERE id = '" + fila.id + "'");
+    await painel.chama("GET", "/api/admin/sessao"); // qualquer chamada do painel processa a fila em segundo plano
+    const reenvio = await P.espera(() => P.estado.avisos.find((a) => a.entrega === fila.id && a.hmac === "ok"));
+    assert.ok(reenvio, "reenviado com o mesmo x-tardim-entrega");
+    const depois = await P.espera(() => { const f = T.sql("SELECT entregue_em, tentativas FROM avisos_fila WHERE id = '" + fila.id + "'")[0]; return f.entregue_em ? f : null; });
+    assert.equal(depois.tentativas, 2);
+    assert.equal(T.sql("SELECT api_aviso FROM convites WHERE id = '" + conviteId + "'")[0].api_aviso, "ok");
   });
 
   test("limite de uso por chave", async () => {

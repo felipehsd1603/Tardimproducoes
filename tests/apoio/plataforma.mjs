@@ -7,7 +7,8 @@ const b64d = (s) => Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/"), "base64
 
 export async function sobePlataforma(tardim, porta = 8898) {
   const aqui = `http://127.0.0.1:${porta}`;
-  const estado = { convites: [], avisos: [], conexao: null, erros: [] };
+  // falhar: quantos próximos avisos responder com 503 (para testar as novas tentativas)
+  const estado = { convites: [], avisos: [], conexao: null, erros: [], falhar: 0 };
 
   async function confereJws(jws) {
     const [h, p, s] = jws.split(".");
@@ -35,6 +36,7 @@ export async function sobePlataforma(tardim, porta = 8898) {
       }
       if (req.method === "POST" && req.url === "/webhook") {
         const corpo = await ler(req);
+        if (estado.falhar > 0) { estado.falhar--; return fim(503, { erro: "fora do ar (teste)" }); }
         const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(req.headers["x-tardim-assinatura"] || "");
         let hmac = "sem conexão";
         if (estado.conexao && m) {

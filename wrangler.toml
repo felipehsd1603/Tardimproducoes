@@ -7,3 +7,6 @@ compatibility_date = "2026-11-01"
 binding = "DB"
 database_name = "tardim"
 database_id = "744aa187-147d-47bb-9b3b-ae79e906e951"
+# Migrações controladas: `npm run db:migracoes:producao` aplica só as que faltam (tabela d1_migrations).
+# Banco novo: d1/schema.sql + d1/painel.sql e depois `node scripts/db-registrar-migracoes.mjs --local --todas`.
+migrations_dir = "d1/migracoes"

@@ -5,6 +5,8 @@
 // Qualquer outra rota (ou banco fora do ar) segue para os arquivos estáticos.
 // As rotas que passam por aqui estão limitadas em _routes.json.
 
+import { processaFila } from "./_api-v1/avisos.js";
+
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const dataBR = (iso) => { const p = String(iso).split("-").map(Number); return p[2] + " de " + MESES[p[1] - 1] + " de " + p[0]; };
@@ -85,11 +87,20 @@ async function paginaProva(env, id, url) {
 // arquivos de configuração não devem ser lidos pelo endereço do site.
 const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
 
-export async function onRequest({ request, env, next }) {
+// Avisos às plataformas que falharam: tentados de novo em segundo plano (Pages não tem tarefa agendada).
+// Sempre nas chamadas do painel e da API v1; numa fração das visitas ao site, para não pesar.
+function cuidaDaFila(env, url, waitUntil) {
+  if (!env.DB || !waitUntil) return;
+  const api = /^\/api\/(admin|v1)\//.test(url.pathname);
+  if (api || Math.random() < 0.1) waitUntil(processaFila(env).catch(() => {}));
+}
+
+export async function onRequest({ request, env, next, waitUntil }) {
   const url = new URL(request.url);
   if (PRIVADO.test(decodeURIComponent(url.pathname))) {
     return new Response("Não encontrado", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
   }
+  cuidaDaFila(env, url, waitUntil);
   if (request.method !== "GET" || !env.DB) return protege(await next());
   let resp = null;
   try {
