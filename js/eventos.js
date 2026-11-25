@@ -18,6 +18,9 @@
  *    poster      Arte da prova (pasta assets/corridas)
  *    inscricao   Link de inscrição (se vazio, usa o Linktree)
  *    esgotado    true = inscrições esgotadas (o botão vira "Inscrições esgotadas")
+ *    encerrado   true = inscrições encerradas (o botão vira "Inscrições encerradas").
+ *                Sem nada disso, o site fecha sozinho quando todos os lotes com data passam.
+ *                Prova editada no painel: vale o campo "Inscrições" de lá (e a conferência na Ticket Sports).
  *
  *  Campos da página da prova (todos opcionais; vazio = não aparece):
  *    valores     [{ nome, valor, detalhe, esgotado, ate }]  ("ate": "AAAA-MM-DD" = último dia do lote; o site troca de lote sozinho)
@@ -214,4 +217,26 @@ function LOTES(ev, agora) {
     return l;
   });
   return { linhas: linhas, menor: menor };
+}
+
+/*
+ *  FECHAR_INSCRICOES: marca esgotado (e encerrado) nas provas cujas inscrições fecharam.
+ *  Chamado pelo js/main.js e pelo js/prova.js antes de desenhar.
+ *  Ordem: "inscricoes" (painel ou conferência na Ticket Sports, via js/provas-db.js) >
+ *  esgotado/encerrado escritos aqui > datas dos lotes (todos os lotes com data já passaram
+ *  ou esgotaram = encerrado; todos os valores esgotados = esgotado).
+ */
+function FECHAR_INSCRICOES(lista, agora) {
+  (lista || []).forEach(function (ev) {
+    var s = ev.inscricoes || (ev.encerrado ? "encerrado" : (ev.esgotado ? "esgotado" : ""));
+    if (!s) {
+      var linhas = LOTES(ev, agora).linhas;
+      var datadas = linhas.filter(function (l) { return l.v.ate; });
+      var fora = function (l) { return l.estado === "esgotado" || l.estado === "encerrado"; };
+      if (linhas.length && linhas.every(function (l) { return l.estado === "esgotado"; })) s = "esgotado";
+      else if (datadas.length && datadas.every(fora)) s = "encerrado";
+    }
+    ev.esgotado = s === "esgotado" || s === "encerrado";
+    ev.encerrado = s === "encerrado";
+  });
 }

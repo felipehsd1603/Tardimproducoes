@@ -12,6 +12,7 @@ const TABELAS = {
       valores: "json", kit: "json", programacao: "json", premiacao: 300, percurso_mapa: 500, regulamento: 500,
       resultados: 500, fotos: 500, realizacao: 120, texto_divulgacao: 1500, hashtags: 200, publicada: "bool",
       faq: "json", // [["pergunta", "resposta"]]; o painel só envia quando há o que gravar (banco sem a coluna continua salvando)
+      inscricoes: 10, // '' automático (Ticket Sports e datas dos lotes) | aberta | esgotado | encerrado; os ts_* só a conferência grava
     },
     obrigatorios: ["nome", "data"], ordem: "data",
   },
@@ -82,7 +83,8 @@ function limpa(tabela, d, criando) {
   // regras de cada tabela
   if (tabela === "provas") {
     if ("data" in v && !/^\d{4}-\d{2}-\d{2}$/.test(v.data)) throw new Erro(400, "Data inválida.");
-    if ("poster" in v && v.poster && !/^(arquivos\/|assets\/|https:\/\/)/.test(v.poster)) throw new Erro(400, "Endereço da arte inválido.");
+    if ("inscricoes" in v && ["", "aberta", "esgotado", "encerrado"].indexOf(v.inscricoes) < 0) throw new Erro(400, "Situação das inscrições inválida.");
+    if ("poster" in v && v.poster &&!/^(arquivos\/|assets\/|https:\/\/)/.test(v.poster)) throw new Erro(400, "Endereço da arte inválido.");
     for (const c of ["inscricao", "percurso_mapa", "regulamento", "resultados", "fotos"]) {
       if (v[c] && !/^https?:\/\//.test(v[c])) throw new Erro(400, "O link em " + c + " precisa começar com http:// ou https://.");
     }

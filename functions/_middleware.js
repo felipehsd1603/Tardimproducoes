@@ -21,6 +21,9 @@ function daLinha(r) {
     premiacao: r.premiacao, percursoMapa: r.percurso_mapa, regulamento: r.regulamento, resultados: r.resultados,
     fotos: r.fotos, realizacao: r.realizacao, textoDivulgacao: r.texto_divulgacao, hashtags: r.hashtags,
     faq: lerJson(r.faq, []), painel: true,
+    // Situação das inscrições: a do painel manda; "automático" segue a conferência na Ticket Sports.
+    // Vazio = o site decide pelas datas dos lotes (FECHAR_INSCRICOES em js/eventos.js)
+    inscricoes: r.inscricoes || r.ts_situacao || "",
   };
 }
 
@@ -86,7 +89,7 @@ async function paginaProva(env, id, url) {
 // O deploy sobe só publico/ (scripts/montar-publico.mjs), mas o Pages guarda em cache respostas
 // de deploys antigos, que publicavam a pasta inteira. Por isso o _routes.json manda quase tudo
 // para cá e o caminho é normalizado antes de conferir (//, \, /./, %2f, maiúsculas).
-const PRIVADO = /^\/(functions|d1|docs|scripts|tests|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
+const PRIVADO = /^\/(functions|workers|d1|docs|scripts|tests|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
 function caminhoNormal(pathname) {
   let p = pathname;
   for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch (e) { break; } }

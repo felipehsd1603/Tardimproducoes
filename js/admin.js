@@ -472,10 +472,32 @@
   // =====================================================================
   //  PROVAS
   // =====================================================================
+  var INSCRICOES_TXT = { aberta: "abertas", esgotado: "esgotadas", encerrado: "encerradas" };
+  // O que a última conferência na Ticket Sports leu (functions/_lib/ticketsports-situacao.js)
+  function textoConferencia(r) {
+    if (!r.ts_conferido_em) return r.inscricao ? "Ainda não conferida na Ticket Sports." : "";
+    var t = "Ticket Sports conferida em " + dataHora(r.ts_conferido_em) + ": ";
+    t += r.ts_situacao ? "inscrições " + INSCRICOES_TXT[r.ts_situacao] : "sem leitura";
+    if (r.ts_mudou_em && r.ts_situacao) t += " desde " + dataHora(r.ts_mudou_em);
+    return t + (r.ts_erro ? ". Última tentativa: " + r.ts_erro + "." : ".");
+  }
   function abaProvas() {
     var c = card("Calendário", "Provas");
     c.append(el("p", "muted", "Cadastre a prova e marque como publicada: a página da prova, o kit de divulgação e o card para stories saem prontos na hora."));
-    c.append(acoes(botao("Nova prova", "btn btn--red", function () { ir("prova/novo"); })));
+    var conferir = botao("Conferir inscrições na Ticket Sports", "btn btn--line", function () {
+      conferir.disabled = true; conferir.textContent = "Conferindo...";
+      api("POST", "provas/conferir-ticketsports").then(function (r) {
+        S.provas = r.provas;
+        var fechadas = r.resultado.filter(function (x) { return x.situacao === "esgotado" || x.situacao === "encerrado"; }).length;
+        var erros = r.resultado.filter(function (x) { return x.erro; }).length;
+        redesenha();
+        aviso(!r.resultado.length ? "Nenhuma prova futura com link da Ticket Sports." :
+          r.resultado.length + (r.resultado.length === 1 ? " prova conferida" : " provas conferidas") + (fechadas ? ", " + fechadas + " com inscrições fechadas" : "") +
+          (erros ? ". " + erros + " sem resposta da Ticket Sports (veja na prova)." : "."), !!erros);
+      }).catch(function (e) { conferir.disabled = false; conferir.textContent = "Conferir inscrições na Ticket Sports"; falha(e); });
+    });
+    c.append(acoes(botao("Nova prova", "btn btn--red", function () { ir("prova/novo"); }), conferir));
+    c.append(el("p", "assess-dica", "A conferência também roda sozinha às 6h e às 18h: prova esgotada ou encerrada na Ticket Sports troca o botão \"Inscreva-se\" do site."));
     var lista = todasProvas();
     if (!lista.length) c.append(el("p", "muted", "Nenhuma prova cadastrada ainda."));
     else {
@@ -486,6 +508,8 @@
         var nome = el("div");
         nome.append(el("strong", null, p.nome));
         if (passada) nome.append(el("small", "muted", " (realizada)"));
+        var sit = p.linha ? INSCRICOES_TXT[p.linha.inscricoes || p.linha.ts_situacao || ""] : (p.obj.esgotado ? INSCRICOES_TXT.esgotado : "");
+        if (sit && !passada) { nome.append(el("br"), el("small", "muted", "Inscrições " + sit + (p.linha && !p.linha.inscricoes && p.linha.ts_situacao ? " (Ticket Sports)" : ""))); }
         return [
           nome, curta(p.data), situacao(nomes[p.fonte][0], nomes[p.fonte][1]), String(n),
           acoes(
@@ -544,6 +568,12 @@
     var faqAntes = (r.faq || []).map(function (q) { return q[0] + " | " + q[1]; }).join("\n");
     var faq = entrada("textarea", faqAntes, { rows: 5, placeholder: "Posso retirar o kit de outra pessoa? | Sim, com documento com foto e autorização assinada.\nTem guarda-volumes? | Sim, ao lado do pórtico, a partir das 6h." });
     var publicada = marcador("Publicada (aparece no site)", r.publicada == null ? true : r.publicada);
+    var situacaoInsc = escolha([
+      ["", "Automático: segue a Ticket Sports e as datas dos lotes"],
+      ["aberta", "Abertas (ignora a Ticket Sports e as datas)"],
+      ["esgotado", "Esgotadas"],
+      ["encerrado", "Encerradas"],
+    ], r.inscricoes || "");
 
     nome.addEventListener("input", function () {
       if (idManual) return;
@@ -566,6 +596,7 @@
       campo("Resumo", resumo, "Uma ou duas frases sobre a prova."),
       colArte,
       campo("Link de inscrição (Ticket Sports)", inscricao, "O link público da página do evento, não o da ficha.", true),
+      campo("Inscrições", situacaoInsc, ["Esgotadas ou encerradas: o botão \"Inscreva-se\" do site vira aviso.", textoConferencia(r)].filter(Boolean).join(" "), true),
       campo("Valores (um por linha: nome | valor | detalhe | esgotado | último dia do lote)", valores, "O último dia (dd/mm/aaaa) é opcional e só vai nos lotes, na ordem em que acontecem: o site passa para o lote seguinte sozinho e mostra \"1º lote até 21/02\". Linhas sem data valem sempre.", true),
       campo("Itens do kit (um por linha)", kitItens),
       campo("Retirada do kit", retirada, "Local, datas e horários."),
@@ -614,6 +645,7 @@
         premiacao: premiacao.value.trim(), percurso_mapa: mapa.value.trim(), regulamento: regulamento.value.trim(),
         resultados: resultados.value.trim(), fotos: fotos.value.trim(), realizacao: realizacao.value.trim(),
         texto_divulgacao: texto.value.trim(), hashtags: hashtags.value.trim(), publicada: publicada.caixa.checked,
+        inscricoes: situacaoInsc.value,
       };
       if (dataRuim) return aviso("Nos valores, o último dia do lote precisa estar como dd/mm/aaaa. Não entendi: " + dataRuim, true);
       // Só envia as perguntas quando há o que gravar ou apagar: banco ainda sem a coluna faq continua salvando a prova
@@ -646,6 +678,7 @@
       percurso_mapa: p.percursoMapa || "", regulamento: p.regulamento || "", resultados: p.resultados || "",
       fotos: p.fotos || "", realizacao: p.realizacao || "", texto_divulgacao: p.textoDivulgacao || "",
       hashtags: p.hashtags || "", faq: p.faq || [], publicada: true,
+      inscricoes: p.encerrado ? "encerrado" : (p.esgotado ? "esgotado" : ""),
     };
   }
 
