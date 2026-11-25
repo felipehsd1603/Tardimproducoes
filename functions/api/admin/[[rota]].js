@@ -23,12 +23,16 @@
 //   GET    avisos                                   [{ prova_id, pendentes, enviados }]  ("Me avise", functions/api/aviso.js)
 //   POST   avisos/<prova>/enviar  { nome, data, local, link }  e-mail "inscrições abertas" para quem está pendente
 //          (Resend: RESEND_API_KEY + AVISO_REMETENTE com domínio verificado)
+//   GET    parceiros/<id>/integracoes               chaves da API v1 desta assessoria (sem a chave nem o segredo)
+//   POST   parceiros/<id>/integracoes { nome, ambiente, webhook_url }   cria: a chave e o segredo voltam UMA vez
+//   PUT    integracoes/<id> { nome, webhook_url }  |  POST integracoes/<id>/revogar   (docs/api-v1-parceiros.md)
 //
 // Cadastros feitos pelo site (parceiro.html) chegam como parceiros com situacao "pendente";
 // aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
 import { consultaCref6, numeroCref } from "../../_cref6.js";
 import { confereInstagramParceiro } from "../../_instagram.js";
+import { novaChave, novoSegredo, sha256 } from "../../_chaves.js";
 
 // O primeiro é o único com registro conferido no CREF6 (js/admin.js usa a mesma lista)
 const PROFISSOES = [
@@ -302,6 +306,13 @@ async function apaga(env, tabela, id) {
   }
   // Proposta excluída leva junto o PDF assinado (banco sem a tabela: segue excluindo a proposta)
   if (tabela === "propostas") await env.DB.prepare("DELETE FROM contratos_assinados WHERE proposta_id = ?").bind(id).run().catch(() => {});
+  // Parceiro excluído leva junto as chaves da API e os envios delas (banco sem as tabelas: segue)
+  if (tabela === "parceiros") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM envios_api WHERE integracao_id IN (SELECT id FROM integracoes WHERE parceiro_id = ?)").bind(id),
+      env.DB.prepare("DELETE FROM integracoes WHERE parceiro_id = ?").bind(id),
+    ]).catch(() => {});
+  }
   passos.push(env.DB.prepare(`DELETE FROM ${tabela} WHERE id = ?`).bind(id));
   await env.DB.batch(passos);
   return { ok: true };
@@ -427,6 +438,62 @@ async function enviaAvisos(env, provaId, d, origem) {
   return { enviados, falhas };
 }
 
+// ---------- integrações (API v1 para parceiros) ----------
+const CAMPOS_INTEGRACAO = "id, parceiro_id, nome, ambiente, prefixo, webhook_url, usada_em, revogada_em, criada_em";
+
+function urlWebhook(valor, ambiente) {
+  const s = String(valor || "").trim();
+  if (!s) return "";
+  let u;
+  try { u = new URL(s); } catch (e) { throw new Erro(400, "Endereço de avisos inválido."); }
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
+  if (u.protocol !== "https:" && !(ambiente === "test" && u.protocol === "http:" && local)) {
+    throw new Erro(400, "O endereço de avisos precisa começar com https://.");
+  }
+  if (s.length > 300) throw new Erro(400, "Endereço de avisos longo demais.");
+  return u.toString();
+}
+
+async function integracoes(request, env, m, parceiroId) {
+  const p = await env.DB.prepare("SELECT id, tipo, situacao, ativo FROM parceiros WHERE id = ?").bind(parceiroId).first();
+  if (!p) throw new Erro(404, "Registro não encontrado.");
+  if (m === "GET") {
+    return json((await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE parceiro_id = ? ORDER BY criada_em DESC")
+      .bind(parceiroId).all()).results);
+  }
+  if (m !== "POST") throw new Erro(404, "Rota não encontrada.");
+  if (p.tipo !== "assessoria") throw new Erro(400, "Só assessoria recebe chave de integração.");
+  if (p.situacao !== "aprovado" || !p.ativo) throw new Erro(400, "Aprove e ative a assessoria antes de criar a chave.");
+  const d = await corpo(request);
+  const ambiente = d.ambiente === "test" ? "test" : "live";
+  const nome = String(d.nome || "").trim().slice(0, 60);
+  const webhook = urlWebhook(d.webhook_url, ambiente);
+  const { chave, prefixo } = novaChave(ambiente);
+  const segredo = novoSegredo();
+  const id = crypto.randomUUID();
+  await env.DB.prepare("INSERT INTO integracoes (id, parceiro_id, nome, ambiente, prefixo, hash, webhook_url, webhook_segredo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, parceiroId, nome, ambiente, prefixo, await sha256(chave), webhook, segredo).run();
+  const integracao = await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first();
+  return json({ integracao, chave, webhook_segredo: segredo }, 201);
+}
+
+async function alteraIntegracao(request, env, m, id, acao) {
+  const atual = await env.DB.prepare("SELECT * FROM integracoes WHERE id = ?").bind(id).first();
+  if (!atual) throw new Erro(404, "Registro não encontrado.");
+  if (acao === "revogar" && m === "POST") {
+    if (!atual.revogada_em) await env.DB.prepare("UPDATE integracoes SET revogada_em = ? WHERE id = ?").bind(new Date().toISOString(), id).run();
+  } else if (!acao && m === "PUT") {
+    if (atual.revogada_em) throw new Erro(400, "Chave cancelada não pode ser alterada.");
+    const d = await corpo(request);
+    const nome = d.nome === undefined ? atual.nome : String(d.nome || "").trim().slice(0, 60);
+    const webhook = d.webhook_url === undefined ? atual.webhook_url : urlWebhook(d.webhook_url, atual.ambiente);
+    await env.DB.prepare("UPDATE integracoes SET nome = ?, webhook_url = ? WHERE id = ?").bind(nome, webhook, id).run();
+  } else {
+    throw new Erro(404, "Rota não encontrada.");
+  }
+  return json(await env.DB.prepare("SELECT " + CAMPOS_INTEGRACAO + " FROM integracoes WHERE id = ?").bind(id).first());
+}
+
 // ---------- rotas ----------
 async function trata(request, env, rota, url) {
   const m = request.method;
@@ -454,6 +521,9 @@ async function trata(request, env, rota, url) {
     if (!r) throw new Erro(404, "Registro não encontrado.");
     return json({ resultado: r, parceiro: await uma(env, "parceiros", b) });
   }
+
+  if (a === "parceiros" && b && c === "integracoes" && !rota[3]) return integracoes(request, env, m, b);
+  if (a === "integracoes" && b && !rota[3]) return alteraIntegracao(request, env, m, b, c);
 
   if (a === "avisos" && !b && m === "GET") {
     return json((await env.DB.prepare(

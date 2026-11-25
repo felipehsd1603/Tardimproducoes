@@ -146,7 +146,7 @@
       f.append(el("h2", null, titulo));
       if (texto) f.append(el("p", null, texto));
       var txt = null;
-      if (op.campo) { txt = entrada("textarea", "", { maxLength: 300, rows: 3 }); f.append(campo(op.campo, txt)); }
+      if (op.campo) { txt = entrada("textarea", op.valor || "", { maxLength: 300, rows: 3 }); f.append(campo(op.campo, txt)); }
       var bNao = el("button", "btn btn--line", op.nao || "Cancelar"); bNao.value = "nao";
       var bSim = el("button", "btn btn--red", sim); bSim.value = "sim";
       var linha = el("div", "painel-dialogo__acoes"); linha.append(bNao, bSim);
@@ -950,6 +950,7 @@
       p.id ? botao("Excluir parceiro", "orc__email painel-perigo", function () { excluirParceiro(p); }) : null));
     c.append(f);
     corpo.append(c);
+    if (p.id && p.tipo === "assessoria") corpo.append(cardIntegracao(p));
     vigia(f);
     nome.focus({ preventScroll: true });
     f.addEventListener("submit", function (e) {
@@ -992,6 +993,89 @@
         aviso("Parceiro salvo.");
       }).catch(function (err) { salvar.disabled = false; salvar.textContent = "Salvar parceiro"; falha(err); });
     });
+  }
+
+  // Integração (API v1, docs/api-v1-parceiros.md): chave para a plataforma da assessoria
+  // (ex.: IM3) puxar as provas e, depois, enviar a inscrição coletiva sem planilha.
+  // A chave e o segredo aparecem uma vez só, na criação.
+  function cardIntegracao(p) {
+    var c = card("Integração", "Conectar a plataforma da assessoria");
+    c.append(el("p", "muted", "Para assessorias que usam um sistema próprio (como o IM3). Com a chave, o sistema delas vê as provas em que têm convite e, na próxima etapa, envia a inscrição coletiva sem planilha."));
+    var area = el("div"); c.append(area);
+    var novo = el("div"); c.append(novo);
+    if (p.situacao !== "aprovado" || !p.ativo) {
+      area.append(el("p", "assess-alerta", "Aprove e ative esta assessoria para criar uma chave."));
+      return c;
+    }
+    function data(v) { return v ? new Date(v).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"; }
+    function carrega() {
+      area.innerHTML = ""; area.append(el("p", "muted", "Carregando..."));
+      api("GET", "parceiros/" + encodeURIComponent(p.id) + "/integracoes").then(desenha).catch(function (e) {
+        area.innerHTML = "";
+        area.append(el("p", "assess-alerta", /tabelas|503/.test(String(e && e.message)) ? "Falta criar as tabelas da integração no banco (d1/migracoes/013-integracoes.sql)." : "Não consegui carregar as chaves."));
+      });
+    }
+    function desenha(lista) {
+      area.innerHTML = "";
+      if (!lista.length) { area.append(el("p", "muted", "Nenhuma chave criada ainda.")); return; }
+      area.append(tabela(["Sistema", "Chave", "Ambiente", "Avisos para", "Criada", "Último uso", "Situação", ""], lista.map(function (k) {
+        var ativa = !k.revogada_em;
+        return [k.nome || "—", el("code", null, k.prefixo + "…"), k.ambiente === "test" ? "Teste" : "Produção",
+          k.webhook_url ? el("small", null, k.webhook_url) : el("small", "muted", "não informado"),
+          data(k.criada_em), data(k.usada_em),
+          ativa ? situacao("Valendo", "is-pub") : situacao("Cancelada em " + data(k.revogada_em), "is-off"),
+          ativa ? acoes(
+            botao("Endereço de avisos", null, function () { trocaWebhook(k); }),
+            botao("Cancelar chave", "orc__email painel-perigo", function () { cancela(k); })) : null];
+      })));
+    }
+    function trocaWebhook(k) {
+      pergunta("Endereço de avisos", "Para onde a Tardim manda os avisos (situação dos atletas e resultados). Deixe vazio para não enviar.", "Salvar", { campo: "Endereço (https://...)", valor: k.webhook_url || "" }).then(function (v) {
+        if (v === null) return;
+        api("PUT", "integracoes/" + encodeURIComponent(k.id), { webhook_url: v.trim() }).then(function () { aviso("Endereço salvo."); carrega(); }).catch(falha);
+      });
+    }
+    function cancela(k) {
+      pergunta("Cancelar a chave " + k.prefixo + "…?", "O sistema " + (k.nome || "da assessoria") + " para de acessar na hora. Não dá para desfazer: se precisar, crie uma chave nova.", "Cancelar chave").then(function (sim) {
+        if (!sim) return;
+        api("POST", "integracoes/" + encodeURIComponent(k.id) + "/revogar", {}).then(function () { aviso("Chave cancelada."); carrega(); }).catch(falha);
+      });
+    }
+    // Formulário de nova chave
+    var f = el("form", "assess-grid"); f.noValidate = true;
+    var sistema = entrada("text", "IM3", { maxLength: 60 });
+    var amb = escolha([["live", "Produção"], ["test", "Teste (vê também provas não publicadas)"]], "live");
+    var hook = entrada("url", "", { placeholder: "https://... (pode deixar para depois)", maxLength: 300 });
+    f.append(campo("Sistema da assessoria", sistema), campo("Ambiente", amb), campo("Endereço de avisos", hook, "O sistema da assessoria informa esse endereço. Pode ficar vazio agora.", true));
+    var criar = el("button", "btn btn--red", "Criar chave"); criar.type = "submit";
+    f.append(barraForm(criar));
+    var tituloNovo = el("h3", null, "Nova chave"); tituloNovo.style.marginTop = "1.5rem";
+    novo.append(tituloNovo, f);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      criar.disabled = true; criar.textContent = "Criando...";
+      api("POST", "parceiros/" + encodeURIComponent(p.id) + "/integracoes", { nome: sistema.value.trim(), ambiente: amb.value, webhook_url: hook.value.trim() }).then(function (r) {
+        criar.disabled = false; criar.textContent = "Criar chave";
+        hook.value = "";
+        mostraSegredos(r);
+        carrega();
+      }).catch(function (err) { criar.disabled = false; criar.textContent = "Criar chave"; falha(err); });
+    });
+    // A chave e o segredo só existem nesta tela: depois disso o banco guarda só o "resumo" (hash)
+    function mostraSegredos(r) {
+      var box = el("div", "painel-cref");
+      box.append(el("p", "assess-alerta", "Copie agora e entregue à assessoria por um canal seguro. Esta é a única vez que a chave e o segredo aparecem."));
+      [["Chave da API", r.chave], ["Segredo dos avisos", r.webhook_segredo]].forEach(function (x) {
+        var linha = el("div", "painel-acoes-linha");
+        var cod = el("code", null, x[1]);
+        linha.append(el("strong", null, x[0] + ": "), cod, botao("Copiar", null, function (ev) { copiar(x[1], ev.currentTarget); }));
+        box.append(linha);
+      });
+      box.append(el("small", "assess-dica", "Endereço da API: " + base() + "api/v1 · Documentação: docs/api-v1-parceiros.md"));
+      novo.insertBefore(box, novo.firstChild);
+    }
+    carrega();
+    return c;
   }
 
   // Logo: PNG de até 400 px, mantendo a transparência

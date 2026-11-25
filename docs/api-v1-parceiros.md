@@ -16,7 +16,7 @@ Contrato da integração nativa entre a Tardim Produções (organizadora de prov
 |---|---|
 | Base | `https://tardimproducoes.com.br/api/v1` |
 | Formato | JSON UTF-8 (`content-type: application/json`) |
-| Datas | ISO 8601 com fuso: `2027-03-14T06:30:00-03:00`; datas sem hora em `AAAA-MM-DD` |
+| Datas | ISO 8601 com fuso: horários de prova em `-03:00` (`2027-03-14T06:30:00-03:00`), registros (criada, atualizada) em UTC (`2026-11-25T13:58:11Z`); datas sem hora em `AAAA-MM-DD` |
 | Dinheiro | inteiro em centavos (`valor_centavos`) |
 | Distância | inteiro em metros (`distancia_m`) |
 | Tempos | segundos inteiros (`tempo_liquido_s`) e texto pronto para mostrar (`tempo_liquido`: `"0:52:14"`) |
@@ -35,18 +35,23 @@ Contrato da integração nativa entre a Tardim Produções (organizadora de prov
 |---|---|
 | 400 | `json_invalido`, `campo_obrigatorio`, `atleta_invalido`, `percurso_invalido`, `camiseta_invalida` |
 | 401 | `chave_ausente`, `chave_invalida`, `chave_revogada` |
-| 403 | `sem_convite` (a assessoria não tem convite nesta prova), `modo_nao_permitido` |
-| 404 | `nao_encontrado` |
+| 403 | `assessoria_inativa`, `sem_convite` (a assessoria não tem convite nesta prova), `modo_nao_permitido` |
+| 404 | `nao_encontrado` (inclui prova sem convite para a assessoria, para não revelar provas de outros) |
+| 405 | `metodo` |
 | 409 | `idempotencia_conflito`, `prazo_encerrado`, `vagas_esgotadas` |
 | 413 | `muitos_atletas` (mais de 1.000 por envio) |
 | 429 | `limite_de_uso` |
+| 501 | `nao_implementado` (rota prevista no contrato e ainda não entregue) |
 
 ## Autenticação
 
 ```
-Authorization: Bearer tdm_live_3f9c...   (produção)
-Authorization: Bearer tdm_test_8a21...   (provas marcadas como teste)
+Authorization: Bearer tdm_live_3f9c...   (produção: só provas publicadas)
+Authorization: Bearer tdm_test_8a21...   (teste: também provas ainda não publicadas, para testar antes do lançamento)
 ```
+
+- Só servidor chama a API: ela não responde a CORS, então a chave nunca deve ir para o navegador.
+- A assessoria precisa estar aprovada e ativa no painel; se for desativada, todas as chaves dela passam a responder `403 assessoria_inativa`.
 
 - **Quem pode ter chave:** um parceiro do tipo `assessoria`, com cadastro aprovado. A chave é criada no painel da Tardim, em Parceiros, na seção Integração.
 - **O que a Tardim guarda:** só o SHA-256 da chave, mais os 8 primeiros caracteres para identificá-la. Ela é mostrada uma única vez, na criação.
@@ -65,55 +70,75 @@ Quem é a chave.
 ```json
 {
   "assessoria": { "id": "b1f0...", "nome": "IM3 Sports", "cidade": "Lagoa Santa", "uf": "MG", "logo_url": "https://tardimproducoes.com.br/arquivos/assessorias/b1f0-1732.png" },
-  "chave": { "prefixo": "tdm_live_3f9c", "criada_em": "2026-11-25T14:00:00-03:00", "ambiente": "live" }
+  "chave": { "prefixo": "tdm_live_3f9c", "nome": "IM3", "ambiente": "live", "criada_em": "2026-11-25T13:58:11Z" }
 }
 ```
 
 ### `GET /provas`
 
-Provas publicadas em que **esta assessoria tem convite** e que ainda não aconteceram. Filtros opcionais: `?desde=2026-12-01` e `?atualizadas_desde=<data>`, para buscar só as mudanças.
+Provas cadastradas no painel em que **esta assessoria tem convite** e que ainda não aconteceram (publicadas; com chave de teste, também as não publicadas). Se a assessoria tiver mais de um convite na mesma prova, vale o mais recente. Filtros opcionais: `?desde=2026-12-01` e `?atualizadas_desde=<data>` (prova ou convite alterados a partir dessa data), para buscar só as mudanças.
 
 ```json
 {
   "provas": [{
     "id": "volta-noturna-da-lagoa-2027",
     "nome": "Volta Noturna da Lagoa 2027",
+    "publicada": true,
     "data": "2027-03-14",
     "largada": "2027-03-14T19:00:00-03:00",
-    "local": "Lagoa da Pampulha",
-    "cidade": "Belo Horizonte", "uf": "MG",
+    "hora": "19h",
+    "local": "Lagoa da Pampulha, Belo Horizonte",
     "url": "https://tardimproducoes.com.br/prova-volta-noturna-da-lagoa-2027",
     "poster_url": "https://tardimproducoes.com.br/arquivos/provas/volta-noturna-1732.jpg",
+    "resumo": "...",
     "regulamento_url": "https://...",
+    "percurso_mapa_url": null,
     "percursos": [
-      { "id": "5k", "nome": "5 km", "distancia_m": 5000 },
-      { "id": "10k", "nome": "10 km", "distancia_m": 10000 }
+      { "id": "5-km", "nome": "5 km", "distancia_m": 5000 },
+      { "id": "10-km", "nome": "10 km", "distancia_m": 10000 },
+      { "id": "caminhada-3-km", "nome": "Caminhada 3 km", "distancia_m": 3000 }
     ],
-    "camisetas": ["PP", "P", "M", "G", "GG", "XG", "Infantil 10"],
+    "camisetas": ["PP", "P", "M", "G", "GG", "XG", "XGG"],
     "kit": { "itens": ["Camiseta", "Número de peito", "Medalha"], "retirada": "13/03, 10h às 18h, ..." },
+    "programacao": [{ "hora": "18h", "atividade": "Concentração" }],
+    "precos_publicos": [
+      { "nome": "1º lote", "valor": "R$ 89,90", "valor_centavos": 8990, "detalhe": "até 31/12", "esgotado": false }
+    ],
     "coletiva": {
       "aberta": true,
-      "prazo": "2027-02-28T23:59:00-03:00",
-      "minimo_atletas": 10,
-      "vagas_restantes": 140,
+      "prazo": "2027-02-28T23:59:59-03:00",
+      "prazo_interno_atletas": "2027-02-20",
+      "limite_atletas": 50,
+      "vagas_restantes": 50,
       "modos_pagamento": ["assessoria", "ticketsports"],
-      "valores": [
-        { "percurso_id": "5k", "valor_centavos": 8900, "faixa": "até 30 atletas" },
-        { "percurso_id": "10k", "valor_centavos": 9900, "faixa": "até 30 atletas" }
-      ]
+      "pagamento_combinado": "PIX à Tardim até o prazo",
+      "valor_atleta_centavos": 7990,
+      "faixas_desconto": [{ "minimo_atletas": 20, "desconto_pct": 5 }, { "minimo_atletas": 50, "desconto_pct": 10 }],
+      "cortesias": 2,
+      "beneficios": ["Tenda da equipe", "Kits retirados em lote"],
+      "retirada_kits_equipe": "Sábado na loja",
+      "ponto_encontro": null
     },
     "convite": {
       "cupom": "IM3VOLTA",
       "desconto": "15%",
       "comissao_pct": 10,
-      "link_ticketsports": "https://ticketsports.com.br/...?cupom=IM3VOLTA",
-      "link_kit_divulgacao": "https://tardimproducoes.com.br/kit?convite=..."
+      "condicoes": null,
+      "contrapartida": null,
+      "link_atleta": "https://tardimproducoes.com.br/prova-volta-noturna-da-lagoa-2027.html?cupom=IM3VOLTA",
+      "link_inscricao": "https://ticketsports.com.br/...",
+      "link_kit_divulgacao": "https://tardimproducoes.com.br/kit.html?p=volta-noturna-da-lagoa-2027&c=IM3VOLTA&n=IM3%20Sports&d=15%25"
     },
-    "atualizada_em": "2026-11-25T10:33:00-03:00"
+    "atualizada_em": "2026-11-25T13:57:43Z"
   }],
   "proximo_cursor": null
 }
 ```
+
+- `percursos[].id` sai do nome (`"5 km"` → `"5-km"`); use esse id em `percurso_id` no envio. `distancia_m` é `null` quando o nome não tem distância (ex.: "Kids").
+- `camisetas`: a lista padrão da Tardim enquanto a prova não tiver tamanhos próprios.
+- `coletiva.aberta` é `false` quando passou o prazo, a prova já aconteceu ou acabaram as vagas da equipe. `vagas_restantes` conta os atletas que a equipe já enviou (planilha ou API); `null` = sem limite.
+- No modo `ticketsports`, o atleta usa `convite.link_atleta` (página da prova com o cupom, que leva à Ticket Sports). `link_inscricao` é o link direto da Ticket Sports, sem cupom.
 
 ### `GET /provas/{id}`
 
@@ -137,7 +162,7 @@ Cabeçalho obrigatório: `Idempotency-Key: <id do lote no IM3>`.
     "cpf": "12345678909",
     "nascimento": "1990-05-20",
     "sexo": "F",
-    "percurso_id": "10k",
+    "percurso_id": "10-km",
     "camiseta": "M",
     "email": "maria@exemplo.com",
     "telefone": "+5531988880000",
@@ -185,7 +210,7 @@ Situação de **todos** os atletas da assessoria naquela prova, para conciliar q
     "situacao": "inscrito",
     "motivo": "",
     "numero_peito": "1043",
-    "percurso_id": "10k",
+    "percurso_id": "10-km",
     "atualizado_em": "2026-12-02T11:00:00-03:00"
   }],
   "proximo_cursor": null
@@ -218,7 +243,7 @@ recebido ──► aguardando_pagamento ──► inscrito
 {
   "id_externo": "insc_5d2a...",
   "numero_peito": "1043",
-  "percurso_id": "10k",
+  "percurso_id": "10-km",
   "situacao": "concluiu",
   "tempo_bruto": "0:52:40", "tempo_bruto_s": 3160,
   "tempo_liquido": "0:52:14", "tempo_liquido_s": 3134,
@@ -307,7 +332,7 @@ Corpo:
 
 ## Ordem de entrega
 
-1. **Tardim:**
+1. **Tardim** (feito em 25/11/2026):
    - tabelas novas e a aba Integração do painel;
    - `GET /eu`, `GET /provas` e `GET /provas/{id}`.
 2. **Tardim:**

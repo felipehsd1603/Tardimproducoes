@@ -130,6 +130,15 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 - **Orçamentos**: a cópia de cada pedido do formulário "Peça seu orçamento" (tabela `orcamentos`), com download em Excel.
 - **Propostas**: cada proposta vai do orçamento ao contrato assinado em cinco passos, numa tela só (`#proposta/<id>`): 1) montar a proposta com os itens do **Minutário** (itens padrão com descrição, valor e quantidade de referência); 2) baixar o PDF e registrar o envio; 3) registrar se o cliente aprovou ou recusou; 4) completar os dados do contratante e gerar o contrato (valor em algarismos e por extenso sempre iguais, cláusulas numeradas sozinhas, Anexo I com os itens e, se marcado, Anexo II com o valor por número de participantes); 5) assinar (gratuito no gov.br, assinador.iti.br) e registrar o PDF assinado (até 1,9 MB) ou o link dele. Os dados das empresas que assinam e o texto do contrato ficam em "Empresa e modelo do contrato"; o modelo padrão deve ser revisado pelo advogado antes do uso. Com o contrato assinado, a proposta trava; mudanças viram uma proposta de aditivo (Duplicar). Preços, custos e o simulador ficam só no painel.
 
+## API v1 para parceiros (integração com plataformas de assessoria)
+
+Contrato completo em `docs/api-v1-parceiros.md` (mesmo arquivo no repositório do IM3). Cada sistema fica com o seu banco; a plataforma da assessoria (ex.: IM3) conversa com a Tardim só por `https://<site>/api/v1/`.
+
+- **Chave**: no painel, Parceiros > editar uma assessoria aprovada > **Integração** > Criar chave. A chave (`tdm_live_...` ou `tdm_test_...`) e o segredo dos avisos aparecem uma vez só; o banco guarda só o SHA-256 da chave (tabela `integracoes`). "Cancelar chave" corta o acesso na hora. Chave de teste enxerga também provas não publicadas.
+- **Rotas no ar**: `GET /api/v1/eu`, `GET /api/v1/provas` e `GET /api/v1/provas/<id>` (só provas do painel em que a assessoria tem convite). Envios, situação dos atletas e resultados respondem `501` até a próxima etapa.
+- **Código**: `functions/api/v1/[[rota]].js` (rotas), `functions/_chaves.js` (gera e confere chaves), rotas `parceiros/<id>/integracoes` e `integracoes/<id>` na API do painel. Limite: 120 chamadas por minuto por chave (tabela `api_uso`). Sem CORS: só servidor chama.
+- **Banco já criado**: rode `d1/migracoes/013-integracoes.sql`.
+
 ## Área do parceiro (cadastro e login)
 
 `parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias, influenciadores e embaixadores se cadastram e entram. API em `functions/api/parceiro/`.
