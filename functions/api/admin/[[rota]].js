@@ -38,7 +38,7 @@ import { consultaCref6, numeroCref } from "../../_cref6.js";
 import { confereInstagramParceiro } from "../../_instagram.js";
 import { sha256 } from "../../_chaves.js";
 import { assinaturaConfigurada } from "../../_assinatura.js";
-import { enviaConviteConexao, enviaAviso, avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_avisos.js";
+import { enviaConviteConexao, enviaAviso, avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, avisaAtletas, origemPublica } from "../../_avisos.js";
 
 // O primeiro é o único com registro conferido no CREF6 (js/admin.js usa a mesma lista)
 const PROFISSOES = [
@@ -618,6 +618,30 @@ async function trata(request, env, rota, url, waitUntil) {
     return json((await env.DB.prepare(
       "SELECT i.*, (SELECT COUNT(*) FROM atletas t WHERE t.inscricao_id = i.id) AS atletas FROM inscricoes i ORDER BY i.criado_em DESC LIMIT 500"
     ).all()).results);
+  }
+  // Conferência dos atletas enviados pelo sistema da assessoria (API v1): cada mudança avisa a plataforma (atleta.situacao)
+  if (a === "atletas" && b && !c && m === "PUT") {
+    const d = await corpo(request);
+    const SIT = ["recebido", "aguardando_pagamento", "inscrito", "recusado", "cancelado"];
+    const at = await env.DB.prepare("SELECT * FROM atletas WHERE id = ?").bind(Number(b)).first();
+    if (!at) throw new Erro(404, "Registro não encontrado.");
+    const situacao = d.situacao === undefined ? at.situacao : String(d.situacao);
+    if (at.origem === "api" && !SIT.includes(situacao)) throw new Erro(400, "Situação inválida.");
+    const peito = d.numero_peito === undefined ? at.numero_peito : String(d.numero_peito || "").trim().slice(0, 10);
+    const motivo = d.motivo === undefined ? (situacao === "recusado" || situacao === "cancelado" ? at.motivo : "") : String(d.motivo || "").trim().slice(0, 300);
+    await env.DB.prepare("UPDATE atletas SET situacao = ?, numero_peito = ?, motivo = ?, atualizado_em = ? WHERE id = ?")
+      .bind(situacao, peito, motivo, new Date().toISOString().slice(0, 19) + "Z", at.id).run();
+    const aviso = at.origem === "api" ? (await avisaAtletas(env, [at.id]))[0] || null : null;
+    return json({ atleta: await env.DB.prepare("SELECT * FROM atletas WHERE id = ?").bind(at.id).first(), aviso });
+  }
+  if (a === "inscricoes" && b && c === "confirmar" && m === "POST") {
+    // Todos os recebidos/aguardando deste envio viram inscritos (o número de peito pode vir depois)
+    const ids = (await env.DB.prepare("SELECT id FROM atletas WHERE inscricao_id = ? AND origem = 'api' AND situacao IN ('recebido', 'aguardando_pagamento')").bind(b).all()).results.map((x) => x.id);
+    if (ids.length) {
+      await env.DB.prepare("UPDATE atletas SET situacao = 'inscrito', motivo = '', atualizado_em = ? WHERE id IN (" + ids.map(() => "?").join(",") + ")")
+        .bind(new Date().toISOString().slice(0, 19) + "Z", ...ids).run();
+    }
+    return json({ confirmados: ids.length, avisos: await avisaAtletas(env, ids) });
   }
   if (a === "inscricoes" && b && c === "atletas" && m === "GET") {
     return json((await env.DB.prepare("SELECT * FROM atletas WHERE inscricao_id = ? ORDER BY id").bind(b).all()).results);

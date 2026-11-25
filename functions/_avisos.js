@@ -104,6 +104,29 @@ export async function avisaConviteCancelado(env, convite) {
   return enviaAviso(integ, "convite.cancelado", { convite_id: convite.id, prova_id: convite.prova_id });
 }
 
+// Situação de atletas mudou no painel: um aviso atleta.situacao por assessoria e prova
+export function atletaApi(a) {
+  return { id_externo: a.id_externo, situacao: a.situacao, motivo: a.motivo || null, numero_peito: a.numero_peito || null, percurso_id: a.percurso_id || null };
+}
+export async function avisaAtletas(env, ids) {
+  if (!ids || !ids.length) return [];
+  const linhas = (await env.DB.prepare(
+    "SELECT * FROM atletas WHERE origem = 'api' AND id IN (" + ids.map(() => "?").join(",") + ")"
+  ).bind(...ids).all()).results;
+  const grupos = {};
+  for (const a of linhas) (grupos[a.parceiro_id + "|" + a.prova_id] = grupos[a.parceiro_id + "|" + a.prova_id] || []).push(a);
+  const res = [];
+  for (const k of Object.keys(grupos)) {
+    const g = grupos[k];
+    const integ = await integracaoAtiva(env, g[0].parceiro_id);
+    const r = integ ? await enviaAviso(integ, "atleta.situacao", { prova_id: g[0].prova_id, atletas: g.map(atletaApi) }) : { ok: false, erro: "assessoria desconectada" };
+    const marca = r.ok ? "ok" : "erro: " + String(r.erro || "").slice(0, 200);
+    await env.DB.batch(g.map((a) => env.DB.prepare("UPDATE atletas SET aviso = ? WHERE id = ?").bind(marca, a.id)));
+    res.push(Object.assign({ prova_id: g[0].prova_id, atletas: g.length }, r));
+  }
+  return res;
+}
+
 // Prova alterada ou publicada: avisa os convites dela de assessorias conectadas
 export async function avisaConvitesDaProva(env, provaId, origem) {
   const r = await env.DB.prepare(

@@ -318,6 +318,14 @@ Resposta `202`:
 
 Atletas com erro vão em `rejeitados` (`{ "id_externo", "codigo", "campo", "mensagem" }`), e os outros seguem normalmente. O `400` só acontece quando o envio inteiro é inválido.
 
+Regras da implementação (25/11/2026):
+- O convite da prova precisa estar **aceito** na plataforma; senão `403 sem_convite`. Com a coletiva fechada (prazo, data ou vagas), atletas dão `409 prazo_encerrado`; cancelamentos continuam aceitos.
+- `envio` na resposta traz também `novos`, `atualizados` e `cancelados`.
+- `telefone` com DDD (10 a 14 dígitos, `+` opcional); `email` válido; `consentimento_em` em data ISO.
+- Vagas: conta os atletas da assessoria em `recebido`, `aguardando_pagamento` ou `inscrito`. Cancelamentos do mesmo envio liberam a vaga antes. Passou do limite: o atleta vai em `rejeitados` com `vagas_esgotadas`.
+- Reenviar um atleta `recusado` ou `cancelado` volta para `recebido`. Reenviar um ativo só atualiza os dados e mantém a situação.
+- Na Tardim, cada envio aparece em **Inscrições coletivas** com o botão **Conferir**: confirmar (com o número de peito) ou recusar com o motivo. Cada mudança manda `atleta.situacao`.
+
 ### `GET /envios/{id}`
 
 Um envio e a situação atual de cada atleta dele.

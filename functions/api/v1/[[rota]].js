@@ -11,7 +11,9 @@
 //   GET    /api/v1/convites[?situacao=pendente]     convites de prova
 //   POST   /api/v1/convites/<id>/aceitar            { modo_pagamento, aceito_por }
 //   POST   /api/v1/convites/<id>/recusar            { motivo, recusado_por }
-//   (envios, atletas e resultados: próxima etapa; respondem 501)
+//   POST   /api/v1/envios  (Idempotency-Key)        inscrição coletiva: atletas e cancelamentos (functions/_envios_api.js)
+//   GET    /api/v1/envios/<id>  |  /api/v1/atletas?prova_id=   situação dos atletas
+//   (resultados: próxima etapa; respondem 501)
 //
 // A chave nasce no aceite da conexão e vai direto para o servidor da plataforma: ninguém a copia.
 // O banco guarda só o SHA-256 dela. Só servidor chama esta API: não há CORS.
@@ -19,6 +21,7 @@
 import { RE_CHAVE, sha256, novaChave, novoSegredo } from "../../_chaves.js";
 import { chavesPublicas } from "../../_assinatura.js";
 import { linhasProvas, formataProva, conviteApi, absoluto, isoBanco, hojeBR } from "../../_provas_api.js";
+import { recebeEnvio, consultaEnvio, situacaoAtletas, ErroApi } from "../../_envios_api.js";
 
 const LIMITE_MINUTO = 120;
 const LIMITE_CONEXAO_IP = 20; // aceitar/recusar por IP por minuto
@@ -229,7 +232,16 @@ async function trata(request, env, rota, url, waitUntil) {
     so("POST");
     return respondeConvite(request, env, integ, b, c, url);
   }
-  if ((a === "provas" && b && c === "resultados") || a === "envios" || a === "atletas") {
+  if (a === "envios" && !b) {
+    so("POST");
+    const t = await request.text();
+    if (t.length > 1500000) throw new Erro(413, "muitos_atletas", "Corpo grande demais.");
+    const r = await recebeEnvio(request, env, integ, url, t);
+    return json(r.corpo, r.status);
+  }
+  if (a === "envios" && b && !c) { so("GET"); return json(await consultaEnvio(env, integ, b)); }
+  if (a === "atletas" && !b) { so("GET"); return json(await situacaoAtletas(env, integ, url)); }
+  if (a === "provas" && b && c === "resultados") {
     throw new Erro(501, "nao_implementado", "Esta rota chega na próxima etapa da API v1.");
   }
   throw new Erro(404, "nao_encontrado", "Rota não encontrada.");
@@ -242,7 +254,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
   try {
     return await trata(request, env, rota, url, waitUntil);
   } catch (e) {
-    if (e instanceof Erro) return json({ erro: { codigo: e.codigo, mensagem: e.message } }, e.status, e.extra);
+    if (e instanceof Erro || e instanceof ErroApi) return json({ erro: { codigo: e.codigo, mensagem: e.message } }, e.status, e.extra);
     if (/no such (table|column)/i.test(String((e && e.message) || e))) {
       return json({ erro: { codigo: "config", mensagem: "Faltam tabelas no banco: rode d1/migracoes/013-integracoes.sql." } }, 503);
     }

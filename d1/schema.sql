@@ -26,7 +26,10 @@ CREATE TABLE IF NOT EXISTS inscricoes (
   equipe      TEXT NOT NULL,
   responsavel TEXT NOT NULL DEFAULT '',
   telefone    TEXT NOT NULL DEFAULT '',
-  total       INTEGER NOT NULL
+  total       INTEGER NOT NULL,
+  origem      TEXT NOT NULL DEFAULT 'planilha', -- planilha | api (sistema da assessoria, d1/migracoes/014-envios-api.sql)
+  parceiro_id TEXT NOT NULL DEFAULT '',
+  modo_pagamento TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS atletas (
@@ -40,7 +43,11 @@ CREATE TABLE IF NOT EXISTS atletas (
   camiseta     TEXT NOT NULL,
   email        TEXT NOT NULL,
   telefone     TEXT NOT NULL,
-  equipe       TEXT NOT NULL DEFAULT ''
+  equipe       TEXT NOT NULL DEFAULT '',
+  -- envios pelo sistema da assessoria (API v1); em banco já criado, rode d1/migracoes/014-envios-api.sql
+  origem TEXT NOT NULL DEFAULT 'planilha', prova_id TEXT NOT NULL DEFAULT '', parceiro_id TEXT NOT NULL DEFAULT '', id_externo TEXT NOT NULL DEFAULT '',
+  percurso_id TEXT NOT NULL DEFAULT '', situacao TEXT NOT NULL DEFAULT '', motivo TEXT NOT NULL DEFAULT '', numero_peito TEXT NOT NULL DEFAULT '',
+  modo_pagamento TEXT NOT NULL DEFAULT '', consentimento_em TEXT NOT NULL DEFAULT '', envio_id TEXT NOT NULL DEFAULT '', atualizado_em TEXT NOT NULL DEFAULT '', aviso TEXT NOT NULL DEFAULT ''
 );
 
 -- Envios por IP das funções públicas (functions/_limite.js): 10 por rota por hora
@@ -53,3 +60,5 @@ CREATE INDEX IF NOT EXISTS envios_tentativas_ip ON envios_tentativas (rota, ip, 
 
 CREATE INDEX IF NOT EXISTS atletas_inscricao ON atletas (inscricao_id);
 CREATE INDEX IF NOT EXISTS inscricoes_prova ON inscricoes (prova_id, criado_em);
+CREATE UNIQUE INDEX IF NOT EXISTS atletas_externo ON atletas (prova_id, parceiro_id, id_externo) WHERE id_externo <> '';
+CREATE INDEX IF NOT EXISTS atletas_envio ON atletas (envio_id);

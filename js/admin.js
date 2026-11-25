@@ -1559,8 +1559,57 @@
           });
           var resp = el("div"); resp.append(i.responsavel || "");
           if (i.telefone) { resp.append(" "); resp.append(linkExt(i.telefone, "https://wa.me/" + numeroWa(i.telefone))); }
-          return [dataHora(i.criado_em), i.prova_nome, el("strong", null, i.equipe), resp, String(i.atletas != null ? i.atletas : i.total), i.canal === "email" ? "E-mail" : "WhatsApp", b];
+          var api_ = i.origem === "api";
+          var canal = api_ ? "Sistema da assessoria" + (i.modo_pagamento === "ticketsports" ? " · paga na Ticket Sports" : i.modo_pagamento === "assessoria" ? " · PIX na assessoria" : "") : i.canal === "email" ? "E-mail" : "WhatsApp";
+          return [dataHora(i.criado_em), i.prova_nome, el("strong", null, i.equipe), resp, String(i.atletas != null ? i.atletas : i.total), canal,
+            acoes(api_ ? botao("Conferir", "btn btn--red", function () { confereEnvio(i); }) : null, b)];
         })));
+        area.append(detalhe);
+      }
+      // Envio do sistema da assessoria (API v1): conferir cada atleta. Cada mudança avisa o sistema dela.
+      var detalhe = el("div");
+      var SIT_AT = { recebido: ["Recebido", "is-rasc"], aguardando_pagamento: ["Aguardando pagamento", "is-rasc"], inscrito: ["Inscrito", "is-pub"], recusado: ["Recusado", "is-off"], cancelado: ["Cancelado", "is-off"] };
+      function confereEnvio(i) {
+        detalhe.innerHTML = ""; detalhe.append(el("p", "muted", "Carregando atletas..."));
+        api("GET", "inscricoes/" + encodeURIComponent(i.id) + "/atletas").then(function (at) {
+          detalhe.innerHTML = "";
+          var t = el("h3", null, "Conferir: " + i.equipe + " · " + i.prova_nome); t.style.marginTop = "1.5rem";
+          detalhe.append(t, el("p", "muted", "Confirme quem já foi inscrito oficialmente (com o número de peito, se já tiver) ou recuse com o motivo. A assessoria vê a resposta no sistema dela na hora."));
+          var pend = at.filter(function (a) { return a.situacao === "recebido" || a.situacao === "aguardando_pagamento"; }).length;
+          if (pend) detalhe.append(acoes(botao("Confirmar os " + pend + " recebidos", "btn btn--red", function (e) {
+            var bt = e.currentTarget; bt.disabled = true;
+            api("POST", "inscricoes/" + encodeURIComponent(i.id) + "/confirmar", {}).then(function (r) {
+              var falhou = (r.avisos || []).some(function (x) { return !x.ok; });
+              aviso(r.confirmados + " confirmados." + (falhou ? " O aviso ao sistema da assessoria não foi entregue." : " A assessoria já foi avisada."), falhou);
+              confereEnvio(i);
+            }).catch(function (err) { bt.disabled = false; falha(err); });
+          })));
+          detalhe.append(tabela(["Atleta", "Percurso", "Camiseta", "Situação", "Nº de peito", ""], at.map(function (a) {
+            var s = SIT_AT[a.situacao] || [a.situacao || "—", "is-rasc"];
+            var sit = el("div"); sit.append(situacao(s[0], s[1]));
+            if (a.motivo) sit.append(el("small", "muted", " " + a.motivo));
+            if (/^erro/.test(a.aviso || "")) { var e = situacao("Aviso não entregue", "is-off"); e.title = a.aviso; sit.append(" ", e); }
+            var nome = el("div"); nome.append(el("strong", null, a.nome)); nome.append(el("small", "muted", " · " + (a.sexo || "") + " · " + (a.nascimento || "")));
+            var peito = entrada("text", a.numero_peito || "", { maxLength: 10, placeholder: "—" }); peito.style.maxWidth = "6rem";
+            function grava(dados, bt) {
+              if (bt) bt.disabled = true;
+              api("PUT", "atletas/" + a.id, dados).then(function (r) {
+                aviso(r.aviso && !r.aviso.ok ? "Salvo, mas o aviso ao sistema da assessoria não foi entregue." : "Salvo. A assessoria foi avisada.", !!(r.aviso && !r.aviso.ok));
+                confereEnvio(i);
+              }).catch(function (err) { if (bt) bt.disabled = false; falha(err); });
+            }
+            var ativo = a.situacao !== "cancelado";
+            return [nome, a.distancia, a.camiseta, sit, peito, ativo ? acoes(
+              botao(a.situacao === "inscrito" ? "Salvar nº" : "Confirmar", null, function (e) { grava({ situacao: "inscrito", numero_peito: peito.value.trim(), motivo: "" }, e.currentTarget); }),
+              a.situacao !== "recusado" ? botao("Recusar", "orc__email painel-perigo", function () {
+                pergunta("Recusar " + a.nome + "?", "A assessoria vê o motivo no sistema dela.", "Recusar", { campo: "Motivo" }).then(function (mot) {
+                  if (mot === null) return;
+                  grava({ situacao: "recusado", motivo: mot.trim() || "Recusado pela organização" });
+                });
+              }) : null) : null];
+          })));
+          detalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+        }).catch(function (e) { detalhe.innerHTML = ""; falha(e); });
       }
       prova.addEventListener("change", desenha);
       desenha();
