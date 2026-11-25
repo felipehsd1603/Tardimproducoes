@@ -83,7 +83,7 @@ async function paginaProva(env, id, url) {
 
 // A pasta inteira é publicada: o código do servidor, o esquema do banco e os
 // arquivos de configuração não devem ser lidos pelo endereço do site.
-const PRIVADO = /^\/(functions|d1|scripts|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|\.gitignore|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
+const PRIVADO = /^\/(functions|d1|docs|scripts|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|\.gitignore|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
 
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
