@@ -1,10 +1,5 @@
 {
   "version": 1,
-  "include": [
-    "/api/*", "/arquivos/*", "/js/provas-db.js", "/prova-*",
-    "/functions/*", "/d1/*", "/docs/*", "/scripts/*", "/tests/*", "/.github/*", "/node_modules/*", "/.wrangler/*",
-    "/wrangler.toml", "/README.md", "/CHANGELOG.md", "/package.json", "/package-lock.json", "/.gitignore", "/.editorconfig",
-    "/_routes.json", "/_headers", "/_redirects", "/.dev.vars", "/.assetsignore"
-  ],
+  "include": ["/*"],
   "exclude": []
 }
