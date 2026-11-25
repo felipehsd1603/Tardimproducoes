@@ -2769,7 +2769,7 @@
       ".assinaturas .linha{display:block;border-top:1px solid #1c2233;margin-bottom:6px}.anexo{break-before:page;page-break-before:always;padding-top:4px}" +
       "@media screen{body{max-width:860px;margin:28px auto}}" +
       "</style></head><body>" +
-      '<p class="nao"><button onclick="print()">Imprimir ou salvar em PDF</button></p>' +
+      '<p class="nao"><button class="imprimir">Imprimir ou salvar em PDF</button></p>' +
       "<h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS Nº " + h(ct.numero) + "</h1>" +
       '<p class="ementa">Contrato que entre si celebram ' + h(ctt.nome) + " e " + h(emp.razao) + ", para a produção, a organização e a execução do evento " + h(campos.EVENTO) + ".</p>" +
       "<p>" + parte(ctt.nome, ctt.cnpj, ctt.endereco, ctt.rep_nome, ctt.rep_cargo, ctt.rep_cpf, ctt.rep_rg, "CONTRATANTE", false) + ", e " +
@@ -2780,6 +2780,13 @@
       "</body></html>";
   }
   // Abre o contrato numa janela para imprimir ou salvar em PDF. "w" = janela já aberta no clique (evita o bloqueio do navegador)
+  // Botão "Imprimir" das janelas de contrato e proposta: listener em vez de onclick (o CSP do site bloqueia
+  // código inline, e a janela aberta daqui herda o CSP)
+  function botaoImprimir(w) {
+    var b = w.document.querySelector(".imprimir");
+    if (b) b.addEventListener("click", function () { w.print(); });
+  }
+
   function imprimeContrato(x, w) {
     w = w || window.open("", "_blank");
     if (!w) return aviso("O navegador bloqueou a janela do contrato. Libere as janelas deste site e tente de novo.", true);
@@ -2789,6 +2796,7 @@
       w.document.open();
       w.document.write(htmlContrato(x, cfg));
       w.document.close();
+      botaoImprimir(w);
     }).catch(function (e) { w.close(); falha(e); });
   }
 
@@ -2800,7 +2808,7 @@
       ".top{display:flex;justify-content:space-between;gap:24px;border-bottom:3px solid #d6505b;padding-bottom:10px}.top p{margin:0;color:#5b6275}" +
       "dl{display:grid;grid-template-columns:150px 1fr;gap:2px 12px;margin:0}dt{font-weight:bold}dd{margin:0}" +
       ".ass{margin-top:56px;width:300px;border-top:1px solid #1c2233;padding-top:4px}</style></head><body>" +
-      '<p class="nao"><button onclick="print()">Imprimir ou salvar em PDF</button></p>' +
+      '<p class="nao"><button class="imprimir">Imprimir ou salvar em PDF</button></p>' +
       '<div class="top"><div><h1>' + h(site.razaoSocial || "Tardim Produções") + "</h1><p>" + h([site.cnpj ? "CNPJ " + site.cnpj : "", d.emitente].filter(Boolean).join(" · ")) + "</p></div>" +
       "<div><h1>Proposta comercial" + (x.numero ? " nº " + h(x.numero) : "") + "</h1><p>" + h([d.data ? "Emitida em " + curta(d.data) : "", d.validade ? "válida até " + curta(d.validade) : ""].filter(Boolean).join(" · ")) + "</p></div></div>" +
       "<h2>Cliente</h2><dl>" + dl([["Nome", cl.nome], ["CNPJ/CPF", cl.cnpj], ["Endereço", cl.endereco], ["Representante", cl.representante]]) + "</dl>" +
@@ -2812,6 +2820,7 @@
     if (!w) return aviso("O navegador bloqueou a janela da proposta. Libere as janelas deste site e tente de novo.", true);
     w.document.write(html);
     w.document.close();
+    botaoImprimir(w);
   }
 
   // =====================================================================

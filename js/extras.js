@@ -99,7 +99,7 @@
   // ---------- Página da prova ----------
   var raiz = document.getElementById("prova");
   if (!raiz) return;
-  var id = window.PAGINA_ID || new URLSearchParams(location.search).get("id");
+  var id = document.documentElement.getAttribute("data-pagina") || new URLSearchParams(location.search).get("id");
   var ev = provas.filter(function (p) { return p.id === id; })[0];
   if (!ev || !ev.data) return;
   var futura = diasAte(ev) >= 0;

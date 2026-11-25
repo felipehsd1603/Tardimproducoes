@@ -79,7 +79,7 @@ async function paginaProva(env, id, url) {
   html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(titulo)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${esc(descricao)}" />`)
     .replace(/<!--og-->[\s\S]*?<!--\/og-->/, og)
-    .replace(/(\s*)<script src="js\/eventos\.js/, `$1<script>window.PAGINA_ID = ${JSON.stringify(id)};</script>$1<script src="js/eventos.js`);
+    .replace(/<html lang="pt-BR">/, `<html lang="pt-BR" data-pagina="${esc(id)}">`);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" } });
 }
 
@@ -136,10 +136,11 @@ const SEGURANCA = {
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000",
   // De fora, só o login do Google (parceiro.html), o Swagger (/api/*/docs, jsdelivr) e a previsão do tempo
-  // (open-meteo). 'unsafe-inline' fica por causa dos scripts e estilos inline das páginas.
+  // (open-meteo). Nenhum script inline: as páginas só carregam arquivos .js (o Swagger manda o próprio CSP,
+  // com o hash do script dele). 'unsafe-inline' fica só nos estilos (atributos style das páginas).
   "content-security-policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net",
+    "script-src 'self' https://accounts.google.com https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",

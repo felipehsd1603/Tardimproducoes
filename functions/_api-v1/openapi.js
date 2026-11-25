@@ -127,13 +127,19 @@ export const OPENAPI_V1 = {
 
 const SWAGGER = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14";
 
-/** Página Swagger UI que lê a especificação em `specUrl` */
-export function paginaSwagger(specUrl, titulo) {
+/** Página Swagger UI que lê a especificação em `specUrl`. O CSP dela libera só o script de início pelo hash. */
+export async function paginaSwagger(specUrl, titulo) {
+  const inicio = `SwaggerUIBundle({ url: ${JSON.stringify(specUrl)}, dom_id: "#swagger", deepLinking: true, docExpansion: "list", defaultModelsExpandDepth: 0, tryItOutEnabled: false });`;
+  const hash = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(inicio)))));
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${titulo}</title><link rel="stylesheet" href="${SWAGGER}/swagger-ui.css">
 <style>body{margin:0;background:#fff}.topbar{display:none}</style></head><body><div id="swagger"></div>
 <script src="${SWAGGER}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
-<script>SwaggerUIBundle({ url: ${JSON.stringify(specUrl)}, dom_id: "#swagger", deepLinking: true, docExpansion: "list", defaultModelsExpandDepth: 0, tryItOutEnabled: false });</script>
+<script>${inicio}</script>
 </body></html>`;
-  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+  const csp = [
+    "default-src 'self'", `script-src https://cdn.jsdelivr.net 'sha256-${hash}'`, "style-src 'unsafe-inline' https://cdn.jsdelivr.net",
+    "img-src 'self' data: https:", "connect-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'",
+  ].join("; ");
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", "content-security-policy": csp } });
 }

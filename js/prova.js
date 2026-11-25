@@ -25,7 +25,7 @@
 
   var site = typeof SITE !== "undefined" ? SITE : {};
   var provas = typeof PROXIMAS !== "undefined" ? PROXIMAS : [];
-  var id = window.PAGINA_ID || new URLSearchParams(location.search).get("id");
+  var id = document.documentElement.getAttribute("data-pagina") || new URLSearchParams(location.search).get("id");
   var ev = provas.filter(function (p) { return p.id === id; })[0];
   var raiz = document.getElementById("prova");
   var demoQ = window.DEMO ? "?demo=1" : "";

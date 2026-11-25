@@ -30,7 +30,7 @@
     <!--/og-->
     <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="css/style.css?v=20261125-1831" />
+    <link rel="stylesheet" href="css/style.css?v=20261125-1843" />
   </head>
   <body>
     <!-- Ícone do WhatsApp, reutilizado nos botões -->
@@ -362,21 +362,11 @@
       <svg aria-hidden="true"><use href="#i-whatsapp" /></svg>
     </a>
 
-    <script>
-      (function () {
-        var btn = document.querySelector(".menu-btn");
-        btn.addEventListener("click", function () {
-          var open = document.body.classList.toggle("menu-open");
-          btn.setAttribute("aria-expanded", String(open));
-          btn.textContent = open ? "Fechar" : "Menu";
-        });
-        document.getElementById("ano").textContent = new Date().getFullYear();
-      })();
-    </script>
-    <script src="js/eventos.js?v=20261125-1831"></script>
-    <script src="js/provas-db.js?v=20261125-1831"></script>
-    <script src="js/orcamento.js?v=20261125-1831"></script>
-    <script src="js/monte.js?v=20261125-1831"></script>
-    <script src="js/ui.js?v=20261125-1831"></script>
+    <script src="js/menu.js?v=20261125-1843"></script>
+    <script src="js/eventos.js?v=20261125-1843"></script>
+    <script src="js/provas-db.js?v=20261125-1843"></script>
+    <script src="js/orcamento.js?v=20261125-1843"></script>
+    <script src="js/monte.js?v=20261125-1843"></script>
+    <script src="js/ui.js?v=20261125-1843"></script>
   </body>
 </html>
