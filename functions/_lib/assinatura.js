@@ -2,13 +2,8 @@
 // Segredo TARDIM_ASSINATURA_JWK = chave privada P-256 em JWK (gerada por
 // scripts/gerar-chave-assinatura.mjs). A parte pública sai em GET /api/v1/chaves-publicas.
 
-const enc = new TextEncoder();
+import { enc, b64url } from "./http.js";
 
-const b64url = (bytes) => {
-  let s = "";
-  for (const x of bytes) s += String.fromCharCode(x);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
 const b64urlTexto = (t) => b64url(enc.encode(t));
 
 function jwkPrivada(env) {

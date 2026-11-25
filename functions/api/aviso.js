@@ -6,18 +6,13 @@
 // O e-mail sai pelo painel (functions/api/admin, POST avisos/<prova>/enviar) quando a prova
 // ganha o link da Ticket Sports. Limite: 10 pedidos por IP por hora.
 
-import { dentroDoLimite } from "../_limite.js";
+import { dentroDoLimite } from "../_lib/limite.js";
+import { json, mesmaOrigem } from "../_lib/http.js";
 
 const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i;
 const RE_ID_PROVA = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const RE_UUID = /^[0-9a-f-]{36}$/;
 
-function json(corpo, status) {
-  return new Response(JSON.stringify(corpo), { status: status || 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-}
-function mesmaOrigem(request) {
-  try { return new URL(request.headers.get("Origin")).host === new URL(request.url).host; } catch (e) { return false; }
-}
 function pagina(titulo, texto) {
   const h = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${titulo} · Tardim Produções</title><link rel="stylesheet" href="/css/style.css"></head>

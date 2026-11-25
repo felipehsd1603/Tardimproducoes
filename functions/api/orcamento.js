@@ -1,17 +1,10 @@
 // POST /api/orcamento — guarda o pedido de orçamento no D1 (binding DB).
 // Limite: 10 pedidos por IP por hora.
 
-import { dentroDoLimite } from "../_limite.js";
+import { dentroDoLimite } from "../_lib/limite.js";
+import { json, mesmaOrigem } from "../_lib/http.js";
 
 const LIMITES = { servico: 60, nome: 120, contratante: 60, empresa: 120, cidade: 120, quando: 40, publico: 40, detalhes: 2000 };
-
-function json(corpo, status) {
-  return new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-}
-
-function mesmaOrigem(request) {
-  try { return new URL(request.headers.get("Origin")).host === new URL(request.url).host; } catch (e) { return false; }
-}
 
 export async function onRequestPost({ request, env }) {
   if (!mesmaOrigem(request)) return json({ erro: "origem" }, 403);

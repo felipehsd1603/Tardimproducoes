@@ -1,32 +1,15 @@
 // POST /api/inscricao — guarda a inscrição coletiva (equipe + atletas) no D1 (binding DB).
 // Limite: 10 envios por IP por hora.
 
-import { dentroDoLimite } from "../_limite.js";
+import { dentroDoLimite } from "../_lib/limite.js";
+import { json, mesmaOrigem, cpfValido } from "../_lib/http.js";
 
 const MAX_ATLETAS = 1000;
 const POR_LOTE = 10; // 10 atletas x 10 colunas = 100 parâmetros, o teto do D1 por comando
 
-function json(corpo, status) {
-  return new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-}
-
-function mesmaOrigem(request) {
-  try { return new URL(request.headers.get("Origin")).host === new URL(request.url).host; } catch (e) { return false; }
-}
-
 function txt(valor, max) {
   const s = typeof valor === "string" ? valor.trim() : "";
   return s.length > max ? null : s;
-}
-
-function cpfValido(d) {
-  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
-  for (let t = 9; t < 11; t++) {
-    let s = 0;
-    for (let i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i);
-    if ((s * 10) % 11 % 10 !== Number(d[t])) return false;
-  }
-  return true;
 }
 
 export async function onRequestPost({ request, env }) {

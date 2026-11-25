@@ -3,23 +3,15 @@
 //  - avisos (webhooks): POST no webhook_url da integração, assinado com HMAC-SHA256 do webhook_segredo
 // Uma tentativa por vez; o resultado fica no banco para o painel mostrar "Reenviar".
 
-import { assinaJws } from "./_assinatura.js";
-import { linhasProvas, formataProva, conviteApi, integracaoAtiva } from "./_provas_api.js";
+import { assinaJws } from "../_lib/assinatura.js";
+import { hmacHex } from "../_lib/http.js";
+import { linhasProvas, formataProva, conviteApi, integracaoAtiva } from "./provas.js";
 
-const enc = new TextEncoder();
 const ESPERA = 10000;
 
 // Endereço oficial que assina os convites (iss): o painel pode estar aberto pelo *.pages.dev
 export function origemPublica(url) {
   return /(^|\.)tardimproducoes\.com\.br$|(^|\.)tardim-teste\.pages\.dev$/i.test(url.hostname) ? "https://tardimproducoes.com.br" : url.origin;
-}
-
-async function hmacHex(segredo, msg) {
-  const k = await crypto.subtle.importKey("raw", enc.encode(segredo), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const s = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(msg)));
-  let h = "";
-  for (const x of s) h += x.toString(16).padStart(2, "0");
-  return h;
 }
 
 async function posta(url, corpo, cabecalhos) {

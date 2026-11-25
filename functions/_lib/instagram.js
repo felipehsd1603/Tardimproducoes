@@ -11,7 +11,7 @@
 //   IG_TOKEN    token de acesso que não expira (usuário do sistema do Gerenciador de Negócios)
 //               com as permissões instagram_basic, instagram_manage_insights, pages_show_list e pages_read_engagement
 //
-// Uso (numa Function):  import { consultaInstagram } from "../../_instagram.js";
+// Uso (numa Function):  import { consultaInstagram } from "../../_lib/instagram.js";
 //   const r = await consultaInstagram(env, "@perfil");
 //   r = { ok: true, encontrado: true, usuario, nome, seguidores, posts }
 //     | { ok: true, encontrado: false, usuario }

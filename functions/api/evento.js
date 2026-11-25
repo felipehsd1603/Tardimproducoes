@@ -2,11 +2,9 @@
 // o par evento + referência (tabela medicao). Não guarda IP, cookie nem nada
 // que identifique o visitante; o painel lê os totais na aba "Medição".
 
-const EVENTOS = ["visita", "inscricao", "whatsapp", "orcamento", "agenda", "compartilhar"];
+import { json } from "../_lib/http.js";
 
-function json(corpo, status) {
-  return new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-}
+const EVENTOS = ["visita", "inscricao", "whatsapp", "orcamento", "agenda", "compartilhar"];
 
 export async function onRequestPost({ request, env }) {
   let origem = "";

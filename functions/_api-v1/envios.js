@@ -5,27 +5,16 @@
 // Cada envio vira uma linha em inscricoes (origem 'api'); cada atleta é único por
 // prova + assessoria + id_externo: reenviar o mesmo id_externo atualiza.
 
-import { sha256 } from "./_chaves.js";
-import { linhasProvas, formataProva, isoBanco } from "./_provas_api.js";
-import { atletaApi } from "./_avisos.js";
+import { sha256, cpfValido } from "../_lib/http.js";
+import { linhasProvas, formataProva, isoBanco } from "./provas.js";
+import { atletaApi } from "./avisos.js";
 
-export class ErroApi extends Error {
-  constructor(status, codigo, mensagem) { super(mensagem); this.status = status; this.codigo = codigo; }
-}
+import { ErroApi } from "./comum.js";
 
 const MAX_ATLETAS = 1000;
 const ATIVAS = ["recebido", "aguardando_pagamento", "inscrito"];
 const txt = (v, max) => { const s = typeof v === "string" ? v.trim() : (v == null ? "" : String(v).trim()); return s.length > max ? null : s; };
 
-function cpfValido(d) {
-  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
-  for (let t = 9; t < 11; t++) {
-    let s = 0;
-    for (let i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i);
-    if ((s * 10) % 11 % 10 !== Number(d[t])) return false;
-  }
-  return true;
-}
 const dataValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + "T12:00:00Z"));
 
 // Confere um atleta. Devolve { a } normalizado ou { erro: { codigo, campo, mensagem } }
