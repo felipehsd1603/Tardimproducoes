@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS atletas (
   modo_pagamento TEXT NOT NULL DEFAULT '', consentimento_em TEXT NOT NULL DEFAULT '', envio_id TEXT NOT NULL DEFAULT '', atualizado_em TEXT NOT NULL DEFAULT '', aviso TEXT NOT NULL DEFAULT ''
 );
 
--- Envios por IP das funções públicas (functions/_limite.js): 10 por rota por hora
+-- Envios por IP das funções públicas (functions/_lib/limite.js): 10 por rota por hora
 CREATE TABLE IF NOT EXISTS envios_tentativas (
   rota   TEXT NOT NULL,                   -- orcamento | inscricao
   ip     TEXT NOT NULL,

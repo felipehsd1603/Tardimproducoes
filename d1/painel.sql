@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS parceiros (
   whatsapp      TEXT NOT NULL DEFAULT '',
   email         TEXT NOT NULL DEFAULT '',
   instagram     TEXT NOT NULL DEFAULT '',
-  cidade        TEXT NOT NULL DEFAULT '',      -- nome do município como no IBGE (functions/_cidades.js)
+  cidade        TEXT NOT NULL DEFAULT '',      -- nome do município como no IBGE (functions/_lib/cidades.js)
   uf            TEXT NOT NULL DEFAULT '',      -- sigla do estado
   seguidores    INTEGER NOT NULL DEFAULT 0,    -- influenciador: seguidores estimados
-  ig_situacao   TEXT NOT NULL DEFAULT '',      -- Instagram conferido pela API (functions/_instagram.js): '' | ok | nao_encontrado
+  ig_situacao   TEXT NOT NULL DEFAULT '',      -- Instagram conferido pela API (functions/_lib/instagram.js): '' | ok | nao_encontrado
   ig_seguidores INTEGER NOT NULL DEFAULT 0,    -- seguidores reais na última conferência
   ig_posts      INTEGER NOT NULL DEFAULT 0,
   ig_conferido_em TEXT NOT NULL DEFAULT '',

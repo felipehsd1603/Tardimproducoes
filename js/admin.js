@@ -743,7 +743,7 @@
   }
   function numeroWa(t) { var n = String(t || "").replace(/\D/g, ""); if (n && n.length <= 11) n = "55" + n; return n; }
 
-  // Instagram conferido pela API da Meta (functions/_instagram.js, rota parceiros/<id>/instagram)
+  // Instagram conferido pela API da Meta (functions/_lib/instagram.js, rota parceiros/<id>/instagram)
   function selosInsta(p) {
     var d = el("span");
     if (!p.instagram) return d;

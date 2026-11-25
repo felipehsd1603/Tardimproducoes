@@ -1,0 +1,30 @@
+name: Testes
+
+# Roda a suíte de integração (tests/) em todo push e pull request.
+# Os testes sobem o site inteiro com o wrangler num banco D1 local descartável: nada toca a produção.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Sintaxe das Functions
+        run: for f in $(find functions -name '*.js'); do node --check "$f" || exit 1; done
+      - name: Testes de integração
+        run: npm test

@@ -1,5 +1,5 @@
 // Provas e convites no formato da API v1 (docs/api-v1-parceiros.md).
-// Usado pelas rotas (functions/api/v1) e pelos avisos às plataformas (functions/_avisos.js).
+// Usado pelas rotas (functions/api/v1) e pelos avisos às plataformas (functions/_api-v1/avisos.js).
 // "integ" = linha de integracoes com p_nome (nome da assessoria), parceiro_id e ambiente.
 
 const TAMANHOS_PADRAO = ["PP", "P", "M", "G", "GG", "XG", "XGG"]; // mesmos de js/assessorias.js

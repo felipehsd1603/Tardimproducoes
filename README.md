@@ -114,8 +114,8 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 **Abas do painel:**
 
 - **Provas**: cadastro completo da prova (dados, arte, valores, kit, programação, links). A arte enviada é reduzida para JPG de até 1600 px e guardada no banco. Marcou como publicada e salvou, a prova já está no site (até 1 minuto de cache): o calendário, a página `prova-<id>.html` com a prévia certa e o kit de divulgação são servidos na hora pelo banco (`functions/_middleware.js`), sem publicar o site de novo. Desmarcou, ela sai. As provas do `js/eventos.js` aparecem como "No código" e podem ser trazidas para o painel; a versão do painel vale no site.
-- **Parceiros**: embaixadores, influenciadores, assessorias e equipes (contato, CPF/CNPJ e Pix para a comissão). Embaixador e influenciador têm o tipo de profissional; para "Profissional de Educação Física (CREF6/MG)" o número do CREF6 é obrigatório e o botão "Validar no CREF6" consulta o registro na página pública do CREF6 (`functions/_cref6.js`, pela rota `api/admin/cref6`, só para quem está no painel). O painel avisa, sem impedir o cadastro, quando o registro não existe, não está ativo ou está em nome de outra pessoa; se o CREF6 estiver fora do ar, salva como "não conferido". A lista mostra "CREF6 ativo", "CREF6 não conferido" ou a situação devolvida. Assessoria e equipe têm logo (PNG até 400 px) e cor, usadas na inscrição coletiva e na página da equipe. As imagens ficam na tabela `arquivos` e são servidas em `/arquivos/<caminho>`; cada envio ganha nome novo, e o antigo continua valendo para links já enviados.
-- **Instagram dos parceiros** (`functions/_instagram.js`): o painel confere os seguidores reais pela API oficial da Meta (Business Discovery), usando a conta do Instagram configurada em `IG_USER_ID` (hoje a do Felipe; para passar à @tardimproducoes, basta gerar token e id dela e trocar os dois segredos). O parceiro não faz nada. Todo cadastro novo com Instagram já é conferido na hora. Na aprovação e na lista aparece "Instagram: N seguidores", com alerta quando o número informado passa 30% do real, ou "Instagram não encontrado" (conta pessoal, privada ou @ errado: só conta Comercial ou Criador de conteúdo aparece). O botão "Conferir Instagram" atualiza (rota `api/admin/parceiros/<id>/instagram`). Trocar o @ apaga a conferência antiga. A API é gratuita. Sem os segredos abaixo, tudo segue como antes, só sem a conferência.
+- **Parceiros**: embaixadores, influenciadores, assessorias e equipes (contato, CPF/CNPJ e Pix para a comissão). Embaixador e influenciador têm o tipo de profissional; para "Profissional de Educação Física (CREF6/MG)" o número do CREF6 é obrigatório e o botão "Validar no CREF6" consulta o registro na página pública do CREF6 (`functions/_lib/cref6.js`, pela rota `api/admin/cref6`, só para quem está no painel). O painel avisa, sem impedir o cadastro, quando o registro não existe, não está ativo ou está em nome de outra pessoa; se o CREF6 estiver fora do ar, salva como "não conferido". A lista mostra "CREF6 ativo", "CREF6 não conferido" ou a situação devolvida. Assessoria e equipe têm logo (PNG até 400 px) e cor, usadas na inscrição coletiva e na página da equipe. As imagens ficam na tabela `arquivos` e são servidas em `/arquivos/<caminho>`; cada envio ganha nome novo, e o antigo continua valendo para links já enviados.
+- **Instagram dos parceiros** (`functions/_lib/instagram.js`): o painel confere os seguidores reais pela API oficial da Meta (Business Discovery), usando a conta do Instagram configurada em `IG_USER_ID` (hoje a do Felipe; para passar à @tardimproducoes, basta gerar token e id dela e trocar os dois segredos). O parceiro não faz nada. Todo cadastro novo com Instagram já é conferido na hora. Na aprovação e na lista aparece "Instagram: N seguidores", com alerta quando o número informado passa 30% do real, ou "Instagram não encontrado" (conta pessoal, privada ou @ errado: só conta Comercial ou Criador de conteúdo aparece). O botão "Conferir Instagram" atualiza (rota `api/admin/parceiros/<id>/instagram`). Trocar o @ apaga a conferência antiga. A API é gratuita. Sem os segredos abaixo, tudo segue como antes, só sem a conferência.
   Configuração, uma vez:
   1. A conta do Instagram que consulta precisa ser profissional (Comercial ou Criador de conteúdo) e estar ligado a uma Página do Facebook.
   2. Em developers.facebook.com, app **Tardim Parceiros** (id 1131643113075137, portfólio Felipe Helison), caso de uso "Gerenciar mensagens e conteúdo no Instagram", com as permissões `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`, `pages_show_list` e `business_management`. O app antigo "Tardimproducoes" não aceita esse caso de uso.
@@ -147,13 +147,15 @@ Para o servidor local, coloque a saída em `.dev.vars` como `TARDIM_ASSINATURA_J
 
 - **Rotas sem chave**: `GET /api/v1/chaves-publicas`, `POST /api/v1/conexoes/<id>/aceitar` e `/recusar` (autenticadas pelo código de uso único do convite).
 - **Rotas com chave**: `GET /eu`, `DELETE /conexao`, `GET /provas`, `GET /provas/<id>`, `GET /convites`, `POST /convites/<id>/aceitar` e `/recusar`. Envios, situação dos atletas e resultados respondem `501` até a próxima etapa.
-- **Código**: `functions/api/v1/[[rota]].js` (rotas), `functions/_assinatura.js` (JWS), `functions/_avisos.js` (convite de conexão e avisos assinados com HMAC), `functions/_provas_api.js` (formato das provas e convites), `functions/_chaves.js`. O banco guarda só o SHA-256 da chave e do código do convite. Limite: 120 chamadas por minuto por chave; aceitar/recusar, 20 por minuto por IP. Sem CORS: só servidor chama.
+- **Código**: `functions/api/v1/[[rota]].js` (tabela de rotas) e `functions/_api-v1/` (autenticação, conexões, catálogo, envios, formato das provas, avisos com HMAC e a fila de novas tentativas); JWS e chaves em `functions/_lib/`. O banco guarda só o SHA-256 da chave e do código do convite. Limite: 120 chamadas por minuto por chave; aceitar/recusar, 20 por minuto por IP. Sem CORS: só servidor chama.
+- **Documentação navegável**: `/api/v1/docs` (Swagger) e `/api/v1/openapi.json`.
+- **Avisos que falham** são tentados de novo em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h (tabela `avisos_fila`).
 - **Banco já criado**: rode `d1/migracoes/013-integracoes.sql`.
 ## Área do parceiro (cadastro e login)
 
 `parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias, influenciadores e embaixadores se cadastram e entram. API em `functions/api/parceiro/`.
 
-- **Cadastro**: tipo, nome (ou nome da assessoria e responsável), WhatsApp (obrigatório), estado e cidade, Instagram e aceite da política de privacidade e das regras do programa. Influenciador também precisa informar o Instagram e o número estimado de seguidores. A cidade é escolhida digitando, com sugestões da lista do IBGE do estado escolhido (`functions/_cidades.js`, servida por `api/parceiro/cidades?uf=MG`); o servidor só aceita cidade da lista e grava o nome oficial, mesmo que a pessoa digite sem acento. Para atualizar a lista, baixe `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado` e gere o arquivo de novo. Entra com e-mail e senha (mínimo de 8 caracteres, guardada só como hash PBKDF2) ou pelo botão **Entrar com Google**. Quem entra com Google e ainda não tem cadastro completa os dados na sequência. Se o e-mail do Google já tiver cadastro com senha, as duas formas passam a valer na mesma conta.
+- **Cadastro**: tipo, nome (ou nome da assessoria e responsável), WhatsApp (obrigatório), estado e cidade, Instagram e aceite da política de privacidade e das regras do programa. Influenciador também precisa informar o Instagram e o número estimado de seguidores. A cidade é escolhida digitando, com sugestões da lista do IBGE do estado escolhido (`functions/_lib/cidades.js`, servida por `api/parceiro/cidades?uf=MG`); o servidor só aceita cidade da lista e grava o nome oficial, mesmo que a pessoa digite sem acento. Para atualizar a lista, baixe `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado` e gere o arquivo de novo. Entra com e-mail e senha (mínimo de 8 caracteres, guardada só como hash PBKDF2) ou pelo botão **Entrar com Google**. Quem entra com Google e ainda não tem cadastro completa os dados na sequência. Se o e-mail do Google já tiver cadastro com senha, as duas formas passam a valer na mesma conta.
 - **Aprovação**: o cadastro chega como parceiro com situação "pendente" e inativo. O painel abre na aba Parceiros, mostra "Parceiros (N novos)" e o bloco "Cadastros aguardando aprovação" com **Aprovar** e **Recusar** (o motivo da recusa aparece para o parceiro). Aprovado, o painel oferece a mensagem de aviso pelo WhatsApp.
 - **Aviso por e-mail**: a cada cadastro novo a Tardim recebe um e-mail com os dados e o link do painel, se `RESEND_API_KEY` e `AVISO_EMAIL` estiverem definidos (veja abaixo). Sem eles, o aviso fica só no painel.
 - **Minha área**: pendente vê "Em análise"; recusado vê o motivo; aprovado vê os convites que a Tardim criou para ele no painel (prova, cupom, condições, link para os atletas, kit de divulgação e, para assessoria, o link da inscrição coletiva).
@@ -217,27 +219,35 @@ O mapa conta as corridas de cada cidade a partir das edições em `REALIZADAS`. 
 
 Para ver só as páginas, abra o `index.html` no navegador. Assim os formulários funcionam, mas nada é gravado no banco.
 
-Para testar com as funções e um banco local (precisa do Node.js):
+Para testar com as funções e um banco local (precisa do Node.js 20 ou mais novo):
 
 ```
+npm install
 npx wrangler d1 execute tardim --local --file d1/schema.sql
 npx wrangler d1 execute tardim --local --file d1/painel.sql
-npx wrangler pages dev . --port 8799 --binding ADMIN_SENHA=teste --binding SESSAO_SEGREDO=segredo-local
+node scripts/db-registrar-migracoes.mjs --local --todas
+npm run dev -- --binding ADMIN_SENHA=teste --binding SESSAO_SEGREDO=segredo-local
 ```
 
-O site abre em `http://127.0.0.1:8799`. O banco local fica em `.wrangler/` (fora do repositório) e não tem relação com o banco real.
+O site abre em `http://127.0.0.1:8791`. O banco local fica em `.wrangler/` (fora do repositório) e não tem relação com o banco real. Para a integração com as assessorias, ponha `TARDIM_ASSINATURA_JWK` em `.dev.vars` (veja [API v1 para parceiros](#api-v1-para-parceiros-integração-com-plataformas-de-assessoria)).
+
+**Testes automáticos:** `npm test` sobe o site inteiro num banco descartável e roda os testes de `tests/` (cerca de 2 minutos). O GitHub roda os mesmos testes a cada push. Como o backend é organizado, como acrescentar uma rota e as regras de segurança: [docs/arquitetura.md](docs/arquitetura.md).
+
+**Documentação das APIs (Swagger):** `/api/v1/docs` (API para parceiros, pública) e `/api/admin/docs` (APIs internas, com login no painel).
 
 ## Publicar (Cloudflare Pages)
 
 A publicação é feita do computador, por upload direto, com o `wrangler` (na primeira vez, `npx wrangler login` abre o navegador para autorizar a conta da Cloudflare):
 
 ```
-node scripts/gerar-paginas.js --versao
-npx wrangler pages deploy --project-name tardim-teste --branch main
+npm run db:migracoes:producao   # só se houver migração nova em d1/migracoes/
+npm run publicar                # gera as páginas com a versão nova e publica
 ```
 
+(`npm run publicar` = `node scripts/gerar-paginas.js --versao` + `wrangler pages deploy --project-name tardim-teste --branch main`.)
+
 - Hoje existe só o projeto de teste `tardim-teste`, em `https://tardim-teste.pages.dev`. O projeto definitivo (`tardim-producoes`, o nome que está no `wrangler.toml`) ainda não foi criado; crie com `npx wrangler pages project create tardim-producoes --production-branch main` e passe a publicar com esse nome.
-- A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.js` responde 404 para `functions/`, `d1/`, `scripts/`, `.github/`, `wrangler.toml`, `README.md`, `.gitignore` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.
+- A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.js` responde 404 para `functions/`, `d1/`, `docs/`, `scripts/`, `tests/`, `.github/`, `node_modules/`, `wrangler.toml`, `README.md`, `CHANGELOG.md`, `package.json`, `package-lock.json`, `.gitignore`, `.editorconfig` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas; o teste "arquivos privados" (`npm test`) confere. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.
 - As funções em `functions/` e a ligação com o banco (`wrangler.toml`) sobem junto, no mesmo comando.
 - A Cloudflare serve as páginas sem o `.html` (`/assessorias.html` redireciona para `/assessorias`).
 - Publicando do computador, o `--versao` carimba o `?v=` dos arquivos CSS e JS com data e hora, para os visitantes baixarem a versão nova (veja [Depois de editar CSS ou JS](#depois-de-editar-css-ou-js)).
@@ -267,12 +277,22 @@ E as do painel, em `d1/painel.sql`:
 | `ticketsports_posts` | Posts automáticos da Ticket Sports ("Url do post"), guardados crus |
 | `login_erros` | Senhas erradas no painel e na área do parceiro (bloqueio de 15 minutos) e limite de cadastros por IP |
 
-Para criar ou atualizar as tabelas (pode rodar de novo sem perder dados):
+**Banco novo:** `d1/schema.sql` e `d1/painel.sql` têm o esquema completo (podem rodar de novo sem perder dados); depois, registre as migrações como aplicadas:
 
 ```
 npx wrangler d1 execute tardim --remote --file d1/schema.sql
 npx wrangler d1 execute tardim --remote --file d1/painel.sql
+node scripts/db-registrar-migracoes.mjs --remote --todas
 ```
+
+**Banco existente (produção):** as mudanças ficam em `d1/migracoes/` e o wrangler aplica só as que faltam, registrando na tabela `d1_migrations`:
+
+```
+npm run db:migracoes:lista       # o que falta
+npm run db:migracoes:producao    # aplica
+```
+
+Uma única vez, antes do primeiro `db:migracoes:producao`: as migrações 001 a 012 foram aplicadas à mão, então registre-as com `node scripts/db-registrar-migracoes.mjs --remote --ate 012`. Detalhes em [docs/arquitetura.md](docs/arquitetura.md#banco-de-dados-e-migrações).
 
 Para consultar:
 
@@ -285,7 +305,7 @@ Também dá para ver os dados no painel da Cloudflare, em **Storage & Databases 
 
 A tabela `atletas` tem dados pessoais (CPF, e-mail, telefone). O acesso é só pela conta da Cloudflare e pelo painel do site. O que o site diz aos visitantes sobre isso está em `privacidade.html`; se mudar o que é guardado, mude o texto de lá também.
 
-As funções só aceitam pedidos vindos do próprio site (conferem o cabeçalho `Origin`) e limitam o tamanho de cada campo. `/api/orcamento` e `/api/inscricao` aceitam até 10 envios por IP por hora cada uma (`functions/_limite.js`, tabela `envios_tentativas`); acima disso respondem 429 e o site segue abrindo o WhatsApp ou o e-mail normalmente.
+As funções só aceitam pedidos vindos do próprio site (conferem o cabeçalho `Origin`) e limitam o tamanho de cada campo. `/api/orcamento` e `/api/inscricao` aceitam até 10 envios por IP por hora cada uma (`functions/_lib/limite.js`, tabela `envios_tentativas`); acima disso respondem 429 e o site segue abrindo o WhatsApp ou o e-mail normalmente.
 
 ## Domínio
 

@@ -26,7 +26,7 @@
     ["RS", "Rio Grande do Sul"], ["RO", "Rondônia"], ["RR", "Roraima"], ["SC", "Santa Catarina"], ["SP", "São Paulo"],
     ["SE", "Sergipe"], ["TO", "Tocantins"]];
   var lead = document.getElementById("parc-lead");
-  // Municípios do IBGE por estado, buscados na API (functions/_cidades.js)
+  // Municípios do IBGE por estado, buscados na API (functions/_lib/cidades.js)
   var cidadesUf = {};
   function cidadesDe(uf) {
     if (!cidadesUf[uf]) cidadesUf[uf] = api("GET", "cidades?uf=" + uf).then(function (r) { return r.cidades; })

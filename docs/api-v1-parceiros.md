@@ -2,6 +2,8 @@
 
 Contrato da integração nativa entre a Tardim Produções (organizadora de provas) e plataformas de assessoria, começando pelo IM3 (`im3-eventos`). Este arquivo é igual nos dois repositórios: `TardimApp/docs/api-v1-parceiros.md` e `im3-eventos/docs/integracao-tardim-api-v1.md`. Mudou um, muda o outro no mesmo dia.
 
+**Documentação navegável (Swagger):** https://tardimproducoes.com.br/api/v1/docs · especificação OpenAPI 3.1: https://tardimproducoes.com.br/api/v1/openapi.json
+
 ## Princípios
 
 1. **Cada sistema tem o seu banco.** A Tardim nunca lê o Supabase do IM3, e o IM3 nunca lê o D1 da Tardim. Os dois conversam só por esta API e pelos webhooks.
@@ -408,8 +410,8 @@ x-tardim-assinatura: t=1764090000,v1=5d41402abc4b2a76b9719d911017c592...
 - Recusa o aviso se `t` estiver a mais de 5 minutos do relógio.
 
 **Resposta esperada:** qualquer `2xx` em até 10 segundos.
-- Nesta versão a Tardim tenta uma vez; se falhar, o painel mostra "Aviso não entregue" com "Reenviar". A plataforma concilia pelas rotas `GET` (`/convites`, `/atletas`) ao abrir as telas dela.
-- Próxima versão: novas tentativas em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h.
+- Se falhar, a Tardim tenta de novo em 1 min, 5 min, 30 min, 2 h, 6 h e 24 h, sempre com o **mesmo** `x-tardim-entrega` (a plataforma deve ignorar uma entrega que já processou). Depois disso, a entrega é dada como perdida; o painel mostra "Aviso não entregue" com "Reenviar".
+- A plataforma também concilia pelas rotas `GET` (`/convites`, `/atletas`) ao abrir as telas dela.
 
 | Evento | `dados` |
 |---|---|
@@ -446,7 +448,7 @@ Corpo:
 |---|---|
 | Rotas da v1 | `functions/api/v1/[[rota]].js` (separada de `/api/inscricao`, que continua para a planilha) |
 | Chaves | tabela `integracoes` (parceiro_id, prefixo, hash, webhook_url, webhook_segredo, ambiente, criada_em, revogada_em) |
-| Conexão | tabela `conexoes` (convite assinado: endereço da plataforma, hash do código, situação, expira); segredo `TARDIM_ASSINATURA_JWK` (chave privada ES256, gerada por `scripts/gerar-chave-assinatura.mjs`); `functions/_assinatura.js` e `functions/_avisos.js` |
+| Conexão | tabela `conexoes` (convite assinado: endereço da plataforma, hash do código, situação, expira); segredo `TARDIM_ASSINATURA_JWK` (chave privada ES256, gerada por `scripts/gerar-chave-assinatura.mjs`); `functions/_lib/assinatura.js` e `functions/_api-v1/avisos.js` |
 | Convites de prova | `convites` ganha `api_situacao`, `api_modo_pagamento`, `api_motivo`, `api_respondido_em`, `api_aviso` (resultado do último aviso) |
 | Envios | tabela `envios_api` (id, integracao_id, prova_id, referencia_externa, idempotency_key, hash do corpo, resposta, criado_em) |
 | Atletas | `atletas` ganha `origem` (`planilha` / `api`), `id_externo`, `situacao`, `motivo`, `numero_peito`, `modo_pagamento` |
