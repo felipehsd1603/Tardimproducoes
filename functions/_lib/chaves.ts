@@ -7,7 +7,7 @@ import { aleatorioHex, sha256 } from "./http.ts";
 export { sha256 };
 
 // tdm_live_<48 hex> ou tdm_test_<48 hex>
-export function novaChave(ambiente) {
+export function novaChave(ambiente: string): { chave: string; prefixo: string } {
   const chave = "tdm_" + (ambiente === "test" ? "test" : "live") + "_" + aleatorioHex(24);
   return { chave, prefixo: chave.slice(0, 13) };
 }

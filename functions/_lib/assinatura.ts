@@ -3,10 +3,14 @@
 // scripts/gerar-chave-assinatura.mjs). A parte pública sai em GET /api/v1/chaves-publicas.
 
 import { enc, b64url } from "./http.ts";
+import type { Env } from "./tipos.ts";
 
-const b64urlTexto = (t) => b64url(enc.encode(t));
+/** Chave privada P-256 do segredo TARDIM_ASSINATURA_JWK (com o "kid" que vai no cabeçalho do JWS). */
+interface JwkPrivada { kty: "EC"; crv: "P-256"; x: string; y: string; d: string; kid: string }
 
-function jwkPrivada(env) {
+const b64urlTexto = (t: string): string => b64url(enc.encode(t));
+
+function jwkPrivada(env: Env): JwkPrivada | null {
   if (!env.TARDIM_ASSINATURA_JWK) return null;
   try {
     const j = JSON.parse(env.TARDIM_ASSINATURA_JWK);
@@ -14,16 +18,16 @@ function jwkPrivada(env) {
   } catch (e) { return null; }
 }
 
-export function assinaturaConfigurada(env) { return !!jwkPrivada(env); }
+export function assinaturaConfigurada(env: Env): boolean { return !!jwkPrivada(env); }
 
 // JWKS público (sem o "d")
-export function chavesPublicas(env) {
+export function chavesPublicas(env: Env): { keys: Record<string, string>[] } {
   const j = jwkPrivada(env);
   if (!j) return { keys: [] };
   return { keys: [{ kty: "EC", crv: "P-256", x: j.x, y: j.y, kid: j.kid, alg: "ES256", use: "sig" }] };
 }
 
-export async function assinaJws(env, conteudo, typ) {
+export async function assinaJws(env: Env, conteudo: unknown, typ?: string): Promise<string> {
   const j = jwkPrivada(env);
   if (!j) throw new Error("Falta o segredo TARDIM_ASSINATURA_JWK.");
   const chave = await crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x: j.x, y: j.y, d: j.d, ext: true },

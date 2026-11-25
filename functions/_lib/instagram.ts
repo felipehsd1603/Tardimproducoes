@@ -17,27 +17,34 @@
 //     | { ok: true, encontrado: false, usuario }
 //     | { ok: false, erro: "config" | "usuario" | "token" | "indisponivel" }
 
+import type { Env, Dados } from "./tipos.ts";
+
 const VERSAO = "v23.0";
 
+export type ResultadoInstagram =
+  | { ok: true; encontrado: true; usuario: string; nome: string; seguidores: number; posts: number }
+  | { ok: true; encontrado: false; usuario: string; seguidores?: undefined; posts?: undefined }
+  | { ok: false; erro: "config" | "usuario" | "token" | "indisponivel" };
+
 // "@Perfil", "instagram.com/perfil/", "perfil" -> "perfil"
-export function usuarioInstagram(texto) {
+export function usuarioInstagram(texto: unknown): string {
   const u = String(texto == null ? "" : texto).trim()
     .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, "").toLowerCase();
   return /^[\w.]{1,30}$/.test(u) ? u : "";
 }
 
-export async function consultaInstagram(env, texto) {
+export async function consultaInstagram(env: Env, texto: unknown): Promise<ResultadoInstagram> {
   if (!env.IG_USER_ID || !env.IG_TOKEN) return { ok: false, erro: "config" };
   const usuario = usuarioInstagram(texto);
   if (!usuario) return { ok: false, erro: "usuario" };
   const campos = "business_discovery.username(" + usuario + "){username,name,followers_count,media_count}";
-  let r, d;
+  let r: Response, d: Dados;
   try {
     // token no cabeçalho, para não aparecer em logs de URL
     r = await fetch("https://graph.facebook.com/" + VERSAO + "/" + encodeURIComponent(env.IG_USER_ID) + "?fields=" + encodeURIComponent(campos), {
       headers: { authorization: "Bearer " + env.IG_TOKEN },
     });
-    d = await r.json();
+    d = await r.json<Dados>();
   } catch (e) {
     return { ok: false, erro: "indisponivel" };
   }
@@ -56,8 +63,8 @@ export async function consultaInstagram(env, texto) {
 }
 
 // Consulta e grava no parceiro (colunas ig_*). Falha de configuração/rede não grava nada.
-export async function confereInstagramParceiro(env, id) {
-  const p = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first();
+export async function confereInstagramParceiro(env: Env, id: string): Promise<ResultadoInstagram | null> {
+  const p = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first<{ instagram: string }>();
   if (!p) return null;
   const r = await consultaInstagram(env, p.instagram);
   if (!r.ok) return r;

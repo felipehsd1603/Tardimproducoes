@@ -11,29 +11,36 @@
 //     | { ok: true, encontrado: false, registro: "MG-012345" }
 //     | { ok: false, erro: "numero" | "indisponivel" }
 
+export type ResultadoCref6 =
+  | { ok: true; encontrado: true; registro: string; nome: string; categoria: string; situacao: string; ativo: boolean }
+  | { ok: true; encontrado: false; registro: string }
+  | { ok: false; erro: "numero" | "indisponivel" };
+
+interface LinhaCref6 { registro: string; nome: string; categoria: string; situacao: string }
+
 export const CREF6_URL = "https://portal.cref6.org.br/spw/ConsultaCadastral/TelaConsultaPublicaCompleta.aspx";
 const CAMPO = "ctl00$ContentPlaceHolder1$Callbackconsulta$txtConsultaTotal";
 const BOTAO = "ctl00$ContentPlaceHolder1$Callbackconsulta$btnConsultaTotal";
 const AGENTE = "Mozilla/5.0 (compatible; TardimProducoes/1.0; validacao de registro profissional)";
 
 // "012345-G/MG", "MG-12345", "12345" -> "012345" (só os números, com 6 casas)
-export function numeroCref(texto) {
+export function numeroCref(texto: unknown): string {
   const d = String(texto == null ? "" : texto).replace(/\D/g, "").replace(/^0+/, "");
   if (!d || d.length > 6) return "";
   return ("000000" + d).slice(-6);
 }
 
-function desfaz(s) {
-  return String(s).replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(Number(n)); })
-    .replace(/&#x([0-9a-f]+);/gi, function (_, n) { return String.fromCharCode(parseInt(n, 16)); })
+function desfaz(s: string): string {
+  return String(s).replace(/&#(\d+);/g, function (_, n: string) { return String.fromCharCode(Number(n)); })
+    .replace(/&#x([0-9a-f]+);/gi, function (_, n: string) { return String.fromCharCode(parseInt(n, 16)); })
     .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }
-function texto(html) {
+function texto(html: string): string {
   return desfaz(String(html).replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 }
 
 // Campos do formulário (inclui __VIEWSTATE e __EVENTVALIDATION), menos os botões
-function campos(html) {
+function campos(html: string): URLSearchParams {
   const f = new URLSearchParams();
   const re = /<input\b[^>]*>/gi;
   let m;
@@ -48,8 +55,8 @@ function campos(html) {
 }
 
 // Linhas da tabela de profissionais: registro, nome, categoria e situação
-export function linhasCref6(html) {
-  const out = [];
+export function linhasCref6(html: string): LinhaCref6[] {
+  const out: LinhaCref6[] = [];
   const partes = String(html).split(/<tr\b[^>]*id="[^"]*gridConsulta_DXDataRow\d+"[^>]*>/i).slice(1);
   partes.forEach(function (p) {
     const fim = p.search(/<\/tr>/i);
@@ -62,7 +69,7 @@ export function linhasCref6(html) {
   return out;
 }
 
-export async function consultaCref6(numero, opcoes) {
+export async function consultaCref6(numero: unknown, opcoes?: { fetch?: typeof fetch }): Promise<ResultadoCref6> {
   const num = numeroCref(numero);
   if (!num) return { ok: false, erro: "numero" };
   const registro = "MG-" + num;

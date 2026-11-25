@@ -4,24 +4,30 @@
 // Segredos: MP_ACCESS_TOKEN (credencial de teste "TEST-..." ou de produção "APP_USR-...").
 // Opcionais: MP_API_URL (padrão https://api.mercadopago.com; nos testes, o simulador tests/apoio/mercadopago.mjs).
 
+import type { Env, Dados } from "./tipos.ts";
+
 export class ErroMp extends Error {
-  constructor(message) { super(message); }
+  constructor(message: string) { super(message); }
 }
 
-export const mpConfigurado = (env) => !!env.MP_ACCESS_TOKEN;
-const base = (env) => (env.MP_API_URL || "https://api.mercadopago.com").replace(/\/$/, "");
+export const mpConfigurado = (env: Env): boolean => !!env.MP_ACCESS_TOKEN;
+const base = (env: Env): string => (env.MP_API_URL || "https://api.mercadopago.com").replace(/\/$/, "");
 
-async function api(env, metodo, caminho, dados, idem) {
-  const cab = { authorization: "Bearer " + env.MP_ACCESS_TOKEN, "content-type": "application/json" };
+async function api(env: Env, metodo: string, caminho: string, dados?: unknown, idem?: string): Promise<Dados> {
+  const cab: Record<string, string> = { authorization: "Bearer " + env.MP_ACCESS_TOKEN, "content-type": "application/json" };
   if (idem) cab["x-idempotency-key"] = idem;
   const r = await fetch(base(env) + caminho, { method: metodo, headers: cab, body: dados ? JSON.stringify(dados) : undefined }).catch(() => null);
-  const j = r ? await r.json().catch(() => null) : null;
+  const j = r ? await r.json<Dados>().catch(() => null) : null;
   if (!r || !r.ok || !j) throw new ErroMp("O Mercado Pago recusou o pedido (" + (r ? r.status : "sem resposta") + (j && j.message ? ": " + j.message : "") + ").");
   return j;
 }
 
 /** Cria o checkout. Devolve { id, url } (a página de pagamento do Mercado Pago). */
-export async function criaCheckout(env, { referencia, centavos, titulo, email, nome, cpf, parcelas, volta, expira }) {
+export interface PedidoCheckout {
+  referencia: string; centavos: number; titulo: string; email: string; nome: string; cpf: string; parcelas: number; volta: string; expira: string;
+}
+
+export async function criaCheckout(env: Env, { referencia, centavos, titulo, email, nome, cpf, parcelas, volta, expira }: PedidoCheckout): Promise<{ id: string; url: string }> {
   const [primeiro, ...resto] = nome.split(" ");
   const j = await api(env, "POST", "/checkout/preferences", {
     items: [{ id: referencia, title: titulo.slice(0, 250), quantity: 1, currency_id: "BRL", unit_price: centavos / 100 }],
@@ -40,9 +46,9 @@ export async function criaCheckout(env, { referencia, centavos, titulo, email, n
 }
 
 /** Pagamento aprovado da referência, se houver: { aprovado, centavos, id }. */
-export async function pagamentoDaReferencia(env, referencia) {
+export async function pagamentoDaReferencia(env: Env, referencia: string): Promise<{ aprovado: boolean; centavos?: number; id?: string }> {
   const j = await api(env, "GET", "/v1/payments/search?sort=date_created&criteria=desc&external_reference=" + encodeURIComponent(referencia));
   const lista = Array.isArray(j.results) ? j.results : [];
-  const ok = lista.find((p) => p.status === "approved");
+  const ok = lista.find((p: Dados) => p.status === "approved");
   return ok ? { aprovado: true, centavos: Math.round(Number(ok.transaction_amount || 0) * 100), id: String(ok.id) } : { aprovado: false };
 }
