@@ -84,9 +84,9 @@ export const OPENAPI_V1 = {
         description: "Reenviar o mesmo `id_externo` atualiza o atleta. Mesma `Idempotency-Key` com o mesmo corpo devolve a mesma resposta por 7 dias; com outro corpo, 409. Atletas com erro vão em `rejeitados` e os outros seguem.",
         parameters: [{ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", maxLength: 120 }, description: "Id do lote na plataforma" }],
         requestBody: corpo(ref("Envio")),
-        // Antes havia aqui 403 "sem_convite", mas o ...ERROS_CHAVE abaixo o sobrescrevia (o JSON publicado mostra o 403 de
-        // assessoria_inativa). Ficou como sai hoje para não mudar a especificação; ver o relatório da migração para TypeScript.
-        responses: { 202: ok("Recebido", ref("EnvioResposta")), 400: erro("Envio inválido", "json_invalido", "campo_obrigatorio"), 409: erro("Conflito", "idempotencia_conflito", "prazo_encerrado"), 413: erro("Mais de 1.000 atletas", "muitos_atletas"), ...ERROS_CHAVE } },
+        // O 403 vem depois de ...ERROS_CHAVE: os dois motivos (sem convite aceito e assessoria inativa) aparecem juntos
+        responses: { 202: ok("Recebido", ref("EnvioResposta")), 400: erro("Envio inválido", "json_invalido", "campo_obrigatorio"), 409: erro("Conflito", "idempotencia_conflito", "prazo_encerrado"), 413: erro("Mais de 1.000 atletas", "muitos_atletas"), ...ERROS_CHAVE,
+          403: erro("Sem convite aceito para a prova, ou assessoria inativa", "sem_convite", "assessoria_inativa") } },
     },
     "/envios/{id}": { get: { tags: ["Inscrições"], summary: "Um envio e a situação dos atletas dele", parameters: [idPath("id", "env_...")],
       responses: { 200: ok("Envio", { type: "object", properties: { envio: ref("EnvioInfo"), prova_id: { type: "string" }, atletas: { type: "array", items: ref("SituacaoAtleta") }, rejeitados: { type: "array", items: ref("Rejeitado") } } }), 404: erro("Envio não existe", "nao_encontrado"), ...ERROS_CHAVE } } },
