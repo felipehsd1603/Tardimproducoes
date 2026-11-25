@@ -253,7 +253,7 @@ npm run publicar                # gera as páginas com a versão nova e publica
 - Publicando do computador, o `--versao` carimba o `?v=` dos arquivos CSS e JS com data e hora, para os visitantes baixarem a versão nova (veja [Depois de editar CSS ou JS](#depois-de-editar-css-ou-js)).
 - O painel precisa, em cada projeto, das tabelas de `d1/painel.sql` e dos segredos `ADMIN_SENHA` e `SESSAO_SEGREDO` (veja [Painel](#painel-provas-parceiros-convites-e-apuração)).
 
-O workflow `.github/workflows/pages.yml` (GitHub Pages) continua no repositório, mas não é mais o caminho de publicação: o GitHub Pages não roda as funções nem acessa o banco.
+O único workflow do GitHub é o de testes (`.github/workflows/ci.yml`). A publicação é só pelo Cloudflare (`npm run publicar`): o GitHub Pages não roda as funções e publicaria o repositório inteiro sem o bloqueio de arquivos privados.
 
 ## Banco de dados (Cloudflare D1)
 
