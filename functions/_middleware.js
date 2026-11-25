@@ -6,6 +6,7 @@
 // As rotas que passam por aqui estão limitadas em _routes.json.
 
 import { processaFila } from "./_api-v1/avisos.js";
+import { conferePendentes } from "./_lib/inscricoes-site.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -105,6 +106,8 @@ function cuidaDaFila(env, url, waitUntil) {
   if (!env.DB || !waitUntil) return;
   const api = /^\/api\/(admin|v1)\//.test(url.pathname);
   if (api || Math.random() < 0.1) waitUntil(processaFila(env).catch(() => {}));
+  // PIX das inscrições pelo site: confere no banco os que ainda não foram pagos (também na tela do QR Code)
+  if (Math.random() < 0.2) waitUntil(conferePendentes(env, 5).catch(() => {}));
 }
 
 export async function onRequest({ request, env, next, waitUntil }) {

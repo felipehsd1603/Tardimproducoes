@@ -19,12 +19,16 @@
 //   POST nova-senha             { token, senha }  -> troca a senha e já entra
 //   POST sair
 //   GET  eu                    { email, perfis: [parceiro + convites] }   (convites só depois de aprovado)
+//   POST inscricao              { convite_id, nome, cpf, email, telefone, nascimento, sexo, camiseta, modalidade, aceite }
+//                               inscrição no site pelo próprio parceiro: cortesia do convite enquanto houver, depois PIX com desconto
+//   GET  inscricoes             { resumo: { <convite>: { site, pelo_link, cortesias, cortesias_usadas } }, proprias: [...] }
 //
 // Segredos/variáveis: SESSAO_SEGREDO (obrigatório), GOOGLE_CLIENT_ID (login com Google),
 // RESEND_API_KEY + AVISO_EMAIL (+ AVISO_REMETENTE opcional) para o e-mail de novo cadastro.
 
 import { CIDADES } from "../../_lib/cidades.js";
 import { confereInstagramParceiro } from "../../_lib/instagram.js";
+import { ErroInscricao, provaAberta, validaAtleta, criaInscricao, publica, confere } from "../../_lib/inscricoes-site.js";
 import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.js";
 
 const COOKIE = "tardim_parceiro";
@@ -433,6 +437,63 @@ async function loginGoogle(request, env) {
   return entra(env, conta);
 }
 
+// ---------- inscrição pelo site, feita pelo próprio parceiro (functions/_lib/inscricoes-site.js) ----------
+// Usa as cortesias do convite enquanto houver; depois, paga por PIX com o desconto do cupom.
+async function conviteDaConta(env, conta, conviteId) {
+  return env.DB.prepare(
+    "SELECT c.*, p.nome AS parceiro_nome, p.tipo AS parceiro_tipo FROM convites c JOIN parceiros p ON p.id = c.parceiro_id " +
+    "WHERE c.id = ? AND (p.id = ? OR p.conta_id = ?) AND p.ativo = 1 AND p.situacao = 'aprovado' AND p.tipo IN ('embaixador','influenciador')"
+  ).bind(String(conviteId || ""), conta.parceiro_id, conta.id).first();
+}
+const cortesiasUsadas = async (env, conviteId) => ((await env.DB.prepare(
+  "SELECT COUNT(*) AS n FROM inscricoes_site WHERE convite_id = ? AND origem = 'parceiro' AND situacao = 'cortesia'"
+).bind(conviteId).first()) || {}).n || 0;
+
+async function inscricaoParceiro(request, env, ctx) {
+  const conta = await contaDaSessao(request, env);
+  if (!conta) throw new Erro(401, "Entre na sua conta.");
+  const d = await corpo(request);
+  const convite = await conviteDaConta(env, conta, d.convite_id);
+  if (!convite) throw new Erro(404, "Convite não encontrado.");
+  try {
+    const { prova, cfg } = await provaAberta(env, convite.prova_id);
+    const atleta = validaAtleta(d, cfg);
+    const cortesia = (Number(convite.cortesias) || 0) > (await cortesiasUsadas(env, convite.id));
+    return json(await criaInscricao(env, ctx, { prova, cfg, convite, origem: "parceiro", atleta, cortesia, site: new URL(request.url).origin, forma: d.forma }), 201);
+  } catch (e) {
+    if (e instanceof ErroInscricao) throw new Erro(e.status, e.message);
+    throw e;
+  }
+}
+
+async function inscricoesParceiro(request, env) {
+  const conta = await contaDaSessao(request, env);
+  if (!conta) throw new Erro(401, "Entre na sua conta.");
+  const convites = (await env.DB.prepare(
+    "SELECT c.id, c.prova_id, c.cortesias FROM convites c JOIN parceiros p ON p.id = c.parceiro_id " +
+    "WHERE (p.id = ? OR p.conta_id = ?) AND p.ativo = 1 AND p.situacao = 'aprovado' AND p.tipo IN ('embaixador','influenciador')"
+  ).bind(conta.parceiro_id, conta.id).all()).results;
+  const resumo = {};
+  const proprias = [];
+  for (const c of convites) {
+    const r = await env.DB.prepare(
+      "SELECT origem, situacao, COUNT(*) AS n, SUM(valor - acrescimo) AS v FROM inscricoes_site WHERE convite_id = ? GROUP BY origem, situacao"
+    ).bind(c.id).all();
+    const conta_ = (o, s) => r.results.filter((x) => x.origem === o && x.situacao === s).reduce((t, x) => t + x.n, 0);
+    let site = false;
+    try { site = !!(await provaAberta(env, c.prova_id)); } catch (e) { site = false; }
+    resumo[c.id] = { site, pelo_link: conta_("link", "pago"), pelo_link_valor: r.results.filter((x) => x.origem === "link" && x.situacao === "pago").reduce((t, x) => t + (x.v || 0), 0), cortesias: Number(c.cortesias) || 0, cortesias_usadas: conta_("parceiro", "cortesia") };
+    const minhas = (await env.DB.prepare(
+      "SELECT * FROM inscricoes_site WHERE convite_id = ? AND origem = 'parceiro' AND situacao IN ('pago','cortesia','aguardando') ORDER BY criado_em DESC"
+    ).bind(c.id).all()).results;
+    for (let l of minhas) {
+      if (l.situacao === "aguardando") l = await confere(env, l, { site: new URL(request.url).origin }); // PIX pago já aparece como pago
+      proprias.push(Object.assign(publica(l), { convite_id: c.id, nome: l.nome }));
+    }
+  }
+  return json({ resumo, proprias });
+}
+
 async function eu(request, env) {
   const conta = await contaDaSessao(request, env);
   if (!conta) throw new Erro(401, "Entre na sua conta.");
@@ -475,6 +536,8 @@ async function trata(request, env, ctx, rota) {
   if (a === "nova-senha" && m === "POST") return novaSenha(request, env);
   if (a === "sair" && m === "POST") return json({ ok: true }, 200, { "set-cookie": cookieFim() });
   if (a === "eu" && m === "GET") return eu(request, env);
+  if (a === "inscricao" && m === "POST") return inscricaoParceiro(request, env, ctx);
+  if (a === "inscricoes" && m === "GET") return inscricoesParceiro(request, env);
   throw new Erro(404, "Rota não encontrada.");
 }
 

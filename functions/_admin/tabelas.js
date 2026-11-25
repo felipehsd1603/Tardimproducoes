@@ -3,6 +3,7 @@
 
 import { numeroCref } from "../_lib/cref6.js";
 import { Erro, PROFISSOES, RE_ID_PROVA, TIPOS_PARCEIRO } from "./comum.js";
+import { validaConfig, ErroInscricao } from "../_lib/inscricoes-site.js";
 
 // Campos que o painel pode gravar em cada tabela: número = tamanho máximo do texto
 const TABELAS = {
@@ -12,6 +13,7 @@ const TABELAS = {
       valores: "json", kit: "json", programacao: "json", premiacao: 300, percurso_mapa: 500, regulamento: 500,
       resultados: 500, fotos: 500, realizacao: 120, texto_divulgacao: 1500, hashtags: 200, publicada: "bool",
       faq: "json", // [["pergunta", "resposta"]]; o painel só envia quando há o que gravar (banco sem a coluna continua salvando)
+      inscricao_site: "json", // inscrição direta no site com PIX (functions/_lib/inscricoes-site.js); só vai quando o painel mexe nela
     },
     obrigatorios: ["nome", "data"], ordem: "data",
   },
@@ -59,6 +61,9 @@ function limpa(tabela, d, criando) {
     const regra = def.campos[campo];
     let x = d[campo];
     if (regra === "json") {
+      if (campo === "inscricao_site") {
+        try { x = validaConfig(x); } catch (e) { if (e instanceof ErroInscricao) throw new Erro(400, e.message); throw e; }
+      }
       x = JSON.stringify(x == null ? (campo === "kit" ? { itens: [], retirada: "" } : (campo === "dados" ? {} : [])) : x);
       if (x.length > (tabela === "propostas" ? 150000 : 20000)) throw new Erro(400, "O campo " + campo + " está grande demais.");
     } else if (regra === "bool") {

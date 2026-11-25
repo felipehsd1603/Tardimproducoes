@@ -518,6 +518,7 @@
       c.append(el("p", "muted", "Cadastro aprovado! Quando a Tardim Produções te convidar para uma prova, o cupom e os links aparecem aqui."));
       return app.append(c);
     }
+    var alvos = [];
     d.convites.forEach(function (cv) {
       var pv = provaPorId(cv.prova_id);
       var bloco = el("article", "parc-convite");
@@ -546,9 +547,136 @@
         caixa.append(linha);
       });
       bloco.append(caixa);
+      if (pa.tipo === "embaixador" || pa.tipo === "influenciador") {
+        var ins = el("div", "insc-parc");
+        ins.hidden = true;
+        bloco.append(ins);
+        alvos.push({ cv: cv, n: ins });
+      }
       c.append(bloco);
     });
     app.append(c);
+    if (alvos.length && window.INSCRICAO) {
+      api("GET", "inscricoes").then(function (r) {
+        alvos.forEach(function (x) { inscricoesDoConvite(x.cv, x.n, r); });
+      }).catch(function () {});
+    }
+  }
+
+  // ---------- inscrição pelo site (js/inscricao-tela.js): números do link, cortesias e a inscrição do próprio parceiro ----------
+  var SIT_CLASSE = { pago: "insc-sit--ok", cortesia: "insc-sit--ok", aguardando: "insc-sit--espera" };
+  function chaveCodigo(id) { return "tdm-insc-codigo-" + id; }
+  function inscricoesDoConvite(cv, n, r) {
+    var I = window.INSCRICAO;
+    var rs = (r.resumo || {})[cv.id];
+    if (!rs || !rs.site) return;
+    n.innerHTML = "";
+    n.hidden = false;
+    var nums = el("p", "insc-parc__nums");
+    nums.append("Inscrições pelo seu link: ", el("b", null, String(rs.pelo_link || 0)));
+    if (rs.pelo_link_valor > 0) nums.append(" · total ", el("b", null, I.reais(rs.pelo_link_valor)));
+    n.append(nums);
+    if (rs.cortesias) {
+      var ct = el("p", "insc-parc__nums");
+      ct.append("Cortesias: usadas ", el("b", null, String(rs.cortesias_usadas || 0)), " de ", el("b", null, String(rs.cortesias)));
+      n.append(ct);
+    }
+    var minhas = (r.proprias || []).filter(function (x) { return x.convite_id === cv.id; });
+    var tela = el("div", "insc-parc__tela");
+    tela.hidden = true;
+    if (minhas.length) {
+      n.append(el("p", "insc-parc__nums", minhas.length > 1 ? "Suas inscrições:" : "Sua inscrição:"));
+      var ul = el("ul");
+      minhas.forEach(function (m) {
+        var li = el("li");
+        var txt = el("span");
+        txt.append(el("b", null, m.nome), " · " + m.modalidade + (m.camiseta ? " · camiseta " + m.camiseta : ""));
+        li.append(txt, el("span", "insc-sit " + (SIT_CLASSE[m.situacao] || ""), I.situacao[m.situacao] || m.situacao));
+        if (m.situacao === "aguardando" && (m.pix || m.cartao)) {
+          li.append(botao(m.cartao ? "Pagar no cartão" : "Ver PIX", "orc__email", function () { abrePix(cv, m, tela); }));
+        }
+        ul.append(li);
+      });
+      n.append(ul);
+    }
+    var cortesia = (rs.cortesias || 0) > (rs.cortesias_usadas || 0);
+    var acao = botao(cortesia ? "Fazer inscrição (cortesia)" : "Fazer inscrição com desconto", "btn btn--red", function () {
+      abreFormulario(cv, tela, cortesia, acao);
+    });
+    n.append(acao, tela);
+  }
+  function fechaTela(tela, acao) {
+    tela.hidden = true; tela.innerHTML = "";
+    if (acao) acao.hidden = false;
+  }
+  function voltar(tela) {
+    var p = el("div", "assess-acoes insc-depois");
+    p.append(botao("Voltar aos convites", "btn btn--line", function () { fechaTela(tela); inicio(); }));
+    return p;
+  }
+  function abreFormulario(cv, tela, cortesia, acao, valores) {
+    var I = window.INSCRICAO;
+    tela.hidden = false; tela.innerHTML = "";
+    if (acao) acao.hidden = true;
+    tela.append(el("p", "muted", "Carregando..."));
+    I.pegaJSON("api/inscricao-site/prova/" + encodeURIComponent(cv.prova_id) + "?cupom=" + encodeURIComponent(cv.cupom)).then(function (info) {
+      tela.innerHTML = "";
+      tela.append(el("p", "assess-card__step", cortesia ? "Cortesia do convite" : "Inscrição com o seu cupom"), el("h2", null, "Sua inscrição"));
+      tela.append(I.formulario({
+        info: info, cortesia: cortesia, valores: valores,
+        enviar: function (dados) { return api("POST", "inscricao", Object.assign({ convite_id: cv.id }, dados)); },
+        aoCriar: function (insc, dados) {
+          if (insc.forma === "cartao" && insc.cartao) return vaiCartao(cv, insc, dados, tela);
+          mostraPix(cv, insc, tela, dados);
+        },
+      }));
+      var cancela = el("p", "muted parc-ajuda");
+      cancela.append(botao("Cancelar", "orc__email", function () { fechaTela(tela, acao); }));
+      tela.append(cancela);
+    }).catch(function (e) {
+      tela.innerHTML = "";
+      tela.append(el("p", "assess-alerta", e.message));
+    });
+  }
+  // Cartão: paga na página do Mercado Pago, que devolve para inscricao.html?retorno=cartao (lá a tela confere e
+  // oferece a volta para cá); o código e os dados ficam no sessionStorage para a volta
+  function vaiCartao(cv, insc, dados, tela) {
+    var I = window.INSCRICAO;
+    if (insc.codigo) I.guarda(chaveCodigo(insc.id), insc.codigo);
+    var ok = insc.codigo && I.vaiCartao(insc, { origem: "parceiro", convite_id: cv.id, prova: cv.prova_id, cupom: cv.cupom, dados: dados || null });
+    if (ok) return;
+    if (insc.cartao && /^https?:\/\//i.test(insc.cartao.url)) { location.href = insc.cartao.url; return; }
+    mostraPix(cv, insc, tela, dados);
+  }
+  function mostraPix(cv, insc, tela, dados) {
+    var I = window.INSCRICAO;
+    tela.hidden = false;
+    if (insc.codigo) I.guarda(chaveCodigo(insc.id), insc.codigo);
+    I.pix(tela, insc, {
+      // Com o código (guardado ao criar), confere direto no banco; sem ele, pela lista da área do parceiro
+      consulta: insc.codigo ? null : function () {
+        return api("GET", "inscricoes").then(function (r) {
+          return (r.proprias || []).filter(function (x) { return x.id === insc.id; })[0] || Object.assign({}, insc, { situacao: "expirado", pix: null });
+        });
+      },
+      aoMudar: function (n) { if (n.situacao !== "aguardando") I.apaga(chaveCodigo(insc.id)); },
+      depois: function () { return voltar(tela); },
+      novo: porPix,
+      pix: porPix,
+      irCartao: function (n) { vaiCartao(cv, Object.assign({}, insc, n, { codigo: insc.codigo }), dados, tela); },
+    });
+    // "Gerar novo PIX" / "Pagar por PIX" (no lugar do cartão): os mesmos dados, por PIX
+    function porPix(b) {
+      if (!dados) return abreFormulario(cv, tela, false, null);
+      var d = Object.assign({}, dados, { forma: "pix" });
+      api("POST", "inscricao", Object.assign({ convite_id: cv.id }, d)).then(function (n) { mostraPix(cv, n, tela, d); })
+        .catch(function (e) { b.disabled = false; b.textContent = b.getAttribute("data-rotulo") || "Gerar novo PIX"; b.after(el("p", "assess-alerta", e.message)); });
+    }
+  }
+  function abrePix(cv, m, tela) {
+    var cod = window.INSCRICAO.le(chaveCodigo(m.id));
+    mostraPix(cv, Object.assign({}, m, cod ? { codigo: cod } : {}), tela);
+    tela.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
   // ---------- início ----------

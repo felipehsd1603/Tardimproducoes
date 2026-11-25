@@ -21,6 +21,7 @@ import { enviaAvisos } from "../../_admin/avisos-email.js";
 import { listaIntegracoes, convidaConexao, alteraConexao, desconecta } from "../../_admin/integracoes.js";
 import { listaOrcamentos, listaInscricoes, atletasDoEnvio, alteraAtleta, confirmaEnvio, medicao, resumoAvisos } from "../../_admin/inscricoes.js";
 import { OPENAPI_ADMIN } from "../../_admin/openapi.js";
+import { listaInscricoesSite, confereInscricaoSite, cancelaInscricaoSite } from "../../_admin/inscricoes-site.js";
 import { paginaSwagger } from "../../_api-v1/openapi.js";
 
 // [método ("*" = qualquer), padrão, função]. ":x" casa um segmento. Todas exigem login (as de entrar e sair ficam antes).
@@ -65,6 +66,10 @@ const ROTAS = [
   ["GET", "inscricoes/:id/atletas", ({ env, p }) => atletasDoEnvio(env, p.id)],
   ["POST", "inscricoes/:id/confirmar", ({ env, p }) => confirmaEnvio(env, p.id)],
   ["PUT", "atletas/:id", ({ request, env, p }) => alteraAtleta(request, env, p.id)],
+  // Inscrições feitas direto no site (PIX)
+  ["GET", "inscricoes-site", ({ env, url }) => listaInscricoesSite(env, url)],
+  ["POST", "inscricoes-site/:id/conferir", ({ env, url, p }) => confereInscricaoSite(env, p.id, url)],
+  ["POST", "inscricoes-site/:id/cancelar", ({ env, p }) => cancelaInscricaoSite(env, p.id)],
   // CRUD das tabelas do painel (provas, parceiros, convites, propostas, minutario, depoimentos).
   // Convites e provas avisam as plataformas das assessorias conectadas, depois da resposta.
   ["GET", ":tabela", async ({ env, p }) => json(await lista(env, p.tabela))],

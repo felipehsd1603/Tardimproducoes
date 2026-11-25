@@ -1503,3 +1503,57 @@ a:hover .seta, .case-card:hover .seta { translate: 5px 0; }
 .convite-link-btn { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--navy); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .convite-banco a { color: var(--navy); font-weight: 600; text-underline-offset: 3px; }
 
+
+/* ---------- Inscrição pelo site com PIX (inscricao.html, área do parceiro; js/inscricao-tela.js) ---------- */
+.insc-cupom { margin: 8px 0 0; padding: 10px 14px; border: 1px dashed #ff8a93; border-radius: 10px; background: #fff5f6; color: var(--ink); }
+.insc-cupom b { font: italic 800 1.25rem/1 var(--cond); color: var(--red-btn); letter-spacing: 0.04em; }
+.insc-preco { padding: 14px 16px; border-radius: 12px; background: var(--paper); }
+.insc-preco ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.insc-preco li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 0.95rem; }
+.insc-preco s { color: var(--muted); }
+.insc-preco__desc { color: #1a7f45; font-weight: 700; }
+.insc-preco__total { padding-top: 6px; margin-top: 2px; border-top: 1px solid var(--rule); }
+.insc-preco__total b { font: italic 800 1.8rem/1 var(--cond); color: var(--navy); }
+.insc-preco__nota { margin: 8px 0 0; font-size: 0.85rem; color: var(--muted); }
+.insc-form .assess-toggle a { color: var(--navy); }
+.insc-forma { margin: 0; padding: 0; border: 0; display: grid; gap: 8px; min-width: 0; }
+@media (min-width: 700px) { .insc-forma { grid-template-columns: 1fr 1fr; } }
+.insc-forma legend { padding: 0; margin: 0 0 8px; font-weight: 700; font-size: 0.95rem; color: var(--ink); }
+.insc-forma__op { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 2px solid var(--rule); border-radius: 12px; background: #fff; cursor: pointer; }
+.insc-forma__op:has(input:checked) { border-color: var(--red-btn); background: #fff5f6; }
+.insc-forma__op:focus-within { outline: 2px solid var(--navy); outline-offset: 2px; }
+.insc-forma__op input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--red-btn); flex: none; }
+.insc-forma__txt { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.insc-forma__cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 10px; }
+.insc-forma__cab b { font-size: 1rem; }
+.insc-forma__preco { font: italic 800 1.35rem/1 var(--cond); color: var(--navy); }
+.insc-forma__txt small { font-size: 0.82rem; color: var(--muted); line-height: 1.35; }
+.insc-cartao { margin: 0 0 12px; padding: 14px 16px; border-radius: 12px; background: #fff5f6; }
+.insc-cartao p { margin: 0 0 8px; }
+.insc-cartao__tit { font-weight: 800; color: var(--red-btn-hover); }
+.insc-cartao .assess-acoes { margin-top: 4px; }
+.insc-pix__valor { margin: 0 0 12px; font-size: 1.05rem; }
+.insc-pix__valor b { font: italic 800 1.8rem/1 var(--cond); color: var(--navy); }
+.insc-pix { display: grid; gap: 16px; justify-items: center; margin: 0 0 12px; }
+@media (min-width: 700px) { .insc-pix { grid-template-columns: auto 1fr; align-items: start; justify-items: start; } }
+.insc-pix__qr { display: block; width: 240px; max-width: 100%; height: auto; padding: 8px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; image-rendering: pixelated; }
+.insc-pix__lado { display: grid; gap: 10px; width: 100%; min-width: 0; }
+.insc-pix__lado .btn { justify-self: start; }
+.insc-pix__passo { margin: 0; font-size: 0.95rem; }
+.insc-pix__codigo { width: 100%; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font: 500 0.82rem/1.4 ui-monospace, Consolas, monospace; color: var(--navy); word-break: break-all; resize: none; }
+.insc-pix__prazo { margin: 0; font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.insc-pix__status { margin: 4px 0 8px; padding: 10px 14px; border-radius: 10px; background: #fff8e1; color: #7a5600; font-weight: 700; }
+.insc-pix__nota { font-size: 0.9rem; }
+.insc-ok__msg { margin: 8px 0 4px; padding: 12px 14px; border-radius: 10px; background: #e9f6ee; color: #14532d; font-weight: 600; }
+.insc-resumo { margin: 14px 0; }
+.insc-depois { margin-top: 8px; }
+.insc-parc { margin: 4px 0 14px; padding: 14px 16px; border-radius: 12px; background: var(--paper); }
+.insc-parc__nums { margin: 0 0 6px; font-size: 0.95rem; }
+.insc-parc__nums b { color: var(--navy); }
+.insc-parc ul { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.insc-parc li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 8px 10px; border-radius: 8px; background: #fff; font-size: 0.92rem; }
+.insc-sit { font-weight: 700; font-size: 0.82rem; }
+.insc-sit--ok { color: #1a7f45; }
+.insc-sit--espera { color: #8a6400; }
+.insc-parc__tela { margin-top: 10px; padding: 18px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
+.insc-parc__tela h2 { font-size: 1.6rem; }

@@ -60,7 +60,14 @@
     inscricao += (inscricao.indexOf("?") < 0 ? "?" : "&") + site.cupomParam + "=" + encodeURIComponent(cupom);
   }
   // comAviso: no topo da página mostra o "Me avise" (id="avise", alvo do link do calendário)
+  // Botões de inscrição criados (o cupom pode trocar todos para a inscrição no site da Tardim, ver abaixo)
+  var botoesInscricao = [];
   function btnInscricao(cls, comAviso) {
+    var b = btnInscricaoTS(cls, comAviso);
+    botoesInscricao.push({ n: b, cls: String(cls || "") });
+    return b;
+  }
+  function btnInscricaoTS(cls, comAviso) {
     var semVermelho = String(cls || "").replace(/\bbtn--red\b/, "");
     if (ev.esgotado) return el("span", semVermelho + " btn--esgotado", "Inscrições esgotadas");
     if (!ev.inscricao && !ev.demo && typeof AVISE !== "undefined") {
@@ -129,8 +136,9 @@
     txt.append(el("p", "event-hero__count", "Prova realizada"));
   }
 
+  var cp = null;
   if (cupom && dias >= 0) {
-    var cp = el("p", "cupom-box");
+    cp = el("p", "cupom-box");
     cp.append("Seu cupom de desconto: ", el("b", null, cupom),
       el("span", null, "Ao clicar em \"Fazer inscrição com o cupom\", o código é copiado. Cole no campo de cupom da Ticket Sports."));
     txt.append(cp);
@@ -435,6 +443,31 @@
     url: location.href,
   });
   document.head.append(ld);
+
+  // Cupom de embaixador/influenciador com inscrição aberta no site da Tardim: os botões levam ao formulário
+  // (inscricao.html, desconto já aplicado). Sem inscrição no site para a prova, fica tudo como está (Ticket Sports).
+  if (cupom && dias >= 0 && !ev.demo && window.fetch && /^https?:$/.test(location.protocol)) {
+    fetch("api/inscricao-site/prova/" + encodeURIComponent(ev.id) + "?cupom=" + encodeURIComponent(cupom))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) {
+        if (!r || !r.lote) return;
+        var destino = "inscricao.html?prova=" + encodeURIComponent(ev.id) + "&cupom=" + encodeURIComponent(r.cupom || cupom);
+        var reais = function (c) { return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); };
+        botoesInscricao.forEach(function (x) {
+          var cls = x.cls.indexOf("btn") < 0 ? "btn btn--red" : x.cls;
+          var a = link("Inscrever-se com o cupom", destino, cls);
+          a.setAttribute("data-medir", "inscricao-site");
+          if (x.n.parentNode) x.n.replaceWith(a);
+          x.n = a;
+        });
+        if (cp) {
+          var t = cp.querySelector("span");
+          if (t) t.textContent = "Desconto aplicado automaticamente na inscrição pelo site da Tardim" +
+            (r.lote.desconto ? ": de " + reais(r.lote.valor_cheio) + " por " + reais(r.lote.valor) + " (" + r.lote.nome + ")." : ". Valor: " + reais(r.lote.valor) + ".");
+        }
+      })
+      .catch(function () {});
+  }
 
   // WhatsApp flutuante com mensagem da prova
   document.getElementById("wa-float").href = wa("Olá! Tenho uma dúvida sobre a " + ev.nome + ".");

@@ -247,7 +247,7 @@
     return api("GET", "dados").then(function (d) {
       S.provas = d.provas; S.parceiros = d.parceiros; S.convites = d.convites;
       S.depoimentos = d.depoimentos || []; S.semDepoimentos = !d.depoimentos; // null = banco sem a tabela
-      S.orcamentos = null; S.inscricoes = null; S.propostas = null; S.minutario = null; S.config = null;
+      S.orcamentos = null; S.inscricoes = null; S.inscSite = null; S.propostas = null; S.minutario = null; S.config = null;
     });
   }
 
@@ -269,7 +269,7 @@
   // ---------- estrutura ----------
   var corpo;
   var ABAS = [["provas", "Provas"], ["parceiros", "Parceiros"], ["convites", "Convites"], ["apuracao", "Apuração"],
-    ["inscricoes", "Inscrições coletivas"], ["avisos", "Me avise"], ["orcamentos", "Orçamentos"], ["propostas", "Propostas"], ["depoimentos", "Depoimentos"], ["medicao", "Medição"]];
+    ["inscricoes", "Inscrições coletivas"], ["inscricoes-site", "Inscrições no site"], ["avisos", "Me avise"], ["orcamentos", "Orçamentos"], ["propostas", "Propostas"], ["depoimentos", "Depoimentos"], ["medicao", "Medição"]];
   var NOME_ABA = {};
   ABAS.forEach(function (a) { NOME_ABA[a[0]] = a[1]; });
 
@@ -412,7 +412,7 @@
     var titulo = NOME_ABA[aba];
     if (tipo === aba) {
       ({ provas: abaProvas, parceiros: abaParceiros, convites: abaConvites, apuracao: abaApuracao,
-        inscricoes: abaInscricoes, avisos: abaAvisos, orcamentos: abaOrcamentos, depoimentos: abaDepoimentos, medicao: abaMedicao, propostas: abaPropostas })[aba]();
+        inscricoes: abaInscricoes, "inscricoes-site": abaInscricoesSite, avisos: abaAvisos, orcamentos: abaOrcamentos, depoimentos: abaDepoimentos, medicao: abaMedicao, propostas: abaPropostas })[aba]();
     } else if (tipo === "proposta") {
       // As propostas são lidas só quando a aba é aberta; o endereço direto de uma proposta espera a leitura
       var abreProposta = function () {
@@ -499,6 +499,179 @@
     corpo.append(c);
   }
 
+  // Inscrição direta no site com PIX (functions/_lib/inscricoes-site.js): configuração da prova em tabelas editáveis.
+  // Devolve { no, valor(): config ou lança Error com a mensagem, mudou(): true se alguém mexeu }
+  var TAMANHOS = ["PP", "P", "M", "G", "GG", "XG", "XGG", "Infantil"];
+  function secaoInscricaoSite(cfg, percursosDaProva) {
+    cfg = cfg || {};
+    var w = el("fieldset", "assess-grid__full painel-insc");
+    w.append(el("legend", null, "Inscrição no site (PIX)"));
+    var ajuda = el("ul", "modelo-ajuda");
+    ["Os atletas em geral continuam se inscrevendo pela Ticket Sports (o link acima).",
+      "Quem chega pelo link de um embaixador ou influenciador cai no formulário da Tardim, já com o desconto do cupom, e paga por PIX.",
+      "Enquanto o PIX não é pago, a vaga fica reservada por 1 hora."].forEach(function (t) { ajuda.append(el("li", null, t)); });
+    var aberta = marcador("Abrir inscrição pelo site para quem vem pelo link de embaixador ou influenciador", cfg.aberta);
+    w.append(ajuda, aberta);
+
+    var mods = (cfg.modalidades || []).slice();
+    if (!mods.length) mods = percursosDaProva();
+    var lotes = (cfg.lotes || []).map(function (l) {
+      return { nome: l.nome || "", valor: l.valor ? Number(l.valor).toFixed(2).replace(".", ",") : "", ate: l.ate || "", vagas: l.vagas ? String(l.vagas) : "0" };
+    });
+    var extras = (cfg.camisetas || []).filter(function (t) { return TAMANHOS.indexOf(t) < 0; });
+    var tamanhos = TAMANHOS.concat(extras);
+    var marcadas = {};
+    (cfg.camisetas || []).forEach(function (t) { marcadas[t] = true; });
+    var mexeu = false;
+    w.addEventListener("input", function () { mexeu = true; });
+    w.addEventListener("change", function () { mexeu = true; });
+    // Enter num campo das tabelas não salva a prova sem querer
+    w.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.tagName === "INPUT") e.preventDefault(); });
+
+    // Modalidades
+    var blocoMod = el("div", "painel-insc__bloco");
+    blocoMod.append(el("h3", null, "Modalidades"), el("p", "assess-dica", "O atleta escolhe uma delas no formulário. Ex.: Corrida 5 km."));
+    var listaMod = el("div", "painel-insc__linhas");
+    function desenhaMods() {
+      listaMod.innerHTML = "";
+      if (!mods.length) listaMod.append(el("p", "muted", "Nenhuma modalidade ainda."));
+      mods.forEach(function (m, i) {
+        var lin = el("div", "painel-insc__linha");
+        var t = entrada("text", m, { maxLength: 60, placeholder: "Corrida 5 km" });
+        t.setAttribute("aria-label", "Modalidade " + (i + 1));
+        t.addEventListener("input", function () { mods[i] = t.value; });
+        lin.append(t, botao("Remover", "orc__email painel-perigo", function () { mods.splice(i, 1); mexeu = true; desenhaMods(); }));
+        listaMod.append(lin);
+      });
+    }
+    var addMod = botao("Adicionar modalidade", "btn btn--line btn--sm", function () {
+      mods.push(""); mexeu = true; desenhaMods();
+      var ult = listaMod.querySelectorAll("input"); if (ult.length) ult[ult.length - 1].focus();
+    });
+    var usaPerc = botao("Copiar dos percursos da prova", "orc__email", function () {
+      var p = percursosDaProva();
+      if (!p.length) return aviso("Preencha os percursos da prova (campo \"Percursos\") primeiro.", true);
+      mods = p; mexeu = true; desenhaMods();
+    });
+    blocoMod.append(listaMod, acoes(addMod, usaPerc));
+    desenhaMods();
+
+    // Camisetas
+    var blocoCam = el("div", "painel-insc__bloco");
+    blocoCam.append(el("h3", null, "Tamanhos de camiseta"), el("p", "assess-dica", "Marque os tamanhos que o atleta pode escolher. Nenhum marcado = o formulário não pergunta a camiseta."));
+    var chips = el("div", "painel-insc__chips");
+    var caixas = {};
+    function desenhaChips() {
+      chips.innerHTML = "";
+      tamanhos.forEach(function (t) {
+        var m = marcador(t, marcadas[t]);
+        m.classList.add("painel-chip");
+        m.caixa.addEventListener("change", function () { marcadas[t] = m.caixa.checked; });
+        caixas[t] = m.caixa;
+        chips.append(m);
+      });
+    }
+    desenhaChips();
+    blocoCam.append(chips, acoes(
+      botao("Usar P, M, G, GG", "orc__email", function () { marcadas = { P: true, M: true, G: true, GG: true }; mexeu = true; desenhaChips(); }),
+      botao("Desmarcar todos", "orc__email", function () { marcadas = {}; mexeu = true; desenhaChips(); })));
+
+    // Lotes
+    var blocoLote = el("div", "painel-insc__bloco");
+    blocoLote.append(el("h3", null, "Lotes e valores"), el("p", "assess-dica",
+      "Na ordem em que acontecem. Vale o primeiro lote que ainda não passou do último dia e ainda tem vaga. Vagas 0 = sem limite. Último dia vazio = vale até a prova."));
+    var areaLote = el("div");
+    function desenhaLotes() {
+      areaLote.innerHTML = "";
+      if (!lotes.length) { areaLote.append(el("p", "muted", "Nenhum lote ainda. Clique em \"Adicionar lote\".")); return; }
+      areaLote.append(tabela(["Lote", "Valor (R$)", "Último dia", "Vagas", ""], lotes.map(function (l, i) {
+        var nome = entrada("text", l.nome, { maxLength: 60, placeholder: (i + 1) + "º lote" });
+        var valor = entrada("text", l.valor, { inputMode: "decimal", placeholder: "80,00" });
+        var ate = entrada("date", l.ate);
+        var vagas = entrada("number", l.vagas, { min: 0, max: 100000, step: 1 });
+        nome.setAttribute("aria-label", "Nome do lote " + (i + 1));
+        valor.setAttribute("aria-label", "Valor do lote " + (i + 1) + " em reais");
+        ate.setAttribute("aria-label", "Último dia do lote " + (i + 1));
+        vagas.setAttribute("aria-label", "Vagas do lote " + (i + 1) + " (0 = sem limite)");
+        nome.addEventListener("input", function () { l.nome = nome.value; });
+        valor.addEventListener("input", function () { l.valor = valor.value; });
+        valor.addEventListener("blur", function () { var n = numBR(valor.value); if (n > 0) valor.value = l.valor = n.toFixed(2).replace(".", ","); });
+        ate.addEventListener("input", function () { l.ate = ate.value; });
+        vagas.addEventListener("input", function () { l.vagas = vagas.value; });
+        [nome, valor, ate, vagas].forEach(function (x) { x.classList.add("painel-insc__in"); });
+        valor.classList.add("is-valor"); vagas.classList.add("is-vagas");
+        return [nome, valor, ate, vagas, botao("Remover", "orc__email painel-perigo", function () { lotes.splice(i, 1); mexeu = true; desenhaLotes(); })];
+      })));
+    }
+    blocoLote.append(areaLote, acoes(botao("Adicionar lote", "btn btn--line btn--sm", function () {
+      var ant = lotes[lotes.length - 1];
+      lotes.push({ nome: (lotes.length + 1) + "º lote", valor: ant ? ant.valor : "", ate: "", vagas: "0" });
+      mexeu = true; desenhaLotes();
+      var v = areaLote.querySelectorAll("input.is-valor"); if (v.length) v[v.length - 1].focus();
+    })));
+    desenhaLotes();
+
+    // Cartão de crédito (Mercado Pago): a taxa vai para o atleta como % sobre o valor do PIX
+    var k = cfg.cartao || {};
+    var blocoCartao = el("div", "painel-insc__bloco");
+    blocoCartao.append(el("h3", null, "Cartão de crédito (Mercado Pago)"), el("p", "assess-dica",
+      "O atleta escolhe PIX ou cartão no formulário e paga o cartão na página do Mercado Pago. Só aparece no site com o Mercado Pago configurado (segredo MP_ACCESS_TOKEN)."));
+    var aceitaCartao = marcador("Aceitar cartão de crédito", k.ativo);
+    var acrescimo = entrada("number", k.acrescimo_pct || k.ativo ? String(k.acrescimo_pct || 0) : "", { min: 0, max: 30, step: 0.01, inputMode: "decimal", placeholder: "5" });
+    var parcelas = escolha([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(function (n) { return [String(n), n === 1 ? "1x (só à vista)" : "até " + n + "x"]; }), String(k.parcelas || 1));
+    var exemplo = el("p", "assess-dica painel-insc__ex");
+    function pctAcrescimo() { return numBR(acrescimo.value); }
+    function atualizaCartao() {
+      acrescimo.disabled = parcelas.disabled = !aceitaCartao.caixa.checked;
+      var l = lotes.filter(function (x) { return numBR(x.valor) > 0; })[0];
+      var base = Math.round((l ? numBR(l.valor) : 80) * 100);
+      var pct = pctAcrescimo();
+      var noCartao = base + Math.round(base * (pct >= 0 && pct <= 30 ? pct : 0) / 100);
+      exemplo.textContent = "Ex.: " + (l ? (String(l.nome || "").trim() || "lote") : "lote") + " de " + reais(base / 100) + " → PIX " + reais(base / 100) + " · cartão " + reais(noCartao / 100) +
+        (Number(parcelas.value) > 1 ? " (ou até " + parcelas.value + "x com juros)" : "") + ".";
+    }
+    aceitaCartao.caixa.addEventListener("change", atualizaCartao);
+    w.addEventListener("input", atualizaCartao);
+    w.addEventListener("change", atualizaCartao);
+    var gradeCartao = el("div", "assess-grid");
+    gradeCartao.append(
+      campo("Acréscimo para o atleta (%)", acrescimo, "A taxa do cartão é repassada ao atleta: o valor no cartão = valor do PIX + este %."),
+      campo("Parcelas (máximo)", parcelas, "Os juros do parcelamento ficam com o atleta.")
+    );
+    blocoCartao.append(aceitaCartao, gradeCartao, exemplo);
+    atualizaCartao();
+
+    w.append(blocoMod, blocoCam, blocoLote, blocoCartao);
+    return {
+      no: w,
+      mudou: function () { return mexeu; },
+      valor: function () {
+        var c = {
+          aberta: aberta.caixa.checked,
+          modalidades: mods.map(function (m) { return String(m || "").trim(); }).filter(Boolean),
+          camisetas: tamanhos.filter(function (t) { return marcadas[t]; }),
+          lotes: [],
+        };
+        lotes.forEach(function (l, i) {
+          var nome = String(l.nome || "").trim() || (i + 1) + "º lote";
+          var valor = Math.round(numBR(l.valor) * 100) / 100;
+          if (!(valor > 0)) throw new Error("Na inscrição no site, informe o valor do " + nome + " (ex.: 80,00).");
+          var vagas = parseInt(l.vagas, 10) || 0;
+          if (vagas < 0) throw new Error("Na inscrição no site, as vagas do " + nome + " não podem ser negativas.");
+          c.lotes.push({ nome: nome, valor: valor, ate: l.ate || "", vagas: vagas });
+        });
+        var nomes = c.lotes.map(function (l) { return l.nome.toLowerCase(); });
+        if (nomes.some(function (n, i) { return nomes.indexOf(n) !== i; })) throw new Error("Na inscrição no site, cada lote precisa de um nome diferente.");
+        if (c.aberta && !c.modalidades.length) throw new Error("Para abrir a inscrição no site, cadastre pelo menos uma modalidade (ex.: Corrida 5 km).");
+        if (c.aberta && !c.lotes.length) throw new Error("Para abrir a inscrição no site, cadastre pelo menos um lote com valor.");
+        var pct = acrescimo.value.trim() === "" ? 0 : Math.round(numBR(acrescimo.value) * 100) / 100;
+        if ((acrescimo.validity && acrescimo.validity.badInput) || !(pct >= 0 && pct <= 30)) throw new Error("No cartão de crédito, o acréscimo precisa estar entre 0% e 30%.");
+        c.cartao = { ativo: aceitaCartao.caixa.checked, acrescimo_pct: pct, parcelas: parseInt(parcelas.value, 10) || 1 };
+        return c;
+      },
+    };
+  }
+
   function formProva(item) {
     var r = item ? (item.linha || deObjeto(item.obj)) : null;
     var existe = !!(item && item.linha);
@@ -580,6 +753,10 @@
       campo("Perguntas frequentes (uma por linha: pergunta | resposta)", faq, "Aparecem na página da prova, na seção \"Perguntas frequentes\". Vazio = a seção não aparece.", true),
       campo("Texto de divulgação", texto, "Opcional. Vazio = o kit monta o texto sozinho com os dados da prova.", true)
     );
+    var cfgSite = r.inscricao_site && typeof r.inscricao_site === "object" && !Array.isArray(r.inscricao_site) ? r.inscricao_site : null;
+    var temCfgSite = !!(cfgSite && Object.keys(cfgSite).length);
+    var site_ = secaoInscricaoSite(cfgSite, function () { return linhas(percursos.value); });
+    f.append(site_.no);
     var pl = el("div", "assess-grid__full"); pl.append(publicada); f.append(pl);
     var salvar = el("button", "btn btn--red btn--lg", "Salvar prova"); salvar.type = "submit";
     f.append(barraForm(salvar, botao("Cancelar", null, function () { cancelar("provas"); }),
@@ -621,6 +798,10 @@
         linha.faq = linhas(faq.value).map(function (l) { var i = l.indexOf("|"); return i < 0 ? null : [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
           .filter(function (q) { return q && q[0] && q[1]; });
         if (linha.faq.length !== linhas(faq.value).length) return aviso("Nas perguntas frequentes, cada linha precisa ter a pergunta e a resposta separadas por | (barra vertical).", true);
+      }
+      // Mesma regra do faq: só vai quando a prova já tem a configuração ou alguém mexeu nela
+      if (temCfgSite || site_.mudou()) {
+        try { linha.inscricao_site = site_.valor(); } catch (er) { site_.no.scrollIntoView({ block: "start" }); return aviso(er.message, true); }
       }
       salvar.disabled = true; salvar.textContent = "Salvando...";
       var enviaArte = arquivo.files[0] ? comprime(arquivo.files[0]).then(function (blob) {
@@ -1610,6 +1791,184 @@
           })));
           detalhe.scrollIntoView({ behavior: "smooth", block: "start" });
         }).catch(function (e) { detalhe.innerHTML = ""; falha(e); });
+      }
+      prova.addEventListener("change", desenha);
+      desenha();
+    });
+  }
+
+  // Inscrição direta no site com PIX (functions/_admin/inscricoes-site.js): quem veio pelo link do embaixador ou
+  // influenciador e as inscrições feitas pelo próprio parceiro
+  var SIT_SITE = { pago: ["Pago", "is-pub"], cortesia: ["Cortesia", "is-env"], aguardando: ["Aguardando PIX", "is-rasc"],
+    expirado: ["PIX vencido", "is-off"], cancelado: ["Cancelado", "is-nao"] };
+  var filtroSite = null;
+  function cpfFmt(c) { c = String(c || ""); return c.length === 11 ? c.slice(0, 3) + "." + c.slice(3, 6) + "." + c.slice(6, 9) + "-" + c.slice(9) : c; }
+  function cpfMascara(c) { c = String(c || ""); return c.length === 11 ? "***." + c.slice(3, 6) + "." + c.slice(6, 9) + "-**" : "***"; }
+  function telFmt(t) { t = String(t || ""); return t.length >= 10 ? "(" + t.slice(0, 2) + ") " + t.slice(2, -4) + "-" + t.slice(-4) : t; }
+  function abaInscricoesSite() {
+    var c = card("Recebidas pelo site", "Inscrições no site");
+    c.append(el("p", "muted", "Inscrições pagas por PIX ou cartão (Mercado Pago) no formulário da Tardim: quem chegou pelo link de um embaixador ou influenciador (com o desconto do cupom) e as que o próprio parceiro fez. Para abrir numa prova, edite a prova e preencha \"Inscrição no site (PIX)\"."));
+    corpo.append(c);
+    carregando(c, "inscSite", "inscricoes-site", function () {
+      var ids = {};
+      S.provas.forEach(function (p) { var k = p.inscricao_site; if (k && (k.aberta || (k.lotes || []).length)) ids[p.id] = true; });
+      S.inscSite.forEach(function (i) { ids[i.prova_id] = true; });
+      var opcoes = todasProvas().filter(function (p) { return ids[p.id]; }).map(function (p) { return [p.id, p.nome + " · " + curta(p.data)]; });
+      Object.keys(ids).forEach(function (id) { if (!opcoes.some(function (o) { return o[0] === id; })) opcoes.push([id, id]); });
+      if (filtroSite == null || (filtroSite && !ids[filtroSite])) {
+        // Começa pela próxima prova com inscrição no site (ou a última, se todas já passaram)
+        var futuras = todasProvas().filter(function (p) { return ids[p.id] && dataDe(p.data) >= hoje(); });
+        filtroSite = futuras.length ? futuras[0].id : (opcoes.length ? opcoes[opcoes.length - 1][0] : "");
+      }
+      var prova = escolha([["", "Todas as provas"]].concat(opcoes), filtroSite);
+      var filtros = el("div", "painel-filtros");
+      var exportar = botao("Exportar planilha (CSV)", "btn btn--red", function () { exporta(); });
+      filtros.append(campo("Prova", prova), exportar);
+      c.append(filtros);
+      var area = el("div"); c.append(area);
+      function lista() { return S.inscSite.filter(function (i) { return !prova.value || i.prova_id === prova.value; }); }
+      function nomeProva(id) { var p = provaPorId(id); return p ? p.nome : id; }
+      function vencido(i) { return i.situacao === "aguardando" && i.expira_em && Date.parse(i.expira_em) < Date.now(); }
+      function noCartao(i) { return i.forma === "cartao"; }
+      // Rótulo da situação; no cartão, "Aguardando cartão" e "Prazo vencido" no lugar dos textos do PIX
+      function sitDe(i) {
+        var s = vencido(i) ? SIT_SITE.expirado : (SIT_SITE[i.situacao] || [i.situacao || "—", "is-off"]);
+        if (noCartao(i) && (vencido(i) || i.situacao === "expirado")) return ["Prazo vencido", s[1]];
+        if (noCartao(i) && i.situacao === "aguardando") return ["Aguardando cartão", s[1]];
+        return s;
+      }
+      // Valor sem a taxa do cartão (a taxa vai para o Mercado Pago, não é receita nem entra na comissão)
+      function semTaxa(i) { return (Number(i.valor) || 0) - (Number(i.acrescimo) || 0); }
+
+      function desenha() {
+        filtroSite = prova.value;
+        area.innerHTML = "";
+        var l = lista();
+        exportar.disabled = !l.length;
+        if (!opcoes.length) area.append(el("p", "assess-alerta", "Nenhuma prova com inscrição no site ainda. Edite a prova e preencha a seção \"Inscrição no site (PIX)\"."));
+        if (!l.length) { area.append(el("p", "muted", "Nenhuma inscrição pelo site" + (prova.value ? " nesta prova" : "") + " ainda.")); return; }
+
+        var conta = function (f) { return l.filter(f); };
+        var pagas = conta(function (i) { return i.situacao === "pago"; });
+        var cortesias = conta(function (i) { return i.situacao === "cortesia"; });
+        var aguard = conta(function (i) { return i.situacao === "aguardando" && !vencido(i); });
+        var fora = conta(function (i) { return i.situacao === "expirado" || i.situacao === "cancelado" || vencido(i); });
+        var totalPago = pagas.reduce(function (a, i) { return a + (Number(i.valor) || 0); }, 0) / 100;
+        var pagasCartao = pagas.filter(noCartao);
+        var temCartao = l.some(noCartao);
+        var taxas = pagasCartao.reduce(function (a, i) { return a + (Number(i.acrescimo) || 0); }, 0) / 100;
+        var nums = el("div", "assess-nums painel-nums4");
+        [[String(pagas.length), "pagas · " + reais(totalPago) + (temCartao ? " (PIX " + (pagas.length - pagasCartao.length) + " · cartão " + pagasCartao.length +
+            (taxas ? "; taxa do cartão " + reais(taxas) : "") + ")" : ""), true], [String(cortesias.length), "cortesias"],
+          [String(aguard.length), "aguardando pagamento (vaga reservada)"], [String(fora.length), "vencidas ou canceladas"]].forEach(function (n) {
+          var d = el("div", "assess-num" + (n[2] ? " is-ok" : "")); d.append(el("b", null, n[0]), el("span", null, n[1])); nums.append(d);
+        });
+        area.append(nums);
+
+        // Comissão: só as pagas que vieram pelo link do parceiro
+        var porConvite = {};
+        pagas.filter(function (i) { return i.origem === "link" && (i.convite_id || i.cupom); }).forEach(function (i) {
+          var k = i.convite_id || i.cupom;
+          var x = porConvite[k] = porConvite[k] || { nome: i.parceiro_nome || "Parceiro removido", tipo: i.parceiro_tipo, cupom: i.cupom || "", prova: i.prova_id, n: 0, total: 0, pct: Number(i.comissao_pct) || 0 };
+          x.n++; x.total += semTaxa(i) / 100;
+        });
+        var com = Object.keys(porConvite).map(function (k) { var x = porConvite[k]; x.comissao = Math.round(x.total * x.pct) / 100; return x; })
+          .sort(function (a, b) { return b.n - a.n; });
+        var h = el("h3", null, "Comissão dos parceiros"); h.style.marginTop = "1.5rem";
+        area.append(h);
+        if (!com.length) area.append(el("p", "muted", "Nenhuma inscrição paga pelo link de parceiro ainda."));
+        else {
+          var totCom = com.reduce(function (a, x) { return a + x.comissao; }, 0);
+          area.append(tabela(["Parceiro", "Cupom", "Inscrições pagas pelo link", "Total pago (sem a taxa do cartão)", "Comissão", "Valor da comissão"], com.map(function (x) {
+            var nome = el("div"); nome.append(el("strong", null, x.nome));
+            if (x.tipo) nome.append(el("small", "muted", " · " + (TIPOS[x.tipo] || x.tipo)));
+            if (!prova.value) nome.append(el("small", "muted", " · " + nomeProva(x.prova)));
+            return [nome, x.cupom ? el("span", "painel-cupom", x.cupom) : "—", String(x.n), reais(x.total), x.pct ? String(x.pct).replace(".", ",") + "%" : "—", reais(x.comissao)];
+          })));
+          area.append(el("p", "assess-status", "Total de comissão: " + reais(totCom)));
+        }
+
+        var h2 = el("h3", null, "Inscrições"); h2.style.marginTop = "1.5rem";
+        area.append(h2);
+        area.append(tabela(["Data", "Atleta", "CPF", "Modalidade", "Camiseta", "Lote", "Valor", "Pagamento", "Origem", "Situação", ""], l.map(function (i) {
+          var nome = el("div"); nome.append(el("strong", null, i.nome));
+          if (!prova.value) nome.append(el("small", "muted", " · " + nomeProva(i.prova_id)));
+          var val = el("div"); val.append(i.situacao === "cortesia" ? "Cortesia" : reais((Number(i.valor) || 0) / 100));
+          if (i.desconto && i.situacao !== "cortesia") val.append(el("small", "muted", " (de " + reais((Number(i.valor_cheio) || 0) / 100) + ")"));
+          if (Number(i.acrescimo) && i.situacao !== "cortesia") val.append(el("small", "muted", " · taxa do cartão " + reais(Number(i.acrescimo) / 100)));
+          var forma = i.situacao === "cortesia" ? "—" : noCartao(i) ? "Cartão" : "PIX";
+          var origem = el("div");
+          if (i.origem === "link") { origem.append("Link de " + (i.parceiro_nome || "parceiro")); if (i.cupom) origem.append(" ", el("span", "painel-cupom", i.cupom)); }
+          else if (i.origem === "parceiro") origem.append("Feita por " + (i.parceiro_nome || "parceiro"));
+          else origem.append("Site");
+          var s = sitDe(i);
+          var sit = situacao(s[0], s[1]);
+          if (i.situacao === "pago" && i.pago_em) sit.title = "Pago em " + dataHora(i.pago_em);
+          else if (i.situacao === "aguardando" && i.expira_em) sit.title = "Vaga reservada até " + dataHora(i.expira_em);
+          var podeConferir = (i.situacao === "aguardando" || i.situacao === "expirado") && (i.txid || i.mp_preferencia);
+          var podeCancelar = i.situacao !== "cancelado" && i.situacao !== "expirado";
+          return [dataHora(i.criado_em), nome, cpfMascara(i.cpf), i.modalidade || "", i.camiseta || "—", i.lote || "", val, forma, origem, sit, acoes(
+            podeConferir ? botao(rotuloConferir(i), null, function (e) { conferir(i, e.currentTarget); }) : null,
+            podeCancelar ? botao("Cancelar", "orc__email painel-perigo", function () { cancela(i); }) : null)];
+        }), l.map(function (i) { return i.id; })));
+      }
+      function troca(i, nova) {
+        var idx = S.inscSite.indexOf(i);
+        if (idx >= 0) S.inscSite[idx] = Object.assign({}, i, nova);
+        desenha();
+        var tr = area.querySelector('tr[data-id="' + String(i.id).replace(/["\\]/g, "") + '"]');
+        if (tr) { tr.classList.add("is-novo"); tr.scrollIntoView({ block: "center" }); }
+      }
+      function rotuloConferir(i) { return noCartao(i) ? "Conferir no Mercado Pago" : "Conferir no banco"; }
+      function conferir(i, b) {
+        b.disabled = true; b.textContent = "Conferindo...";
+        api("POST", "inscricoes-site/" + encodeURIComponent(i.id) + "/conferir", {}).then(function (nova) {
+          troca(i, nova);
+          if (nova.situacao === "pago") aviso("Pagamento confirmado: " + i.nome + " está inscrito(a).");
+          else if (noCartao(i)) aviso("O Mercado Pago ainda não aprovou o pagamento de " + i.nome + (nova.situacao === "expirado" ? " e o prazo já venceu." : "."), true);
+          else aviso("O banco ainda não recebeu o PIX de " + i.nome + (nova.situacao === "expirado" ? " e a cobrança já venceu." : "."), true);
+        }).catch(function (e) { b.disabled = false; b.textContent = rotuloConferir(i); falha(e); });
+      }
+      function cancela(i) {
+        var pago = i.situacao === "pago";
+        pergunta("Cancelar a inscrição de " + i.nome + "?",
+          pago ? (noCartao(i) ? "A inscrição fica cancelada e a vaga volta para o lote. O estorno do cartão não é automático: faça pelo Mercado Pago." :
+            "A inscrição fica cancelada e a vaga volta para o lote. A devolução do PIX já pago não é automática: faça pelo aplicativo do banco.") :
+            "A inscrição fica cancelada e a vaga volta para o lote.", "Cancelar inscrição", { nao: "Voltar" }).then(function (sim) {
+          if (!sim) return;
+          api("POST", "inscricoes-site/" + encodeURIComponent(i.id) + "/cancelar", {}).then(function (nova) {
+            troca(i, nova);
+            aviso(pago ? (noCartao(i) ? "Inscrição cancelada. Lembre de estornar o cartão pelo Mercado Pago." : "Inscrição cancelada. Lembre de devolver o PIX pelo banco.") : "Inscrição cancelada.");
+          }).catch(falha);
+        });
+      }
+      // Planilha completa (painel interno): ; e vírgula decimal, que o Excel em português abre direto
+      function exporta() {
+        var l = lista();
+        var num = function (c) { return ((Number(c) || 0) / 100).toFixed(2).replace(".", ","); };
+        var cab = ["Inscrita em", "Prova", "Situação", "Nome", "CPF", "E-mail", "Telefone", "Nascimento", "Sexo", "Modalidade", "Camiseta", "Lote",
+          "Valor cheio (R$)", "Desconto (R$)", "Taxa do cartão (R$)", "Valor pago (R$)", "Valor sem a taxa (R$)", "Forma de pagamento", "Cupom", "Parceiro", "Origem", "Pago em",
+          "ID do PIX (E2E)", "ID do pagamento (Mercado Pago)"];
+        var cel = function (v) {
+          v = v == null ? "" : String(v);
+          if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; // não deixa o Excel executar fórmula vinda do formulário
+          return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        };
+        var corpoCsv = l.map(function (i) {
+          var s = sitDe(i);
+          return [dataHora(i.criado_em), nomeProva(i.prova_id), s[0], i.nome, cpfFmt(i.cpf), i.email, telFmt(i.telefone), curta(i.nascimento), i.sexo,
+            i.modalidade, i.camiseta, i.lote, num(i.valor_cheio), num(i.desconto), num(i.acrescimo), num(i.valor), num(semTaxa(i)),
+            i.situacao === "cortesia" ? "Cortesia" : noCartao(i) ? "Cartão" : "PIX", i.cupom,
+            i.parceiro_nome ? i.parceiro_nome + (i.parceiro_tipo ? " (" + (TIPOS[i.parceiro_tipo] || i.parceiro_tipo) + ")" : "") : "",
+            i.origem === "link" ? "Link do parceiro" : i.origem === "parceiro" ? "Feita pelo parceiro" : "Site",
+            dataHora(i.pago_em), i.e2e_id, i.mp_pagamento].map(cel).join(";");
+        });
+        var csv = "\ufeff" + [cab.map(cel).join(";")].concat(corpoCsv).join("\r\n");
+        var a = el("a");
+        a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        a.download = "Inscricoes_site_" + (prova.value ? slug(nomeProva(prova.value)) : "todas") + ".csv";
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
       }
       prova.addEventListener("change", desenha);
       desenha();

@@ -96,6 +96,23 @@
 .painel-sits:empty { display: none; }
 .painel-sits__t { font-weight: 700; color: var(--navy); }
 .painel .assess-alerta { margin: 10px 0; }
+.painel-nums4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* ----- Inscrição no site (PIX), no formulário da prova ----- */
+.painel-insc { display: grid; gap: 14px; margin: 6px 0 0; padding: 14px 16px 16px; border: 2px solid var(--rule); border-radius: 12px; min-width: 0; }
+.painel-insc legend { padding: 0 6px; font-weight: 700; font-size: 1.05rem; color: var(--navy); }
+.painel-insc h3 { margin: 0 0 2px; font-size: 1.05rem; color: var(--navy); }
+.painel-insc__bloco { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--rule); min-width: 0; }
+.painel-insc__linhas { display: grid; gap: 6px; }
+.painel-insc__linha { display: flex; align-items: center; gap: 12px; }
+.painel-insc__linha input { flex: 1; max-width: 360px; }
+.painel-insc__linha input, .painel-insc__in { min-height: 40px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; font: inherit; background: #fff; }
+.painel-insc__in.is-valor { width: 110px; text-align: right; }
+.painel-insc__in.is-vagas { width: 90px; }
+.painel-insc__ex { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--paper); color: var(--navy); font-weight: 600; }
+.painel-insc__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.painel-chip { align-items: center; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 99px; background: #fff; }
+.painel-chip:has(input:checked) { border-color: var(--navy); background: var(--paper); }
 .painel button[disabled] { opacity: 0.55; cursor: wait; }
 
 /* ----- Kit de divulgação ----- */
