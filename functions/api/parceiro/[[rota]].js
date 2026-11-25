@@ -26,7 +26,7 @@ import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } 
 
 const COOKIE = "tardim_parceiro";
 const DURACAO = 60 * 60 * 24 * 30; // 30 dias
-const MAX_ERROS = 5, JANELA_ERROS = 15 * 60;
+const MAX_ERROS = 5, JANELA_ERROS = 15 * 60, MAX_ERROS_EMAIL = 10;
 const MAX_CADASTROS = 5, JANELA_CADASTROS = 60 * 60;
 const ITERACOES = 100000; // máximo do PBKDF2 no Cloudflare Workers
 const TIPOS = { assessoria: "Assessoria", influenciador: "Influenciador", embaixador: "Embaixador" };
@@ -251,10 +251,15 @@ async function loginSenha(request, env) {
   await limite(env, chave, MAX_ERROS, JANELA_ERROS, "Muitas tentativas erradas. Espere 15 minutos e tente de novo.");
   const d = await corpo(request);
   const email = texto(d.email, 120).toLowerCase();
+  // Também por e-mail: tentativas vindas de muitos IPs contra a mesma conta (mais folgado que o por IP,
+  // para um ataque não trancar o dono fácil; "Esqueci a senha" continua funcionando)
+  const chaveEmail = "parc-email:" + email;
+  if (email) await limite(env, chaveEmail, MAX_ERROS_EMAIL, JANELA_ERROS, "Muitas tentativas erradas neste e-mail. Espere 15 minutos ou use \"Esqueci a senha\".");
   const senha = typeof d.senha === "string" ? d.senha.slice(0, 200) : "";
   const conta = email ? await env.DB.prepare("SELECT * FROM contas WHERE email = ?").bind(email).first() : null;
   if (!conta || !senha || !(await confereSenha(senha, conta.senha))) {
     await marca(env, chave);
+    if (email) await marca(env, chaveEmail);
     await new Promise((r) => setTimeout(r, 600));
     if (conta && !conta.senha) throw new Erro(401, "Este e-mail entra pelo botão \"Entrar com Google\".");
     throw new Erro(401, "E-mail ou senha incorretos.");
