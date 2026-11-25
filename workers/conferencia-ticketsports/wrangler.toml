@@ -1,0 +1,18 @@
+# Worker agendado: confere na Ticket Sports se as inscrições de cada prova estão abertas,
+# esgotadas ou encerradas (functions/_lib/ticketsports-situacao.js) e grava no mesmo D1 do site.
+# Sem endereço público: só roda no horário (Pages não tem tarefa agendada, por isso fica separado).
+# Publicar: npx wrangler deploy -c workers/conferencia-ticketsports/wrangler.toml
+name = "tardim-conferencia-ticketsports"
+main = "index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+preview_urls = false
+
+[triggers]
+# 06h e 18h em Brasília (09h e 21h UTC)
+crons = ["0 9,21 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tardim"
+database_id = "744aa187-147d-47bb-9b3b-ae79e906e951"

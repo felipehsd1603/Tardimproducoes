@@ -27,6 +27,13 @@ CREATE TABLE IF NOT EXISTS provas (
   hashtags         TEXT NOT NULL DEFAULT '',
   faq              TEXT NOT NULL DEFAULT '[]', -- JSON: [["pergunta", "resposta"]]; em banco já criado, rode d1/migracoes/009-medicao-faq.sql
   publicada        INTEGER NOT NULL DEFAULT 0,
+  -- Situação das inscrições (d1/migracoes/017-inscricoes-fechadas.sql): painel '' (automático) | aberta | esgotado | encerrado,
+  -- e o que a conferência na Ticket Sports leu (functions/_lib/ticketsports-situacao.js)
+  inscricoes       TEXT NOT NULL DEFAULT '',
+  ts_situacao      TEXT NOT NULL DEFAULT '',
+  ts_conferido_em  TEXT NOT NULL DEFAULT '',
+  ts_mudou_em      TEXT NOT NULL DEFAULT '',
+  ts_erro          TEXT NOT NULL DEFAULT '',
   criado_em        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   atualizado_em    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );

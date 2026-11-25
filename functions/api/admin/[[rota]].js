@@ -12,6 +12,7 @@
 import { json, mesmaOrigem } from "../../_lib/http.js";
 import { consultaCref6 } from "../../_lib/cref6.js";
 import { confereInstagramParceiro } from "../../_lib/instagram.js";
+import { confereTicketSports } from "../../_lib/ticketsports-situacao.js";
 import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.js";
 import { Erro, corpo } from "../../_admin/comum.js";
 import { sessaoValida, login, cookie } from "../../_admin/sessao.js";
@@ -52,6 +53,8 @@ const ROTAS = [
     if (!r) throw new Erro(400, "Nada a avisar: a assessoria não está conectada ou a prova ainda não aparece para ela.");
     return json({ aviso: r, convite: await uma(env, "convites", p.id) });
   }],
+  // Situação das inscrições na Ticket Sports (a mesma conferência do Worker agendado), na hora
+  ["POST", "provas/conferir-ticketsports", async ({ env }) => json({ resultado: await confereTicketSports(env), provas: await lista(env, "provas") })],
   // "Me avise"
   ["GET", "avisos", ({ env }) => resumoAvisos(env)],
   ["POST", "avisos/:prova/enviar", async ({ request, env, url, p }) => json(await enviaAvisos(env, p.prova, await corpo(request), url.origin))],
