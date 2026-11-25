@@ -65,7 +65,8 @@ function blocoOG({ titulo, descricao, imagem, url, tipo }) {
 const trocaOG = (html, bloco) => html.replace(/<!--og-->[\s\S]*?<!--\/og-->/, bloco);
 const trocaTitulo = (html, t) => html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(t)}</title>`);
 const trocaDescricao = (html, d) => html.replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${esc(d)}" />`);
-const marcaId = (html, id) => html.replace(/(\s*)<script src="js\/eventos\.js/, `$1<script>window.PAGINA_ID = ${JSON.stringify(id)};</script>$1<script src="js/eventos.js`);
+// Id da página num atributo do <html> (sem script inline, por causa do CSP); os js leem data-pagina
+const marcaId = (html, id) => html.replace(/<html lang="pt-BR">/, `<html lang="pt-BR" data-pagina="${esc(id)}">`);
 
 // As provas cadastradas no painel não passam por aqui: ficam no banco D1 e o
 // Cloudflare serve js/provas-db.js e prova-<id>.html na hora (functions/_middleware.js).

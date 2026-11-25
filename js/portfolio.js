@@ -274,7 +274,7 @@
   // ================= Página: estudo de caso do evento =================
   var raizEvento = document.getElementById("evento");
   if (raizEvento) {
-    var id = window.PAGINA_ID || new URLSearchParams(location.search).get("id");
+    var id = document.documentElement.getAttribute("data-pagina") || new URLSearchParams(location.search).get("id");
     var ev = eventos.filter(function (e) { return e.id === id; })[0];
 
     if (!ev) {

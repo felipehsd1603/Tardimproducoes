@@ -16,7 +16,7 @@
 
   // ---------- Medição (functions/api/evento.js): só soma totais por dia, sem identificar ninguém ----------
   // Conta cliques em [data-medir] (data-ref opcional) e em links do WhatsApp; o painel mostra na aba "Medição".
-  var pagina = window.PAGINA_ID || (location.pathname.split("/").pop() || "index").replace(/\.html$/, "") || "index";
+  var pagina = document.documentElement.getAttribute("data-pagina") || (location.pathname.split("/").pop() || "index").replace(/\.html$/, "") || "index";
   var medeAqui = /^https?:$/.test(location.protocol) && !window.DEMO && !document.getElementById("painel");
   function medir(evento, ref) {
     if (!medeAqui) return;
