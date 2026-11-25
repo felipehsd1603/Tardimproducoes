@@ -1,15 +1,19 @@
 // /api/admin/* — API do painel (admin.html), no D1 (binding DB). Documentação: /api/admin/docs (com login).
 //
-// Este arquivo só mapeia rota -> função; a lógica fica em functions/_admin/:
-//   comum.js (erro, corpo, regras) · sessao.js (login) · tabelas.js (CRUD das tabelas do painel)
-//   arquivos.js (imagens, configurações, contrato assinado) · avisos-email.js ("Me avise")
-//   integracoes.js (API v1: convite, reenviar, desconectar) · inscricoes.js (o que chega e a conferência)
+// Este arquivo só mapeia rota -> função (tabela ROTAS, registrada numa app Hono); a lógica fica em functions/_admin/:
+//   comum.ts (erro, corpo, regras) · sessao.ts (login) · tabelas.ts (CRUD das tabelas do painel)
+//   arquivos.ts (imagens, configurações, contrato assinado) · avisos-email.ts ("Me avise")
+//   integracoes.ts (API v1: convite, reenviar, desconectar) · inscricoes.ts (o que chega e a conferência)
 //
 // Erros: { erro: <status>, mensagem }. Escrita só da própria origem (cabeçalho Origin).
 // Cadastros feitos pelo site (parceiro.html) chegam como parceiros "pendente";
 // aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
+import { Hono } from "hono";
+import { handle } from "hono/cloudflare-pages";
 import { json, mesmaOrigem } from "../../_lib/http.ts";
+import { segmentos, type AppHono } from "../../_lib/hono.ts";
+import type { Env, Contexto, Convite } from "../../_lib/tipos.ts";
 import { consultaCref6 } from "../../_lib/cref6.ts";
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
 import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.ts";
@@ -24,8 +28,15 @@ import { OPENAPI_ADMIN } from "../../_admin/openapi.ts";
 import { listaInscricoesSite, confereInscricaoSite, cancelaInscricaoSite } from "../../_admin/inscricoes-site.ts";
 import { paginaSwagger } from "../../_api-v1/openapi.ts";
 
+/** O que cada rota recebe. p = parâmetros (":x") já decodificados; avisa = trabalho depois da resposta. */
+interface Chamada {
+  request: Request; env: Env; url: URL; p: Record<string, string>;
+  avisa: (f: () => Promise<unknown>) => void;
+}
+type Rota = [metodo: string, padrao: string, fn: (ch: Chamada) => Response | Promise<Response>];
+
 // [método ("*" = qualquer), padrão, função]. ":x" casa um segmento. Todas exigem login (as de entrar e sair ficam antes).
-const ROTAS = [
+const ROTAS: Rota[] = [
   ["GET", "sessao", () => json({ ok: true })],
   ["GET", "docs", () => paginaSwagger("/api/admin/openapi.json", "API do painel · Tardim Produções")],
   ["GET", "openapi.json", () => json(OPENAPI_ADMIN)],
@@ -74,7 +85,7 @@ const ROTAS = [
   // Convites e provas avisam as plataformas das assessorias conectadas, depois da resposta.
   ["GET", ":tabela", async ({ env, p }) => json(await lista(env, p.tabela))],
   ["POST", ":tabela", async ({ request, env, url, p, avisa }) => {
-    const novo = await cria(env, p.tabela, await corpo(request));
+    const novo = (await cria(env, p.tabela, await corpo(request))) as { id: string };
     if (p.tabela === "convites") avisa(() => avisaConvite(env, novo.id, origemPublica(url)));
     // Prova trazida para o painel depois do convite: os convites dela passam a aparecer para as assessorias
     if (p.tabela === "provas") avisa(() => avisaConvitesDaProva(env, novo.id, origemPublica(url)));
@@ -88,59 +99,61 @@ const ROTAS = [
   }],
   ["DELETE", ":tabela/:id", async ({ env, p }) => {
     if (p.tabela === "convites") {
-      const antes = await env.DB.prepare("SELECT * FROM convites WHERE id = ?").bind(p.id).first().catch(() => null);
+      const antes = await env.DB.prepare("SELECT * FROM convites WHERE id = ?").bind(p.id).first<Convite>().catch(() => null);
       if (antes) await avisaConviteCancelado(env, antes).catch(() => null);
     }
     return json(await apaga(env, p.tabela, p.id));
   }],
 ];
 
-function casa(padrao, segs) {
-  const partes = padrao.split("/");
-  if (partes.length !== segs.length) return null;
-  const p = {};
-  for (let i = 0; i < partes.length; i++) {
-    if (partes[i].startsWith(":")) p[partes[i].slice(1)] = segs[i];
-    else if (partes[i] !== segs[i]) return null;
-  }
-  // ":tabela" só casa as tabelas que o painel edita
-  if ("tabela" in p && !TABELAS[p.tabela]) return null;
-  return p;
+// ---------- app Hono ----------
+// Ordem das conferências (igual à de antes): escrita de outra origem (403) -> entrar/sair -> login (401) -> rotas -> 404.
+const app = new Hono<AppHono>({ strict: false }).basePath("/api/admin");
+
+app.use(async (c, next) => {
+  if (c.req.method !== "GET" && !mesmaOrigem(c.req.raw)) throw new Erro(403, "Origem não permitida.");
+  await next();
+});
+app.post("/login", (c) => login(c.req.raw, c.env));
+app.post("/sair", () => json({ ok: true }, 200, { "set-cookie": cookie("", 0) }));
+app.use(async (c, next) => {
+  if (!(await sessaoValida(c.req.raw, c.env))) throw new Erro(401, "Entre no painel.");
+  await next();
+});
+
+// Cada linha da tabela vira uma rota. Método diferente (inclusive HEAD, que o Hono manda para as rotas GET)
+// ou ":tabela" fora das tabelas do painel: segue para a próxima linha que casar, como o laço de antes.
+for (const [m, padrao, fn] of ROTAS) {
+  app.all("/" + padrao, (c, next) => {
+    if (m !== "*" && m !== c.req.method) return next();
+    const p = c.req.param() as Record<string, string>;
+    if ("tabela" in p && !TABELAS[p.tabela]) return next();
+    const avisa = (f: () => Promise<unknown>) => { c.executionCtx.waitUntil(f().catch(() => {})); };
+    return fn({ request: c.req.raw, env: c.env, url: new URL(c.req.url), p, avisa });
+  });
 }
 
-async function trata(request, env, segs, url, waitUntil) {
-  const m = request.method;
-  if (m !== "GET" && !mesmaOrigem(request)) throw new Erro(403, "Origem não permitida.");
-  if (segs.join("/") === "login" && m === "POST") return login(request, env);
-  if (segs.join("/") === "sair" && m === "POST") return json({ ok: true }, 200, { "set-cookie": cookie("", 0) });
-  if (!(await sessaoValida(request, env))) throw new Erro(401, "Entre no painel.");
+app.notFound(() => json({ erro: 404, mensagem: "Rota não encontrada." }, 404));
 
-  for (const [metodo, padrao, fn] of ROTAS) {
-    if (metodo !== "*" && metodo !== m) continue;
-    const p = casa(padrao, segs);
-    if (!p) continue;
-    const avisa = (f) => { if (waitUntil) waitUntil(f().catch(() => {})); };
-    return fn({ request, env, url, p, avisa });
-  }
-  throw new Erro(404, "Rota não encontrada.");
-}
+app.onError((e, c) => {
+  if (e instanceof Erro) return json({ erro: e.status, mensagem: e.message }, e.status);
+  const msg = String((e && e.message) || e);
+  if (/UNIQUE/i.test(msg)) return json({ erro: 409, mensagem: "Já existe um registro com esse identificador, cupom ou arquivo." }, 409);
+  if (/FOREIGN KEY/i.test(msg)) return json({ erro: 400, mensagem: "Registro ligado a outro que não existe." }, 400);
+  if (/no such table/i.test(msg)) return json({ erro: 503, mensagem: "Faltam tabelas no banco: rode as migrações (npm run db:migracoes:producao)." }, 503);
+  console.error("[api/admin]", c.req.method, new URL(c.req.url).pathname, e);
+  return json({ erro: 500, mensagem: "Erro no servidor." }, 500);
+});
 
-export async function onRequest({ request, env, params, waitUntil }) {
+const hono = handle(app);
+
+// Conferências de configuração (503) e a decodificação dos segmentos ficam antes do Hono, como antes.
+export async function onRequest(ctx: Contexto<"rota">): Promise<Response> {
+  const { env, params } = ctx;
   if (!env.DB) return json({ erro: "config", mensagem: "O banco D1 (binding DB) não está ligado a este projeto." }, 503);
   if (!env.ADMIN_SENHA || !env.SESSAO_SEGREDO) {
     return json({ erro: "config", mensagem: "Defina os segredos ADMIN_SENHA e SESSAO_SEGREDO no projeto do Cloudflare Pages." }, 503);
   }
-  const url = new URL(request.url);
-  const segs = [].concat(params.rota || []).map((x) => decodeURIComponent(x));
-  try {
-    return await trata(request, env, segs, url, waitUntil);
-  } catch (e) {
-    if (e instanceof Erro) return json({ erro: e.status, mensagem: e.message }, e.status);
-    const msg = String((e && e.message) || e);
-    if (/UNIQUE/i.test(msg)) return json({ erro: 409, mensagem: "Já existe um registro com esse identificador, cupom ou arquivo." }, 409);
-    if (/FOREIGN KEY/i.test(msg)) return json({ erro: 400, mensagem: "Registro ligado a outro que não existe." }, 400);
-    if (/no such table/i.test(msg)) return json({ erro: 503, mensagem: "Faltam tabelas no banco: rode as migrações (npm run db:migracoes:producao)." }, 503);
-    console.error("[api/admin]", request.method, url.pathname, e);
-    return json({ erro: 500, mensagem: "Erro no servidor." }, 500);
-  }
+  segmentos(params, "rota");
+  return hono(ctx as unknown as Parameters<typeof hono>[0]);
 }
