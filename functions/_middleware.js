@@ -17,14 +17,20 @@ function daLinha(r) {
     percursos: lerJson(r.percursos, []), resumo: r.resumo, poster: r.poster, inscricao: r.inscricao,
     valores: lerJson(r.valores, []), kit: lerJson(r.kit, { itens: [], retirada: "" }), programacao: lerJson(r.programacao, []),
     premiacao: r.premiacao, percursoMapa: r.percurso_mapa, regulamento: r.regulamento, resultados: r.resultados,
-    fotos: r.fotos, realizacao: r.realizacao, textoDivulgacao: r.texto_divulgacao, hashtags: r.hashtags, painel: true,
+    fotos: r.fotos, realizacao: r.realizacao, textoDivulgacao: r.texto_divulgacao, hashtags: r.hashtags,
+    faq: lerJson(r.faq, []), painel: true,
   };
 }
 
 async function provasJs(env) {
   const r = await env.DB.prepare("SELECT * FROM provas WHERE publicada = 1 ORDER BY data").all();
   const lista = r.results.map(daLinha);
-  const corpo = "/* Provas publicadas no painel (D1). */\n(function () {\n  var DB = " + JSON.stringify(lista).replace(/</g, "\\u003c") + ";\n" +
+  // Depoimentos publicados no painel (js/ui.js mostra). Banco sem a tabela: segue sem eles.
+  let depo = [];
+  try {
+    depo = (await env.DB.prepare("SELECT nome, cargo, texto, onde FROM depoimentos WHERE publicado = 1 ORDER BY criado_em DESC").all()).results;
+  } catch (e) { depo = []; }
+  const corpo = "/* Provas e depoimentos publicados no painel (D1). */\nvar DEPOIMENTOS = " + JSON.stringify(depo).replace(/</g, "\\u003c") + ";\n(function () {\n  var DB = " + JSON.stringify(lista).replace(/</g, "\\u003c") + ";\n" +
     "  if (typeof PROXIMAS === \"undefined\") return;\n  DB.forEach(function (p) {\n" +
     "    for (var i = 0; i < PROXIMAS.length; i++) if (PROXIMAS[i].id === p.id) { PROXIMAS[i] = p; return; }\n" +
     "    PROXIMAS.push(p);\n  });\n})();\n";
@@ -64,6 +70,8 @@ async function paginaProva(env, id, url) {
     `    <meta property="og:url" content="${esc(endereco)}" />`,
     `    <meta name="twitter:card" content="summary_large_image" />`,
     "    <!--/og-->",
+    // A arte é a maior imagem da tela e só entra pelo js/prova.js: o navegador já começa a baixar
+    ...(ev.poster ? [`    <link rel="preload" as="image" href="${esc(ev.poster)}" fetchpriority="high" />`] : []),
   ].join("\n");
   let html = await tpl.text();
   html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(titulo)}</title>`)
@@ -75,7 +83,7 @@ async function paginaProva(env, id, url) {
 
 // A pasta inteira é publicada: o código do servidor, o esquema do banco e os
 // arquivos de configuração não devem ser lidos pelo endereço do site.
-const PRIVADO = /^\/(functions|d1|scripts|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|\.gitignore|_routes\.json|_headers|\.dev\.vars|\.assetsignore)$/i;
+const PRIVADO = /^\/(functions|d1|scripts|\.github|node_modules|\.wrangler)(\/|$)|^\/(wrangler\.toml|README\.md|\.gitignore|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore)$/i;
 
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);

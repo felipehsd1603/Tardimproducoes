@@ -7,19 +7,28 @@
 //   POST   login            { senha }
 //   POST   sair
 //   GET    sessao
-//   GET    dados            { provas, parceiros, convites }
-//   GET    provas | parceiros | convites
-//   POST   provas | parceiros | convites            (cria)
-//   PUT    provas/<id> | parceiros/<id> | convites/<id>   (altera só os campos enviados)
-//   DELETE provas/<id> | parceiros/<id> | convites/<id>
+//   GET    dados            { provas, parceiros, convites, depoimentos }
+//   (minutario, os itens padrão das propostas, segue as mesmas quatro rotas de propostas)
+//   GET    config/contrato  |  PUT config/contrato { empresas, foro, modelo }   dados da empresa e modelo do contrato
+//   PUT    propostas/<id>/assinado?nome=x.pdf  (corpo = o PDF)  |  GET (baixa)  |  DELETE   contrato assinado
+//   GET    provas | parceiros | convites | depoimentos | propostas
+//   POST   provas | parceiros | convites | depoimentos | propostas            (cria)
+//   PUT    provas/<id> | parceiros/<id> | convites/<id> | depoimentos/<id> | propostas/<id>   (altera só os campos enviados)
+//   DELETE provas/<id> | parceiros/<id> | convites/<id> | depoimentos/<id> | propostas/<id>
 //   POST   arquivos?caminho=provas/<nome>.jpg       (corpo = a imagem)
 //   GET    orcamentos | inscricoes | inscricoes/<id>/atletas
+//   GET    medicao?dias=30                          [{ evento, ref, n }]  (functions/api/evento.js)
 //   GET    cref6?numero=012345-G/MG                 (consulta pública do CREF6, functions/_cref6.js)
+//   POST   parceiros/<id>/instagram                 (confere seguidores na API da Meta, functions/_instagram.js)
+//   GET    avisos                                   [{ prova_id, pendentes, enviados }]  ("Me avise", functions/api/aviso.js)
+//   POST   avisos/<prova>/enviar  { nome, data, local, link }  e-mail "inscrições abertas" para quem está pendente
+//          (Resend: RESEND_API_KEY + AVISO_REMETENTE com domínio verificado)
 //
 // Cadastros feitos pelo site (parceiro.html) chegam como parceiros com situacao "pendente";
 // aprovar = PUT parceiros/<id> { situacao: "aprovado", ativo: true }.
 
 import { consultaCref6, numeroCref } from "../../_cref6.js";
+import { confereInstagramParceiro } from "../../_instagram.js";
 
 // O primeiro é o único com registro conferido no CREF6 (js/admin.js usa a mesma lista)
 const PROFISSOES = [
@@ -43,6 +52,7 @@ const TABELAS = {
       nome: 120, data: 10, hora: 10, local: 200, percursos: "json", resumo: 400, poster: 300, inscricao: 500,
       valores: "json", kit: "json", programacao: "json", premiacao: 300, percurso_mapa: 500, regulamento: 500,
       resultados: 500, fotos: 500, realizacao: 120, texto_divulgacao: 1500, hashtags: 200, publicada: "bool",
+      faq: "json", // [["pergunta", "resposta"]]; o painel só envia quando há o que gravar (banco sem a coluna continua salvando)
     },
     obrigatorios: ["nome", "data"], ordem: "data",
   },
@@ -63,6 +73,21 @@ const TABELAS = {
       coletiva: "json", // inscrição coletiva (assessoria/equipe): { d, m, i, v, f, g, b, kt, pe } de js/convite.js
     },
     obrigatorios: ["parceiro_id", "prova_id", "cupom"], ordem: "criado_em DESC",
+  },
+  // Propostas comerciais (aba Propostas): os itens e as somas ficam em "dados"
+  propostas: {
+    campos: { numero: 20, cliente: 160, evento: 200, dados: "json" },
+    obrigatorios: ["cliente"], ordem: "criado_em DESC",
+  },
+  // Minutário: itens padrão das propostas; "dados" = { unit, qtd, pp, base }
+  minutario: {
+    campos: { categoria: 80, descricao: 2000, dados: "json" },
+    obrigatorios: ["descricao"], ordem: "categoria COLLATE NOCASE, criado_em, rowid",
+  },
+  // Depoimentos mostrados no site (functions/_middleware.js entrega os publicados)
+  depoimentos: {
+    campos: { nome: 120, cargo: 160, texto: 600, onde: 10, publicado: "bool" },
+    obrigatorios: ["nome", "texto"], ordem: "criado_em DESC",
   },
 };
 
@@ -140,8 +165,8 @@ function limpa(tabela, d, criando) {
     const regra = def.campos[campo];
     let x = d[campo];
     if (regra === "json") {
-      x = JSON.stringify(x == null ? (campo === "kit" ? { itens: [], retirada: "" } : []) : x);
-      if (x.length > 20000) throw new Erro(400, "O campo " + campo + " está grande demais.");
+      x = JSON.stringify(x == null ? (campo === "kit" ? { itens: [], retirada: "" } : (campo === "dados" ? {} : [])) : x);
+      if (x.length > (tabela === "propostas" ? 150000 : 20000)) throw new Erro(400, "O campo " + campo + " está grande demais.");
     } else if (regra === "bool") {
       x = x ? 1 : 0;
     } else if (regra === "num") {
@@ -182,6 +207,11 @@ function limpa(tabela, d, criando) {
     }
     if ("registro_conferido_em" in v && v.registro_conferido_em && isNaN(Date.parse(v.registro_conferido_em))) throw new Erro(400, "Data de conferência inválida.");
   }
+  if (tabela === "depoimentos") {
+    if ("onde" in v && ["empresas", "inicio", "ambas"].indexOf(v.onde) < 0) throw new Erro(400, "Lugar do depoimento inválido.");
+    if ("nome" in v && !v.nome) throw new Erro(400, "Preencha o campo nome.");
+    if ("texto" in v && !v.texto) throw new Erro(400, "Preencha o campo texto.");
+  }
   if (tabela === "convites") {
     if ("cupom" in v) { v.cupom = v.cupom.toUpperCase(); if (!/^[A-Z0-9_-]{3,40}$/.test(v.cupom)) throw new Erro(400, "Cupom inválido: use de 3 a 40 letras, números, hífen ou sublinhado."); }
     if ("prova_id" in v && !RE_ID_PROVA.test(v.prova_id)) throw new Erro(400, "Prova inválida.");
@@ -199,7 +229,7 @@ function saida(tabela, r) {
   const def = TABELAS[tabela];
   const o = Object.assign({}, r);
   for (const c in def.campos) {
-    if (def.campos[c] === "json") { try { o[c] = JSON.parse(o[c]); } catch (e) { o[c] = c === "kit" ? { itens: [], retirada: "" } : []; } }
+    if (def.campos[c] === "json") { try { o[c] = JSON.parse(o[c]); } catch (e) { o[c] = c === "kit" ? { itens: [], retirada: "" } : (c === "dados" ? {} : []); } }
     if (def.campos[c] === "bool") o[c] = !!o[c];
   }
   return o;
@@ -231,6 +261,22 @@ async function cria(env, tabela, d) {
 
 async function altera(env, tabela, id, d) {
   const v = limpa(tabela, d, false);
+  // Proposta: o andamento (etapa, datas e contrato) não some quando uma tela antiga salva só os itens
+  if (tabela === "propostas" && "dados" in v) {
+    const atual = await env.DB.prepare("SELECT dados FROM propostas WHERE id = ?").bind(id).first();
+    let antes = {}, nova = {};
+    try { antes = JSON.parse((atual && atual.dados) || "{}"); nova = JSON.parse(v.dados); } catch (e) { /* segue com o que veio */ }
+    let mudou = false;
+    for (const k of ["etapa", "marcos", "contrato"]) if (!(k in nova) && k in antes) { nova[k] = antes[k]; mudou = true; }
+    if (mudou) v.dados = JSON.stringify(nova);
+  }
+  // Trocou o @: a conferência antiga do Instagram deixa de valer
+  if (tabela === "parceiros" && "instagram" in v) {
+    const atual = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first();
+    if (atual && atual.instagram.replace(/^@/, "").toLowerCase() !== v.instagram.replace(/^@/, "").toLowerCase()) {
+      Object.assign(v, { ig_situacao: "", ig_seguidores: 0, ig_posts: 0, ig_conferido_em: "" });
+    }
+  }
   const cols = Object.keys(v);
   if (cols.length) {
     const r = await env.DB.prepare(
@@ -247,11 +293,72 @@ async function apaga(env, tabela, id) {
   const passos = [];
   if (tabela === "parceiros") {
     passos.push(env.DB.prepare("DELETE FROM convites WHERE parceiro_id = ?").bind(id));
+    // Se o login tem outros perfis, o principal passa a ser um deles; senão o login some junto
+    passos.push(env.DB.prepare(
+      "UPDATE contas SET parceiro_id = (SELECT p.id FROM parceiros p WHERE p.conta_id = contas.id AND p.id <> ?1 LIMIT 1) " +
+      "WHERE parceiro_id = ?1 AND EXISTS (SELECT 1 FROM parceiros p WHERE p.conta_id = contas.id AND p.id <> ?1)"
+    ).bind(id));
     passos.push(env.DB.prepare("DELETE FROM contas WHERE parceiro_id = ?").bind(id));
   }
+  // Proposta excluída leva junto o PDF assinado (banco sem a tabela: segue excluindo a proposta)
+  if (tabela === "propostas") await env.DB.prepare("DELETE FROM contratos_assinados WHERE proposta_id = ?").bind(id).run().catch(() => {});
   passos.push(env.DB.prepare(`DELETE FROM ${tabela} WHERE id = ?`).bind(id));
   await env.DB.batch(passos);
   return { ok: true };
+}
+
+// Configurações do painel: chave -> tamanho máximo do JSON
+const CONFIGS = { contrato: 120000 };
+async function config(request, env, m, chave) {
+  if (m === "GET") {
+    const r = await env.DB.prepare("SELECT valor FROM configuracoes WHERE chave = ?").bind(chave).first();
+    try { return json(r ? JSON.parse(r.valor) : {}); } catch (e) { return json({}); }
+  }
+  if (m === "PUT") {
+    const v = JSON.stringify(await corpo(request));
+    if (v.length > CONFIGS[chave]) throw new Erro(400, "Configuração grande demais.");
+    await env.DB.prepare(
+      "INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
+    ).bind(chave, v).run();
+    return json(JSON.parse(v));
+  }
+  throw new Erro(405, "Método não permitido.");
+}
+
+// PDF do contrato assinado de uma proposta (só com login)
+async function contratoAssinado(request, env, m, id) {
+  if (!(await env.DB.prepare("SELECT 1 FROM propostas WHERE id = ?").bind(id).first())) throw new Erro(404, "Proposta não encontrada.");
+  if (m === "GET") {
+    const r = await env.DB.prepare("SELECT nome, dados FROM contratos_assinados WHERE proposta_id = ?").bind(id).first();
+    if (!r) throw new Erro(404, "Nenhum contrato assinado foi enviado para esta proposta.");
+    const bytes = r.dados instanceof ArrayBuffer ? r.dados : new Uint8Array(r.dados).buffer;
+    const nome = String(r.nome || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w.-]+/g, "-").replace(/^-+/, "") || "contrato-assinado.pdf";
+    return new Response(bytes, {
+      headers: {
+        "content-type": "application/pdf", "content-disposition": `attachment; filename="${nome}"`,
+        "cache-control": "no-store", "x-content-type-options": "nosniff",
+      },
+    });
+  }
+  if (m === "PUT") {
+    const tipo = (request.headers.get("content-type") || "").split(";")[0].trim();
+    if (tipo !== "application/pdf") throw new Erro(400, "Envie o contrato assinado em PDF.");
+    const dados = await request.arrayBuffer();
+    if (!dados.byteLength) throw new Erro(400, "Arquivo vazio.");
+    if (dados.byteLength > MAX_ARQUIVO) throw new Erro(413, "PDF grande demais (máximo de 1,9 MB). Guarde no Drive e cole o link.");
+    if (String.fromCharCode(...new Uint8Array(dados, 0, Math.min(5, dados.byteLength))) !== "%PDF-") throw new Erro(400, "Esse arquivo não é um PDF.");
+    const nome = String(new URL(request.url).searchParams.get("nome") || "contrato-assinado.pdf").slice(0, 120);
+    await env.DB.prepare(
+      "INSERT INTO contratos_assinados (proposta_id, nome, tamanho, dados) VALUES (?, ?, ?, ?) ON CONFLICT(proposta_id) DO UPDATE SET " +
+      "nome = excluded.nome, tamanho = excluded.tamanho, dados = excluded.dados, enviado_em = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
+    ).bind(id, nome, dados.byteLength, dados).run();
+    return json({ ok: true, nome, tamanho: dados.byteLength });
+  }
+  if (m === "DELETE") {
+    await env.DB.prepare("DELETE FROM contratos_assinados WHERE proposta_id = ?").bind(id).run();
+    return json({ ok: true });
+  }
+  throw new Erro(405, "Método não permitido.");
 }
 
 async function enviaArquivo(request, env, url) {
@@ -264,6 +371,60 @@ async function enviaArquivo(request, env, url) {
   if (dados.byteLength > MAX_ARQUIVO) throw new Erro(413, "Imagem grande demais (máximo de 1,9 MB).");
   await env.DB.prepare("INSERT INTO arquivos (caminho, tipo, tamanho, dados) VALUES (?, ?, ?, ?)").bind(caminho, tipo, dados.byteLength, dados).run();
   return json({ ok: true, caminho, url: "arquivos/" + caminho }, 201);
+}
+
+// ---------- "Me avise": e-mail de inscrições abertas ----------
+const escHtml = (s) => String(s || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+async function enviaAvisos(env, provaId, d, origem) {
+  if (!RE_ID_PROVA.test(provaId)) throw new Erro(400, "Prova inválida.");
+  if (!env.RESEND_API_KEY) throw new Erro(503, "O envio de e-mail ainda não foi configurado (falta o segredo RESEND_API_KEY).");
+  const nome = String(d.nome || "").trim().slice(0, 160);
+  const link = String(d.link || "").trim().slice(0, 500);
+  const data = String(d.data || "").trim().slice(0, 60);
+  const local = String(d.local || "").trim().slice(0, 200);
+  if (!nome) throw new Erro(400, "Falta o nome da prova.");
+  if (!/^https:\/\/[^\s"<>]+$/.test(link)) throw new Erro(400, "A prova ainda não tem o link de inscrição.");
+  const fila = (await env.DB.prepare("SELECT id, nome, email FROM avisos WHERE prova_id = ? AND enviado_em = '' LIMIT 500")
+    .bind(provaId).all()).results;
+  if (!fila.length) return { enviados: 0, falhas: 0 };
+  const remetente = env.AVISO_REMETENTE || "Tardim Produções <onboarding@resend.dev>";
+  // pagina_id: avisar quem pediu a "próxima edição" de uma prova realizada com o link da prova nova
+  const pagina = origem + "/prova-" + (RE_ID_PROVA.test(d.pagina_id || "") ? d.pagina_id : provaId) + ".html";
+  let enviados = 0, falhas = 0;
+  // Um e-mail por pessoa (ninguém vê o endereço dos outros), em lotes de 100 (limite do /emails/batch)
+  for (let i = 0; i < fila.length; i += 100) {
+    const lote = fila.slice(i, i + 100);
+    const msgs = lote.map((p) => {
+      const ola = p.nome ? "Olá, " + p.nome.split(" ")[0] + "!" : "Olá!";
+      const cancelar = origem + "/api/aviso?cancelar=" + p.id;
+      return {
+        from: remetente, to: [p.email], subject: "Inscrições abertas: " + nome,
+        headers: { "List-Unsubscribe": "<" + cancelar + ">" },
+        text: [ola, "", "As inscrições para a " + nome + " estão abertas" + (data ? " (prova em " + data + (local ? ", " + local : "") + ")" : "") + ".",
+          "", "Inscreva-se: " + link, "", "Detalhes da prova: " + pagina, "", "Tardim Produções",
+          "", "Você recebeu este e-mail porque pediu o aviso no site. Para cancelar: " + cancelar].join("\n"),
+        html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#24325a;line-height:1.5">
+<p>${escHtml(ola)}</p><p>As inscrições para a <b>${escHtml(nome)}</b> estão abertas${data ? " (prova em " + escHtml(data) + (local ? ", " + escHtml(local) : "") + ")" : ""}.</p>
+<p><a href="${escHtml(link)}" style="display:inline-block;background:#c8102e;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Fazer minha inscrição</a></p>
+<p><a href="${escHtml(pagina)}">Ver detalhes da prova</a></p><p>Tardim Produções</p>
+<p style="font-size:12px;color:#777">Você recebeu este e-mail porque pediu o aviso no site. <a href="${escHtml(cancelar)}">Cancelar o aviso</a>.</p></div>`,
+      };
+    });
+    const r = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
+      body: JSON.stringify(msgs),
+    });
+    if (!r.ok) {
+      const msg = ((await r.json().catch(() => ({}))).message || "erro " + r.status);
+      if (!enviados) throw new Erro(502, "O Resend recusou o envio: " + msg);
+      falhas += lote.length;
+      break;
+    }
+    await env.DB.batch(lote.map((p) => env.DB.prepare("UPDATE avisos SET enviado_em = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?").bind(p.id)));
+    enviados += lote.length;
+  }
+  return { enviados, falhas };
 }
 
 // ---------- rotas ----------
@@ -279,18 +440,45 @@ async function trata(request, env, rota, url) {
 
   if (a === "sessao" && m === "GET") return json({ ok: true });
   if (a === "dados" && m === "GET") {
-    const [provas, parceiros, convites] = await Promise.all([lista(env, "provas"), lista(env, "parceiros"), lista(env, "convites")]);
-    return json({ provas, parceiros, convites });
+    // Banco sem a tabela de depoimentos (falta d1/migracoes/008-depoimentos.sql): o resto do painel segue funcionando
+    const [provas, parceiros, convites, depoimentos] = await Promise.all([lista(env, "provas"), lista(env, "parceiros"), lista(env, "convites"),
+      lista(env, "depoimentos").catch(() => null)]);
+    return json({ provas, parceiros, convites, depoimentos });
   }
   if (a === "arquivos" && m === "POST" && !b) return enviaArquivo(request, env, url);
   // Consulta ao CREF6 só para quem está no painel (não vira proxy aberto do CREF)
   if (a === "cref6" && m === "GET" && !b) return json(await consultaCref6(url.searchParams.get("numero") || ""));
+
+  if (a === "parceiros" && b && c === "instagram" && m === "POST") {
+    const r = await confereInstagramParceiro(env, b);
+    if (!r) throw new Erro(404, "Registro não encontrado.");
+    return json({ resultado: r, parceiro: await uma(env, "parceiros", b) });
+  }
+
+  if (a === "avisos" && !b && m === "GET") {
+    return json((await env.DB.prepare(
+      "SELECT prova_id, SUM(enviado_em = '') AS pendentes, SUM(enviado_em <> '') AS enviados FROM avisos GROUP BY prova_id"
+    ).all()).results);
+  }
+  if (a === "avisos" && b && c === "enviar" && m === "POST") return json(await enviaAvisos(env, b, await corpo(request), url.origin));
+
+  if (a === "config" && CONFIGS[b] && !c) return config(request, env, m, b);
+  if (a === "propostas" && b && c === "assinado" && !rota[3]) return contratoAssinado(request, env, m, b);
 
   if (TABELAS[a]) {
     if (!b && m === "GET") return json(await lista(env, a));
     if (!b && m === "POST") return json(await cria(env, a, await corpo(request)), 201);
     if (b && !c && m === "PUT") return json(await altera(env, a, b, await corpo(request)));
     if (b && !c && m === "DELETE") return json(await apaga(env, a, b));
+  }
+
+  // Medição do site (functions/api/evento.js): totais por evento e página nos últimos N dias
+  if (a === "medicao" && !b && m === "GET") {
+    const dias = Math.min(Math.max(parseInt(url.searchParams.get("dias"), 10) || 30, 1), 365);
+    const desde = new Date(Date.now() - 3 * 3600 * 1000 - (dias - 1) * 86400000).toISOString().slice(0, 10);
+    return json((await env.DB.prepare(
+      "SELECT evento, ref, SUM(n) AS n FROM medicao WHERE dia >= ? GROUP BY evento, ref"
+    ).bind(desde).all()).results);
   }
 
   // Leitura do que chega pelo site (tabelas de d1/schema.sql)
@@ -311,7 +499,7 @@ async function trata(request, env, rota, url) {
 
 async function corpo(request) {
   const t = await request.text();
-  if (t.length > 60000) throw new Erro(413, "Dados grandes demais.");
+  if (t.length > 200000) throw new Erro(413, "Dados grandes demais.");
   try { const d = JSON.parse(t); if (d && typeof d === "object" && !Array.isArray(d)) return d; } catch (e) { /* cai no erro abaixo */ }
   throw new Erro(400, "Dados inválidos.");
 }

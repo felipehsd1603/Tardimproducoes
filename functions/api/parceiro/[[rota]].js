@@ -6,16 +6,22 @@
 //
 //   GET  config                 { google: client id ou "" }
 //   GET  cidades?uf=MG          { uf, cidades }  (municípios do IBGE, functions/_cidades.js)
-//   POST cadastro               { tipo, nome, responsavel, whatsapp, uf, cidade, instagram, seguidores, email, senha | credential, aceite }
+//   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], nome, whatsapp, uf, cidade, instagram, seguidores,
+//                                 assessoria_nome, cnpj, assessoria_instagram, email, senha | credential, aceite }
+//                               Um perfil (linha em parceiros) por tipo marcado, todos no mesmo login (parceiros.conta_id).
+//                               Assessoria exige CNPJ válido (guardado em parceiros.documento).
 //   POST login                  { email, senha }
 //   POST google                 { credential }  -> entra, ou { novo: true, email, nome } para completar o cadastro
+//   POST esqueci                { email }  -> manda por e-mail o link para criar senha nova (1 hora, uso único)
+//   POST nova-senha             { token, senha }  -> troca a senha e já entra
 //   POST sair
-//   GET  eu                     { email, parceiro, convites }   (convites só depois de aprovado)
+//   GET  eu                    { email, perfis: [parceiro + convites] }   (convites só depois de aprovado)
 //
 // Segredos/variáveis: SESSAO_SEGREDO (obrigatório), GOOGLE_CLIENT_ID (login com Google),
 // RESEND_API_KEY + AVISO_EMAIL (+ AVISO_REMETENTE opcional) para o e-mail de novo cadastro.
 
 import { CIDADES } from "../../_cidades.js";
+import { confereInstagramParceiro } from "../../_instagram.js";
 
 const COOKIE = "tardim_parceiro";
 const DURACAO = 60 * 60 * 24 * 30; // 30 dias
@@ -51,6 +57,20 @@ function cidadeOficial(uf, nome) {
   return k ? (CIDADES[uf] || []).find((c) => chaveCidade(c) === k) || "" : "";
 }
 const agoraIso =() => new Date().toISOString().replace(/\.\d+Z$/, "Z");
+// CNPJ com dígitos verificadores; devolve "00.000.000/0000-00" ou "" se inválido
+function cnpjValido(v) {
+  const d = String(v || "").replace(/\D/g, "");
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return "";
+  const dv = (n) => {
+    let s = 0, p = n - 7;
+    for (let i = 0; i < n; i++) { s += Number(d[i]) * p--; if (p < 2) p = 9; }
+    const r = s % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  if (dv(12) !== Number(d[12]) || dv(13) !== Number(d[13])) return "";
+  return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+}
+const limpaInsta = (v) => texto(v, 100).replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, "");
 
 // ---------- criptografia ----------
 const enc = new TextEncoder();
@@ -151,17 +171,22 @@ async function marca(env, chave) {
 const ipDe = (request) => request.headers.get("CF-Connecting-IP") || "local";
 
 // ---------- aviso de novo cadastro (Resend) ----------
-async function avisaTardim(env, origem, p, email) {
+async function avisaTardim(env, origem, perfis, email) {
   if (!env.RESEND_API_KEY || !env.AVISO_EMAIL) return;
+  const p = perfis[0];
+  const tipos = perfis.map((x) => TIPOS[x.tipo]).join(" + ");
   const linhas = [
-    "Novo cadastro de parceiro no site, aguardando aprovação.", "",
-    "Tipo: " + TIPOS[p.tipo], "Nome: " + p.nome,
-    p.responsavel ? "Responsável: " + p.responsavel : "",
-    "E-mail: " + email, p.whatsapp ? "WhatsApp: " + p.whatsapp : "",
-    "Cidade: " + p.cidade + "/" + p.uf, p.instagram ? "Instagram: @" + p.instagram : "",
-    p.seguidores ? "Seguidores (estimado): " + p.seguidores.toLocaleString("pt-BR") : "", "",
-    "Aprovar ou recusar no painel: " + origem + "/admin.html",
-  ].filter((l, i, a) => l !== "" || a[i - 1] !== "");
+    "Novo cadastro de parceiro no site, aguardando aprovação" + (perfis.length > 1 ? " (" + perfis.length + " perfis, aprove cada um)" : "") + ".", "",
+    "Tipo: " + tipos, "E-mail: " + email, p.whatsapp ? "WhatsApp: " + p.whatsapp : "", "Cidade: " + p.cidade + "/" + p.uf,
+  ];
+  perfis.forEach((x) => {
+    linhas.push("", TIPOS[x.tipo] + ": " + x.nome,
+      x.responsavel ? "Responsável: " + x.responsavel : "", x.documento ? "CNPJ: " + x.documento : "",
+      x.instagram ? "Instagram: @" + x.instagram : "",
+      x.seguidores ? "Seguidores (estimado): " + x.seguidores.toLocaleString("pt-BR") : "");
+  });
+  linhas.push("", "Aprovar ou recusar no painel: " + origem + "/admin.html");
+  const corpoTxt = linhas.filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
   try {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -170,8 +195,8 @@ async function avisaTardim(env, origem, p, email) {
         from: env.AVISO_REMETENTE || "Tardim Produções <onboarding@resend.dev>",
         to: String(env.AVISO_EMAIL).split(",").map((s) => s.trim()).filter(Boolean),
         reply_to: email,
-        subject: "Novo cadastro: " + p.nome + " (" + TIPOS[p.tipo] + ")",
-        text: linhas.join("\n"),
+        subject: "Novo cadastro: " + perfis.map((x) => x.nome).filter((n, i, a) => a.indexOf(n) === i).join(" / ") + " (" + tipos + ")",
+        text: corpoTxt,
       }),
     });
   } catch (e) { /* o aviso no painel continua valendo */ }
@@ -182,26 +207,41 @@ async function cadastro(request, env, ctx) {
   const ip = ipDe(request);
   await limite(env, "cad:" + ip, MAX_CADASTROS, JANELA_CADASTROS, "Muitos cadastros deste endereço. Tente de novo mais tarde.");
   const d = await corpo(request);
-  const tipo = texto(d.tipo, 20);
-  if (!TIPOS[tipo]) throw new Erro(400, "Escolha o tipo de parceiro.");
-  const p = {
-    tipo, nome: texto(d.nome, 120), responsavel: texto(d.responsavel, 120), whatsapp: texto(d.whatsapp, 20),
-    uf: texto(d.uf, 2).toUpperCase(), cidade: "", seguidores: 0,
-    // Aceita "@perfil", "perfil" ou o link do perfil
-    instagram: texto(d.instagram, 100).replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, ""),
+  // Um ou mais tipos (aceita também o antigo { tipo })
+  const pedidos = [].concat(Array.isArray(d.tipos) ? d.tipos : d.tipo ? [d.tipo] : []).map((t) => texto(t, 20));
+  const tipos = Object.keys(TIPOS).filter((t) => pedidos.includes(t));
+  if (!tipos.length || tipos.length !== new Set(pedidos).size) throw new Erro(400, "Marque se você é assessoria, influenciador e/ou embaixador.");
+  const tem = (t) => tipos.includes(t);
+  const comum = {
+    nome: texto(d.nome, 120), whatsapp: texto(d.whatsapp, 20), uf: texto(d.uf, 2).toUpperCase(), cidade: "",
+    instagram: limpaInsta(d.instagram), // aceita "@perfil", "perfil" ou o link do perfil
   };
-  if (p.nome.length < 2) throw new Erro(400, tipo === "assessoria" ? "Informe o nome da assessoria." : "Informe o seu nome.");
-  if (tipo === "assessoria" && p.responsavel.length < 2) throw new Erro(400, "Informe o nome do responsável pela assessoria.");
-  if (p.whatsapp.replace(/\D/g, "").length < 10) throw new Erro(400, "Informe um WhatsApp com DDD.");
-  if (!CIDADES[p.uf]) throw new Erro(400, "Escolha o estado.");
-  p.cidade = cidadeOficial(p.uf, d.cidade);
-  if (!p.cidade) throw new Erro(400, "Escolha a cidade na lista do estado " + p.uf + ".");
-  if (p.instagram && !/^[\w.]{1,30}$/.test(p.instagram)) throw new Erro(400, "Perfil do Instagram inválido.");
-  if (tipo === "influenciador") {
-    if (!p.instagram) throw new Erro(400, "Informe o seu perfil do Instagram.");
-    p.seguidores = parseInt(String(d.seguidores == null ? "" : d.seguidores).replace(/\D/g, ""), 10) || 0;
-    if (p.seguidores < 1 || p.seguidores > 1000000000) throw new Erro(400, "Informe o número estimado de seguidores.");
+  if (comum.nome.length < 2) throw new Erro(400, "Informe o seu nome.");
+  if (comum.whatsapp.replace(/\D/g, "").length < 10) throw new Erro(400, "Informe um WhatsApp com DDD.");
+  if (!CIDADES[comum.uf]) throw new Erro(400, "Escolha o estado.");
+  comum.cidade = cidadeOficial(comum.uf, d.cidade);
+  if (!comum.cidade) throw new Erro(400, "Escolha a cidade na lista do estado " + comum.uf + ".");
+  if (comum.instagram && !/^[\w.]{1,30}$/.test(comum.instagram)) throw new Erro(400, "Perfil do Instagram inválido.");
+
+  const perfis = [];
+  if (tem("assessoria")) {
+    const a = { tipo: "assessoria", nome: texto(d.assessoria_nome, 120), responsavel: comum.nome,
+      documento: cnpjValido(d.cnpj), instagram: limpaInsta(d.assessoria_instagram), seguidores: 0 };
+    if (a.nome.length < 2) throw new Erro(400, "Informe o nome da assessoria.");
+    if (!a.documento) throw new Erro(400, "Informe um CNPJ válido da assessoria.");
+    if (a.instagram && !/^[\w.]{1,30}$/.test(a.instagram)) throw new Erro(400, "Instagram da assessoria inválido.");
+    perfis.push(a);
   }
+  if (tem("influenciador")) {
+    if (!comum.instagram) throw new Erro(400, "Informe o seu perfil do Instagram.");
+    const seguidores = parseInt(String(d.seguidores == null ? "" : d.seguidores).replace(/\D/g, ""), 10) || 0;
+    if (seguidores < 1 || seguidores > 1000000000) throw new Erro(400, "Informe o número estimado de seguidores.");
+    perfis.push({ tipo: "influenciador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores });
+  }
+  if (tem("embaixador")) {
+    perfis.push({ tipo: "embaixador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores: 0 });
+  }
+  perfis.forEach((x) => Object.assign(x, { whatsapp: comum.whatsapp, cidade: comum.cidade, uf: comum.uf }));
   if (d.aceite !== true) throw new Erro(400, "É preciso aceitar a política de privacidade e as regras do programa.");
 
   let email, senha = "", sub = null;
@@ -218,15 +258,17 @@ async function cadastro(request, env, ctx) {
   if (await env.DB.prepare("SELECT 1 FROM contas WHERE email = ?").bind(email).first()) {
     throw new Erro(409, "Já existe um cadastro com este e-mail. Use \"Entrar\".");
   }
-  const pid = crypto.randomUUID(), cid = crypto.randomUUID();
-  await env.DB.batch([
-    env.DB.prepare(
-      "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, cidade, uf, seguidores, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
-    ).bind(pid, p.tipo, p.nome, p.responsavel, p.whatsapp, email, p.instagram, p.cidade, p.uf, p.seguidores),
-    env.DB.prepare("INSERT INTO contas (id, parceiro_id, email, senha, google_sub) VALUES (?, ?, ?, ?, ?)").bind(cid, pid, email, senha, sub),
-  ]);
+  const cid = crypto.randomUUID();
+  perfis.forEach((x) => { x.id = crypto.randomUUID(); });
+  await env.DB.batch(perfis.map((x) => env.DB.prepare(
+    "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, cidade, uf, seguidores, documento, conta_id, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
+  ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.cidade, x.uf, x.seguidores, x.documento, cid)).concat([
+    env.DB.prepare("INSERT INTO contas (id, parceiro_id, email, senha, google_sub) VALUES (?, ?, ?, ?, ?)").bind(cid, perfis[0].id, email, senha, sub),
+  ]));
   await marca(env, "cad:" + ip);
-  ctx.waitUntil(avisaTardim(env, new URL(request.url).origin, p, email));
+  ctx.waitUntil(avisaTardim(env, new URL(request.url).origin, perfis, email));
+  // Já confere os seguidores reais para a tela de aprovação (sem IG_TOKEN, não faz nada)
+  perfis.forEach((x) => { if (x.instagram) ctx.waitUntil(confereInstagramParceiro(env, x.id).catch(() => {})); });
   return entra(env, { id: cid });
 }
 
@@ -246,6 +288,66 @@ async function loginSenha(request, env) {
   return entra(env, conta);
 }
 
+// ---------- esqueci a senha ----------
+// Link assinado (sem tabela nova): conta.expira.assinatura, com a assinatura amarrada ao hash da
+// senha atual. Trocou a senha, o link para de valer; vale por 1 hora.
+const VALIDADE_LINK = 60 * 60;
+const MAX_PEDIDOS = 5, JANELA_PEDIDOS = 60 * 60;
+const assinaTroca = (env, conta, exp) => hmac(env.SESSAO_SEGREDO, "senha." + conta.id + "." + exp + "." + (conta.senha || ""));
+
+async function esqueci(request, env) {
+  const ip = ipDe(request);
+  await limite(env, "esq:" + ip, MAX_PEDIDOS, JANELA_PEDIDOS, "Muitos pedidos deste endereço. Tente de novo mais tarde.");
+  const d = await corpo(request);
+  const email = texto(d.email, 120).toLowerCase();
+  if (!RE_EMAIL.test(email)) throw new Erro(400, "Informe o e-mail do seu cadastro.");
+  // Sem e-mail configurado, a página orienta a falar com a Tardim pelo WhatsApp
+  if (!env.RESEND_API_KEY) return json({ ok: false, semEmail: true });
+  await marca(env, "esq:" + ip);
+  const conta = await env.DB.prepare("SELECT * FROM contas WHERE email = ?").bind(email).first();
+  // A resposta é a mesma com ou sem cadastro: não revela quem é parceiro
+  if (!conta) return json({ ok: true });
+  const exp = Math.floor(Date.now() / 1000) + VALIDADE_LINK;
+  const token = conta.id + "." + exp + "." + (await assinaTroca(env, conta, exp));
+  const link = new URL(request.url).origin + "/parceiro.html#redefinir=" + token;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: env.AVISO_REMETENTE || "Tardim Produções <onboarding@resend.dev>",
+      to: [conta.email],
+      subject: "Criar uma senha nova · Área do parceiro Tardim Produções",
+      text: [
+        "Olá!", "",
+        "Recebemos um pedido para criar uma senha nova na área do parceiro da Tardim Produções.",
+        "Para criar, abra o link abaixo (vale por 1 hora e funciona uma vez só):", "",
+        link, "",
+        "Se não foi você, ignore este e-mail: sua senha continua a mesma.", "",
+        "Tardim Produções",
+      ].join("\n"),
+    }),
+  }).catch(() => null);
+  if (!r || !r.ok) throw new Erro(502, "Não consegui enviar o e-mail agora. Tente de novo em alguns minutos ou fale com a Tardim pelo WhatsApp.");
+  return json({ ok: true });
+}
+
+async function novaSenha(request, env) {
+  const chave = "parc:" + ipDe(request);
+  await limite(env, chave, MAX_ERROS, JANELA_ERROS, "Muitas tentativas. Espere 15 minutos e tente de novo.");
+  const d = await corpo(request);
+  const [id, exp, sig] = texto(d.token, 300).split(".");
+  const s = typeof d.senha === "string" ? d.senha : "";
+  if (s.length < 8 || s.length > 200) throw new Erro(400, "A senha precisa ter pelo menos 8 caracteres.");
+  const conta = id ? await env.DB.prepare("SELECT * FROM contas WHERE id = ?").bind(id).first() : null;
+  const valido = conta && sig && Number(exp) > Date.now() / 1000 && iguais(sig, await assinaTroca(env, conta, exp));
+  if (!valido) {
+    await marca(env, chave);
+    throw new Erro(400, "Este link expirou ou já foi usado. Peça um novo em \"Esqueci minha senha\".");
+  }
+  await env.DB.prepare("UPDATE contas SET senha = ? WHERE id = ?").bind(await hashSenha(s), conta.id).run();
+  return entra(env, conta);
+}
+
 async function loginGoogle(request, env) {
   const d = await corpo(request);
   const g = await verificaGoogle(d.credential, env);
@@ -262,21 +364,25 @@ async function loginGoogle(request, env) {
 async function eu(request, env) {
   const conta = await contaDaSessao(request, env);
   if (!conta) throw new Erro(401, "Entre na sua conta.");
-  const p = await env.DB.prepare(
-    "SELECT id, tipo, nome, responsavel, whatsapp, instagram, cidade, logo, cor, ativo, situacao, motivo_recusa, criado_em FROM parceiros WHERE id = ?"
-  ).bind(conta.parceiro_id).first();
-  if (!p) throw new Erro(401, "Cadastro não encontrado. Fale com a Tardim Produções.");
-  let convites = [];
-  if (p.situacao === "aprovado" && p.ativo) {
-    convites = (await env.DB.prepare(
-      "SELECT id, prova_id, cupom, desconto, comissao_pct, cortesias, contrapartida, condicoes, coletiva FROM convites WHERE parceiro_id = ? ORDER BY criado_em DESC"
-    ).bind(p.id).all()).results.map((c) => {
-      try { c.coletiva = JSON.parse(c.coletiva || "{}"); } catch (e) { c.coletiva = {}; }
-      return c;
-    });
+  // Perfil principal primeiro, depois os outros na ordem assessoria, influenciador, embaixador
+  const perfis = (await env.DB.prepare(
+    "SELECT id, tipo, nome, responsavel, whatsapp, instagram, cidade, logo, cor, ativo, situacao, motivo_recusa, criado_em FROM parceiros " +
+    "WHERE id = ?1 OR conta_id = ?2 ORDER BY id = ?1 DESC, CASE tipo WHEN 'assessoria' THEN 0 WHEN 'influenciador' THEN 1 ELSE 2 END"
+  ).bind(conta.parceiro_id, conta.id).all()).results;
+  if (!perfis.length) throw new Erro(401, "Cadastro não encontrado. Fale com a Tardim Produções.");
+  for (const p of perfis) {
+    p.convites = [];
+    if (p.situacao === "aprovado" && p.ativo) {
+      p.convites = (await env.DB.prepare(
+        "SELECT id, prova_id, cupom, desconto, comissao_pct, cortesias, contrapartida, condicoes, coletiva FROM convites WHERE parceiro_id = ? ORDER BY criado_em DESC"
+      ).bind(p.id).all()).results.map((c) => {
+        try { c.coletiva = JSON.parse(c.coletiva || "{}"); } catch (e) { c.coletiva = {}; }
+        return c;
+      });
+    }
+    p.ativo = !!p.ativo;
   }
-  p.ativo = !!p.ativo;
-  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, parceiro: p, convites });
+  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, perfis });
 }
 
 async function trata(request, env, ctx, rota) {
@@ -292,6 +398,8 @@ async function trata(request, env, ctx, rota) {
   if (a === "cadastro" && m === "POST") return cadastro(request, env, ctx);
   if (a === "login" && m === "POST") return loginSenha(request, env);
   if (a === "google" && m === "POST") return loginGoogle(request, env);
+  if (a === "esqueci" && m === "POST") return esqueci(request, env);
+  if (a === "nova-senha" && m === "POST") return novaSenha(request, env);
   if (a === "sair" && m === "POST") return json({ ok: true }, 200, { "set-cookie": cookieFim() });
   if (a === "eu" && m === "GET") return eu(request, env);
   throw new Erro(404, "Rota não encontrada.");
@@ -307,7 +415,7 @@ export async function onRequest(ctx) {
     if (e instanceof Erro) return json({ erro: e.status, mensagem: e.message }, e.status);
     const msg = String((e && e.message) || e);
     if (/UNIQUE/i.test(msg)) return json({ erro: 409, mensagem: "Já existe um cadastro com este e-mail ou conta Google." }, 409);
-    if (/no such (table|column)/i.test(msg)) return json({ erro: 503, mensagem: "Falta atualizar o banco: rode d1/migracoes/002-contas-parceiros.sql." }, 503);
+    if (/no such (table|column)/i.test(msg)) return json({ erro: 503, mensagem: "Falta atualizar o banco: rode as migrações de d1/migracoes (a mais recente é 005-parceiros-conta.sql)." }, 503);
     return json({ erro: 500, mensagem: "Erro no servidor." }, 500);
   }
 }

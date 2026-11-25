@@ -1,14 +1,15 @@
 // Consulta de perfis do Instagram pela API oficial da Meta (Business Discovery).
 //
-// A conta profissional da Tardim (@tardimproducoes) consulta os dados públicos de
+// A conta profissional configurada em IG_USER_ID (hoje a do Felipe; pode virar a
+// @tardimproducoes trocando os dois segredos) consulta os dados públicos de
 // outra conta profissional (Comercial ou Criador de conteúdo): seguidores e número
 // de posts. Conta pessoal, inexistente ou com o @ errado volta como não encontrada.
 // O influenciador não precisa fazer nada. A API é gratuita.
 //
 // Segredos do projeto (nunca em arquivo do repositório):
-//   IG_USER_ID  id da conta do Instagram da Tardim na API (número, ex.: 17841400000000000)
+//   IG_USER_ID  id, na API, da conta do Instagram que faz a consulta (número, ex.: 17841400000000000)
 //   IG_TOKEN    token de acesso que não expira (usuário do sistema do Gerenciador de Negócios)
-//               com as permissões instagram_basic, pages_show_list e pages_read_engagement
+//               com as permissões instagram_basic, instagram_manage_insights, pages_show_list e pages_read_engagement
 //
 // Uso (numa Function):  import { consultaInstagram } from "../../_instagram.js";
 //   const r = await consultaInstagram(env, "@perfil");
