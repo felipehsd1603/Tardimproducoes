@@ -70,6 +70,18 @@
   function mostraErro(e, msg) { e.textContent = msg; e.hidden = !msg; }
   function dataDe(str) { var p = String(str).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
   function quando(str) { if (!str) return ""; var d = dataDe(str); return d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear(); }
+  // CNPJ com dígitos verificadores (mesma conta de functions/api/parceiro)
+  function cnpjOk(v) {
+    var d = String(v || "").replace(/\D/g, "");
+    if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+    function dv(n) {
+      var s = 0, p = n - 7;
+      for (var i = 0; i < n; i++) { s += Number(d[i]) * p--; if (p < 2) p = 9; }
+      var r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    }
+    return dv(12) === Number(d[12]) && dv(13) === Number(d[13]);
+  }
   function numeroWa(t) { var n = String(t || "").replace(/\D/g, ""); if (n && n.length <= 11) n = "55" + n; return n; }
   function base() { return location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, ""); }
   function linkWa(msg) { return "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg); }
@@ -161,10 +173,7 @@
     ir.type = "submit";
     f.append(campo("E-mail", email, null, true), campo("Senha", senha, null, true), ir);
     var esqueci = el("p", "muted parc-ajuda");
-    var a = el("a", null, "Fale com a Tardim Produções");
-    a.href = linkWa("Olá! Sou parceiro da Tardim Produções e esqueci a senha da minha área.");
-    a.target = "_blank"; a.rel = "noopener";
-    esqueci.append("Esqueceu a senha? ", a, ".");
+    esqueci.append(botao("Esqueci minha senha", "orc__email", function () { telaEsqueci(email.value.trim()); }));
     c.append(f, erro, esqueci);
     app.append(c);
     f.addEventListener("submit", function (e) {
@@ -178,6 +187,79 @@
     });
   }
 
+  // ---------- esqueci a senha ----------
+  function linkWaSenha() {
+    var a = el("a", null, "fale com a Tardim Produções pelo WhatsApp");
+    a.href = linkWa("Olá! Sou parceiro da Tardim Produções e esqueci a senha da minha área.");
+    a.target = "_blank"; a.rel = "noopener";
+    return a;
+  }
+  function telaEsqueci(emailInicial) {
+    app.innerHTML = "";
+    var c = card("Área do parceiro", "Criar uma senha nova");
+    c.append(el("p", "muted", "Informe o e-mail do seu cadastro. Mandamos um link para você criar uma senha nova."));
+    var erro = erroEl();
+    var f = el("form", "assess-grid");
+    f.noValidate = true;
+    var email = entrada("email", { autocomplete: "email", maxLength: 120, required: true, value: emailInicial || "" });
+    var ir = el("button", "btn btn--red btn--lg assess-grid__full", "Enviar link");
+    ir.type = "submit";
+    f.append(campo("E-mail do cadastro", email, null, true), ir);
+    var voltar = el("p", "muted parc-ajuda");
+    voltar.append(botao("← Voltar para entrar", "orc__email", function () { telaAcesso("entrar"); }));
+    c.append(f, erro, voltar);
+    app.append(c);
+    email.focus();
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      mostraErro(erro, "");
+      if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email.value.trim())) return mostraErro(erro, "Informe o e-mail do seu cadastro.");
+      ir.disabled = true; ir.textContent = "Enviando...";
+      api("POST", "esqueci", { email: email.value.trim() }).then(function (r) {
+        f.remove();
+        var ok = el("p", r.semEmail ? "assess-alerta" : "parc-google-ok");
+        if (r.semEmail) ok.append("A troca de senha por e-mail ainda não está ativa. Para criar uma senha nova, ", linkWaSenha(), ".");
+        else ok.textContent = "Pronto! Se houver cadastro com " + email.value.trim() + ", o link chega em alguns minutos. Ele vale por 1 hora. Confira também a caixa de spam.";
+        c.insertBefore(ok, erro);
+      }).catch(function (err) {
+        ir.disabled = false; ir.textContent = "Enviar link";
+        mostraErro(erro, err.message);
+      });
+    });
+  }
+  // Aberta pelo link do e-mail: parceiro.html#redefinir=<token>
+  function telaNovaSenha(token) {
+    app.innerHTML = "";
+    var c = card("Área do parceiro", "Criar sua senha nova");
+    var erro = erroEl();
+    var f = el("form", "assess-grid");
+    f.noValidate = true;
+    var s1 = entrada("password", { autocomplete: "new-password", maxLength: 200, required: true });
+    var s2 = entrada("password", { autocomplete: "new-password", maxLength: 200, required: true });
+    var ir = el("button", "btn btn--red btn--lg assess-grid__full", "Salvar senha e entrar");
+    ir.type = "submit";
+    f.append(campo("Senha nova", s1, "Pelo menos 8 caracteres.", true), campo("Repita a senha nova", s2, null, true), ir);
+    c.append(f, erro);
+    app.append(c);
+    s1.focus();
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (s1.value.length < 8) return mostraErro(erro, "A senha precisa ter pelo menos 8 caracteres.");
+      if (s1.value !== s2.value) return mostraErro(erro, "As duas senhas estão diferentes.");
+      mostraErro(erro, "");
+      ir.disabled = true; ir.textContent = "Salvando...";
+      api("POST", "nova-senha", { token: token, senha: s1.value }).then(inicio).catch(function (err) {
+        ir.disabled = false; ir.textContent = "Salvar senha e entrar";
+        mostraErro(erro, err.message);
+        if (err.status === 400 && /expirou|usado/.test(err.message)) {
+          var p = el("p", "muted parc-ajuda");
+          p.append(botao("Pedir um link novo", "orc__email", function () { telaEsqueci(""); }));
+          c.append(p);
+        }
+      });
+    });
+  }
+
   function telaCadastro(google) {
     var c = card("Cadastro de parceiro", google ? "Complete o seu cadastro" : "Quero ser parceiro");
     c.append(el("p", "muted", "Preencha os dados abaixo. A Tardim Produções confere o cadastro e avisa quando for aprovado."));
@@ -187,23 +269,34 @@
 
     var f = el("form", "assess-grid");
     f.noValidate = true;
-    // Tipo de parceiro
+    // Tipo de parceiro: pode marcar mais de um (cada um vira um perfil no mesmo login)
     var tipos = el("fieldset", "parc-tipos assess-grid__full");
-    tipos.append(el("legend", null, "Você é"));
-    var tipo = "";
+    tipos.append(el("legend", null, "Você é (marque um ou mais)"));
+    var marcados = {};
     TIPOS.forEach(function (t) {
       var l = el("label", "parc-tipo");
-      var r = entrada("radio", { name: "tipo", value: t[0] });
-      r.addEventListener("change", function () { tipo = t[0]; ajusta(); });
+      var r = entrada("checkbox", { name: "tipos", value: t[0] });
+      r.addEventListener("change", function () { marcados[t[0]] = r.checked; ajusta(); });
       var txt = el("span");
       txt.append(el("b", null, t[1]), el("small", null, t[2]));
       l.append(r, txt);
       tipos.append(l);
     });
+    function tem(t) { return !!marcados[t]; }
     var nome = entrada("text", { maxLength: 120, autocomplete: "name", value: google && google.nome || "" });
     var cNome = campo("Seu nome", nome, null, true);
-    var resp = entrada("text", { maxLength: 120, autocomplete: "name" });
-    var cResp = campo("Nome do responsável", resp, "Quem fala pela assessoria.", true);
+    // Dados da assessoria (só quando "Assessoria" está marcada)
+    var aNome = entrada("text", { maxLength: 120, autocomplete: "organization" });
+    var cANome = campo("Nome da assessoria", aNome, null, true);
+    var cnpj = entrada("text", { maxLength: 18, inputMode: "numeric", placeholder: "00.000.000/0000-00" });
+    var cCnpj = campo("CNPJ da assessoria", cnpj, "Obrigatório para assessoria.");
+    cnpj.addEventListener("input", function () {
+      var d = cnpj.value.replace(/\D/g, "").slice(0, 14);
+      cnpj.value = d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
+    });
+    var aInsta = entrada("text", { maxLength: 100, placeholder: "@assessoria" });
+    var cAInsta = campo("Instagram da assessoria", aInsta, "Opcional.");
     var wa = entrada("tel", { maxLength: 20, autocomplete: "tel", inputMode: "numeric", placeholder: "(31) 90000-0000" });
     // Máscara: (31) 99999-9999 para celular, (31) 3333-4444 para fixo; tira o +55 de quem cola com DDI
     wa.addEventListener("input", function () {
@@ -237,7 +330,7 @@
     uf.addEventListener("change", function () { cidade.value = ""; carregaCidades(); });
     carregaCidades();
     var insta = entrada("text", { maxLength: 100, placeholder: "@perfil" });
-    var cInsta = campo("Instagram", insta, "Opcional, mas ajuda na aprovação.");
+    var cInsta = campo("Seu Instagram", insta, "Opcional, mas ajuda na aprovação.");
     var seg = entrada("text", { maxLength: 13, inputMode: "numeric", placeholder: "Ex.: 15000" });
     var cSeg = campo("Seguidores (número estimado)", seg, "Somando o perfil principal.");
     seg.addEventListener("input", function () {
@@ -257,21 +350,21 @@
     var ir = el("button", "btn btn--red btn--lg assess-grid__full", "Enviar cadastro");
     ir.type = "submit";
 
-    f.append(tipos, cNome, cResp, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cSeg);
+    f.append(tipos, cNome, cANome, cCnpj, cAInsta, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cSeg);
     if (!google) f.append(campo("E-mail", email, null, true), campo("Senha", senha, "Pelo menos 8 caracteres."), campo("Repita a senha", senha2));
     f.append(lAceite, ir);
     c.append(f, erro);
     app.append(c);
 
     function ajusta() {
-      cNome.querySelector("span").textContent = tipo === "assessoria" ? "Nome da assessoria" : "Seu nome";
-      cResp.hidden = tipo !== "assessoria";
-      var inf = tipo === "influenciador";
+      var ass = tem("assessoria"), inf = tem("influenciador"), pessoa = inf || tem("embaixador");
+      cANome.hidden = cCnpj.hidden = cAInsta.hidden = !ass;
+      cNome.querySelector("span").textContent = ass && !pessoa ? "Seu nome (responsável pela assessoria)" : "Seu nome";
+      cInsta.hidden = ass && !pessoa;
       cSeg.hidden = !inf;
       cInsta.querySelector("small").textContent = inf ? "Obrigatório para influenciador." : "Opcional, mas ajuda na aprovação.";
     }
-    cResp.hidden = true;
-    cSeg.hidden = true;
+    ajusta();
     // Ao sair do campo, troca o que foi digitado pelo nome oficial ("sao joao del rei" -> "São João del-Rei")
     cidade.addEventListener("change", function () { cidade.value = cidadeDaLista() || cidade.value; });
     function cidadeDaLista() {
@@ -283,24 +376,28 @@
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       mostraErro(erro, "");
-      var falta = !tipo ? "Escolha se você é assessoria, influenciador ou embaixador."
-        : nome.value.trim().length < 2 ? (tipo === "assessoria" ? "Informe o nome da assessoria." : "Informe o seu nome.")
-        : tipo === "assessoria" && resp.value.trim().length < 2 ? "Informe o nome do responsável."
+      var lista_ = TIPOS.map(function (t) { return t[0]; }).filter(tem);
+      var ass = tem("assessoria"), inf = tem("influenciador");
+      var falta = !lista_.length ? "Marque se você é assessoria, influenciador e/ou embaixador."
+        : nome.value.trim().length < 2 ? "Informe o seu nome."
+        : ass && aNome.value.trim().length < 2 ? "Informe o nome da assessoria."
+        : ass && !cnpjOk(cnpj.value) ? "Informe um CNPJ válido da assessoria."
         : wa.value.replace(/\D/g, "").length < 10 ? "Informe um WhatsApp com DDD."
         : !uf.value ? "Escolha o estado."
         : !cidadeDaLista() ? "Escolha a cidade na lista (digite e toque na sugestão)."
-        : tipo === "influenciador" && !insta.value.trim() ? "Informe o seu perfil do Instagram."
-        : tipo === "influenciador" && !Number(seg.value.replace(/\D/g, "")) ? "Informe o número estimado de seguidores."
+        : inf && !insta.value.trim() ? "Informe o seu perfil do Instagram."
+        : inf && !Number(seg.value.replace(/\D/g, "")) ? "Informe o número estimado de seguidores."
         : !google && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email.value.trim()) ? "Informe um e-mail válido."
         : !google && senha.value.length < 8 ? "A senha precisa ter pelo menos 8 caracteres."
         : !google && senha.value !== senha2.value ? "As senhas não são iguais."
         : !aceite.checked ? "Para continuar, aceite a política de privacidade e as regras do programa." : "";
       if (falta) return mostraErro(erro, falta);
       var dados = {
-        tipo: tipo, nome: nome.value.trim(), responsavel: tipo === "assessoria" ? resp.value.trim() : "",
-        whatsapp: wa.value.trim(), uf: uf.value, cidade: cidadeDaLista(), instagram: insta.value.trim(),
-        seguidores: tipo === "influenciador" ? Number(seg.value.replace(/\D/g, "")) : 0, aceite: true,
+        tipos: lista_, nome: nome.value.trim(),
+        whatsapp: wa.value.trim(), uf: uf.value, cidade: cidadeDaLista(), instagram: cInsta.hidden ? "" : insta.value.trim(),
+        seguidores: inf ? Number(seg.value.replace(/\D/g, "")) : 0, aceite: true,
       };
+      if (ass) { dados.assessoria_nome = aNome.value.trim(); dados.cnpj = cnpj.value; dados.assessoria_instagram = aInsta.value.trim(); }
       if (google) dados.credential = google.credential;
       else { dados.email = email.value.trim(); dados.senha = senha.value; }
       ir.disabled = true; ir.textContent = "Enviando...";
@@ -334,15 +431,37 @@
     return l;
   }
 
+  // Um login pode ter vários perfis (assessoria, influenciador, embaixador): abas para trocar
+  var perfilAtual = "";
   function area(d) {
-    var pa = d.parceiro;
+    var perfis = d.perfis || [];
+    var pa = perfis.filter(function (p) { return p.id === perfilAtual; })[0] || perfis[0];
+    perfilAtual = pa.id;
     app.innerHTML = "";
-    if (lead) lead.textContent = "Olá, " + ((pa.responsavel || pa.nome).split(" ")[0]) + "! Aqui ficam os seus convites, cupons e links.";
+    var dono = perfis.filter(function (p) { return p.tipo !== "assessoria"; })[0];
+    var pessoa = dono ? dono.nome : (pa.responsavel || pa.nome);
+    if (lead) lead.textContent = "Olá, " + pessoa.split(" ")[0] + "! Aqui ficam os seus convites, cupons e links.";
     var topo = el("div", "painel-top");
     topo.append(el("p", "muted", pa.nome + " · " + d.email), botao("Sair", null, function () {
+      perfilAtual = "";
       api("POST", "sair").then(inicio, inicio);
     }));
     app.append(topo);
+    if (perfis.length > 1) {
+      var abas = el("div", "cal-tabs parc-abas");
+      abas.setAttribute("role", "group");
+      abas.setAttribute("aria-label", "Seus perfis");
+      perfis.forEach(function (p) {
+        var t = TIPOS.filter(function (x) { return x[0] === p.tipo; })[0];
+        var b = botao((t ? t[1] : p.tipo) + (p.situacao === "pendente" ? " (em análise)" : ""), "cal-tab", function () {
+          perfilAtual = p.id; area(d);
+        });
+        b.setAttribute("aria-pressed", String(p.id === pa.id));
+        abas.append(b);
+      });
+      app.append(abas);
+    }
+    d = Object.assign({}, d, { convites: pa.convites || [] });
 
     if (pa.situacao === "pendente") {
       var c1 = card("Cadastro recebido", "Em análise");
@@ -404,12 +523,17 @@
   // ---------- início ----------
   function inicio() {
     return api("GET", "eu").then(area).catch(function (e) {
-      if (e.status === 401) return telaAcesso("entrar");
+      // parceiro.html#cadastro (botões "Quero ser parceiro") abre direto no formulário
+      if (e.status === 401) return telaAcesso(location.hash === "#cadastro" ? "cadastro" : "entrar");
       app.innerHTML = "";
       var c = card("Área do parceiro", "Indisponível no momento");
       c.append(el("p", "assess-alerta", e.message));
       app.append(c);
     });
   }
-  api("GET", "config").then(function (c) { googleId = c.google || ""; }, function () {}).then(inicio);
+  // Link do e-mail de senha nova: tira o código do endereço (não fica no histórico) e abre o formulário
+  var redefinir = /^#redefinir=([\w.-]+)$/.exec(location.hash);
+  if (redefinir) history.replaceState(null, "", location.pathname + location.search);
+  api("GET", "config").then(function (c) { googleId = c.google || ""; }, function () {})
+    .then(function () { return redefinir ? telaNovaSenha(redefinir[1]) : inicio(); });
 })();
