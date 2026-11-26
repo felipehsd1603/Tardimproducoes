@@ -7,20 +7,29 @@
   },
   "scripts": {
     "dev": "wrangler pages dev . --port 8791",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.mjs\"",
+    "painel:dev": "vite --config painel/vite.config.mts",
+    "painel:build": "vite build --config painel/vite.config.mts",
+    "painel:tipos": "tsc --noEmit -p painel",
+    "test": "npm run painel:build && node --test --test-concurrency=1 \"tests/**/*.test.mjs\"",
     "tipos": "tsc --noEmit",
     "paginas": "node scripts/gerar-paginas.js",
     "db:migracoes:local": "wrangler d1 migrations apply tardim --local",
     "db:migracoes:producao": "wrangler d1 migrations apply tardim --remote",
     "db:migracoes:lista": "wrangler d1 migrations list tardim --remote",
-    "publicar": "node scripts/gerar-paginas.js --versao && node scripts/montar-publico.mjs && wrangler pages deploy publico --project-name tardim-teste --branch main"
+    "publicar": "npm run painel:build && node scripts/gerar-paginas.js --versao && node scripts/montar-publico.mjs && wrangler pages deploy publico --project-name tardim-teste --branch main"
   },
   "dependencies": {
     "hono": "4.13.18"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261123.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "typescript": "5.9.3",
+    "vite": "8.3.8",
     "wrangler": "4.168.0"
   },
   "allowScripts": {

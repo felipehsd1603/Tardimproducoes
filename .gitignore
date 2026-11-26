@@ -14,3 +14,9 @@
 
 # Pasta que o deploy sobe (scripts/montar-publico.mjs)
 /publico/
+
+# Painel (React): gerado por npm run painel:build a partir de painel/ (painel/vite.config.mts)
+/admin.html
+/admin-novo.html
+/assets/painel/
+/painel/dist/

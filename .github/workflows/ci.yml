@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - name: Tipos das Functions (TypeScript)
         run: npm run tipos
+      - name: Painel (React) - tipos e build
+        run: npm run painel:tipos && npm run painel:build
       - name: Gerador de páginas
         run: node scripts/gerar-paginas.js
       - name: Testes de integração

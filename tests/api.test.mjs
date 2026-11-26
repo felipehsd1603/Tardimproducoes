@@ -22,7 +22,7 @@ const atleta = (id, cpf, extra = {}) => ({ id_externo: id, nome: "Atleta " + id,
   email: id + "@exemplo.com", telefone: "+5531988880000", consentimento_em: "2026-11-20T09:00:00Z", ...extra });
 
 describe("arquivos privados", () => {
-  for (const caminho of ["/README.md", "/wrangler.toml", "/d1/schema.sql", "/docs/api-v1-parceiros.md", "/functions/_api-v1/avisos.js", "/scripts/gerar-paginas.js", "/package.json", "/package-lock.json", "/tests/api.test.mjs", "/.dev.vars", "/node_modules/wrangler/package.json"]) {
+  for (const caminho of ["/README.md", "/wrangler.toml", "/d1/schema.sql", "/docs/api-v1-parceiros.md", "/functions/_api-v1/avisos.js", "/scripts/gerar-paginas.js", "/package.json", "/package-lock.json", "/tests/api.test.mjs", "/painel/src/main.tsx", "/painel/vite.config.mts", "/.dev.vars", "/node_modules/wrangler/package.json"]) {
     test("não sai pelo site: " + caminho, async () => {
       const r = await fetch(BASE + caminho, { redirect: "manual" });
       assert.equal(r.status, 404, caminho);
