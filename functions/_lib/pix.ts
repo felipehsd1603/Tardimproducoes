@@ -2,7 +2,10 @@
 // Banco Inter:
 //   PIX_API_URL   = https://cdpj.partners.bancointer.com.br/pix/v2        (testes: https://cdpj-sandbox.partners.uatinter.co/pix/v2)
 //   PIX_TOKEN_URL = https://cdpj.partners.bancointer.com.br/oauth/v2/token (testes: https://cdpj-sandbox.partners.uatinter.co/oauth/v2/token)
-// Segredos: PIX_CLIENT_ID, PIX_CLIENT_SECRET, PIX_CHAVE (chave PIX que recebe). Opcionais: PIX_ESCOPO
+// Sicoob (sem client secret: autentica pelo certificado e pelo client_id, que também vai no cabeçalho):
+//   PIX_API_URL   = https://api.sicoob.com.br/pix/api/v2
+//   PIX_TOKEN_URL = https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token
+// Segredos: PIX_CLIENT_ID, PIX_CLIENT_SECRET (não usado no Sicoob), PIX_CHAVE (chave PIX que recebe). Opcionais: PIX_ESCOPO
 // (padrão "cob.write cob.read"), PIX_CONTA (cabeçalho x-conta-corrente do Inter, quando a empresa tem mais de uma conta).
 // O banco exige certificado na conexão (mTLS): o binding PIX_CERT (certificado enviado à Cloudflare) faz as chamadas.
 // Sem PIX_CERT (servidor local e testes), usa o fetch comum, contra o banco simulado (tests/apoio/banco-pix.mjs).
@@ -14,7 +17,7 @@ export class ErroPix extends Error {
   constructor(message: string, status?: number) { super(message); this.status = status || 502; }
 }
 
-export const pixConfigurado = (env: Env): boolean => !!(env.PIX_API_URL && env.PIX_CLIENT_ID && env.PIX_CLIENT_SECRET && env.PIX_CHAVE);
+export const pixConfigurado = (env: Env): boolean => !!(env.PIX_API_URL && env.PIX_CLIENT_ID && env.PIX_CHAVE);
 
 const chama = (env: Env, url: string, opcoes: RequestInit): Promise<Response> => (env.PIX_CERT ? env.PIX_CERT.fetch(url, opcoes) : fetch(url, opcoes));
 const tokenUrl = (env: Env): string => env.PIX_TOKEN_URL || (env.PIX_API_URL as string).replace(/\/pix\/v\d+\/?$/, "") + "/oauth/v2/token";
@@ -24,9 +27,10 @@ let token: { chave: string; valor: string; vence: number } | null = null;
 async function acesso(env: Env): Promise<string> {
   if (token && token.chave === env.PIX_CLIENT_ID + tokenUrl(env) && token.vence > Date.now() + 30000) return token.valor;
   const corpo = new URLSearchParams({
-    client_id: env.PIX_CLIENT_ID as string, client_secret: env.PIX_CLIENT_SECRET as string,
+    client_id: env.PIX_CLIENT_ID as string,
     grant_type: "client_credentials", scope: env.PIX_ESCOPO || "cob.write cob.read",
   });
+  if (env.PIX_CLIENT_SECRET) corpo.set("client_secret", env.PIX_CLIENT_SECRET);
   const r = await chama(env, tokenUrl(env), { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: corpo.toString() })
     .catch(() => null);
   const j = r ? await r.json<Dados>().catch(() => null) : null;
@@ -38,6 +42,7 @@ async function acesso(env: Env): Promise<string> {
 async function api(env: Env, metodo: string, caminho: string, dados?: unknown): Promise<Dados> {
   const cab: Record<string, string> = { authorization: "Bearer " + (await acesso(env)), "content-type": "application/json" };
   if (env.PIX_CONTA) cab["x-conta-corrente"] = env.PIX_CONTA;
+  if (!env.PIX_CLIENT_SECRET) cab["client_id"] = env.PIX_CLIENT_ID as string; // Sicoob pede o client_id em toda chamada
   const r = await chama(env, (env.PIX_API_URL as string).replace(/\/$/, "") + caminho, { method: metodo, headers: cab, body: dados ? JSON.stringify(dados) : undefined })
     .catch(() => null);
   const j = r ? await r.json<Dados>().catch(() => null) : null;
