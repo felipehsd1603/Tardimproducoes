@@ -581,7 +581,7 @@
       if (cv.condicoes) cond.push(cv.condicoes);
       if (cond.length) { var ul = el("ul", "parc-cond"); cond.forEach(function (t) { ul.append(el("li", null, t)); }); bloco.append(ul); }
       var l = linksConvite(cv, pa);
-      if (cv.site && (l.coletiva || cv.site.atletas || cv.site.aguardando)) bloco.append(contadorSite(cv.id, cv.site));
+      if (cv.site && ((d.pagamento_site && l.coletiva) || cv.site.atletas || cv.site.aguardando)) bloco.append(contadorSite(cv.id, cv.site));
       var caixa = el("div", "painel-links");
       [["Link para os atletas", l.atleta], ["Kit de divulgação", l.kit], l.coletiva ? ["Inscrição coletiva da equipe", l.coletiva] : null].forEach(function (x) {
         if (!x) return;

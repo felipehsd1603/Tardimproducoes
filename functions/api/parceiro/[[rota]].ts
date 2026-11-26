@@ -34,6 +34,7 @@ import type { Env, Contexto, Dados, Conta, Contagem, ComEspera, Parceiro } from 
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
 import { canalYoutube, confereYoutubeParceiro } from "../../_lib/youtube.ts";
 import { configurado as tiktokPronto, criaEstado, leEstado, urlAutorizacao, trocaCodigo, conectaParceiro, desconectaParceiro } from "../../_lib/tiktok.ts";
+import { pagamentoLigado } from "../../_lib/pagamento-site.ts";
 import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.ts";
 
 const COOKIE = "tardim_parceiro";
@@ -517,7 +518,7 @@ async function eu(request: Request, env: Env): Promise<Response> {
   }
   const site = await contagemSite(env, perfis.filter((p) => p.convites.length).map((p) => p.id));
   perfis.forEach((p) => p.convites.forEach((c) => { c.site = site[c.id] || { atletas: 0, pedidos: 0, aguardando: 0, ultima: "" }; }));
-  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, tiktok: tiktokPronto(env), perfis });
+  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, tiktok: tiktokPronto(env), pagamento_site: pagamentoLigado(env), perfis });
 }
 
 // ---------- TikTok (functions/_lib/tiktok.ts) ----------
