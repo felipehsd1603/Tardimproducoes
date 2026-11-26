@@ -19,7 +19,7 @@ import type { Env, Dados } from "./tipos.ts";
 export type ResultadoYoutube =
   | { ok: true; encontrado: true; canal: string; nome: string; inscritos: number; oculto: boolean; videos: number; views: number }
   | { ok: true; encontrado: false; canal: string; inscritos?: undefined; oculto?: undefined; videos?: undefined; views?: undefined }
-  | { ok: false; erro: "config" | "canal" | "chave" | "cota" | "indisponivel" };
+  | { ok: false; erro: "config" | "canal" | "chave" | "cota" | "indisponivel"; detalhe?: string };
 
 // "@Canal", "canal", "youtube.com/@canal/videos", "youtube.com/channel/UC..." -> "@canal" ou "UC..."
 export function canalYoutube(texto: unknown): string {
@@ -52,9 +52,12 @@ export async function consultaYoutube(env: Env, texto: unknown): Promise<Resulta
   }
   if (d && d.error) {
     const motivo = String((d.error.errors && d.error.errors[0] && d.error.errors[0].reason) || "");
-    if (/quota/i.test(motivo)) return { ok: false, erro: "cota" };
-    if (/keyInvalid|accessNotConfigured|forbidden/i.test(motivo) || r.status === 400 || r.status === 403) return { ok: false, erro: "chave" };
-    return { ok: false, erro: "indisponivel" };
+    const info = (Array.isArray(d.error.details) ? d.error.details : []).find((x: Dados) => x && x.reason);
+    // texto do Google para o painel (nunca contém a chave)
+    const detalhe = [info && info.reason, String(d.error.message || "")].filter(Boolean).join(": ").slice(0, 300);
+    if (/quota/i.test(motivo)) return { ok: false, erro: "cota", detalhe };
+    if (/API_KEY|SERVICE_DISABLED|keyInvalid|accessNotConfigured|forbidden/i.test(motivo + " " + detalhe)) return { ok: false, erro: "chave", detalhe };
+    return { ok: false, erro: "indisponivel", detalhe };
   }
   if (!r.ok) return { ok: false, erro: "indisponivel" };
   const c = d && Array.isArray(d.items) ? d.items[0] : null;

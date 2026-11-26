@@ -72,16 +72,16 @@ function BotaoYoutube({ p }: { p: Parceiro }) {
   return (
     <Botao disabled={consultando} onClick={() => {
       setConsultando(true);
-      api<{ resultado: { ok: boolean; erro?: string; encontrado?: boolean; canal?: string; nome?: string; inscritos?: number; oculto?: boolean }; parceiro: Parceiro }>("POST", "parceiros/" + encodeURIComponent(p.id) + "/youtube", {}).then((r) => {
+      api<{ resultado: { ok: boolean; erro?: string; detalhe?: string; encontrado?: boolean; canal?: string; nome?: string; inscritos?: number; oculto?: boolean }; parceiro: Parceiro }>("POST", "parceiros/" + encodeURIComponent(p.id) + "/youtube", {}).then((r) => {
         const res = r.resultado || { ok: false };
         setConsultando(false);
         if (!res.ok) {
-          return aviso(({
+          return aviso((({
             config: "Falta configurar a API do YouTube (segredo YOUTUBE_API_KEY). Veja o README.",
             chave: "A chave do YouTube (YOUTUBE_API_KEY) é inválida ou a YouTube Data API v3 não está ativada no Google Cloud.",
             cota: "A cota diária da API do YouTube acabou. Tente amanhã.",
             canal: "O canal do YouTube deste parceiro é inválido.",
-          } as Record<string, string>)[res.erro || ""] || "A API do YouTube não respondeu. Tente de novo em alguns minutos.", true);
+          } as Record<string, string>)[res.erro || ""] || "A API do YouTube não respondeu. Tente de novo em alguns minutos.") + (res.detalhe ? " (Google: " + res.detalhe + ")" : ""), true);
         }
         muda((e) => ({ parceiros: e.parceiros.map((x) => (x.id === p.id ? r.parceiro : x)) }));
         aviso(!res.encontrado ? "Canal " + res.canal + " não encontrado. Confira o @ ou o link."
