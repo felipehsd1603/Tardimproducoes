@@ -1,0 +1,49 @@
+---
+// Rodapé com mapa do site e contatos.
+interface Props {
+  /** Na página inicial os links apontam para as seções da própria página */
+  inicio?: boolean;
+  /** Link do linktr.ee das inscrições (início e empresas) */
+  linktree?: boolean;
+  /** Link da área do parceiro no mapa do site (a 404 não tem) */
+  parceiro?: boolean;
+}
+const { inicio = false, linktree = false, parceiro = true } = Astro.props;
+---
+<footer class="footer" id="contato">
+  <div class="wrap footer__top">
+    <div class="footer__brand">
+      <a href={inicio ? "#" : "index.html"} class="brand brand--light">
+        <img src="assets/logo-tardim.webp" alt="" width="42" height="42" loading="lazy" />
+        <span>Tardim <b>Produções</b></span>
+      </a>
+      <p>Corridas de rua e eventos esportivos do começo ao fim: planejamento, licenças, prevenção contra incêndio e equipe no dia da prova.</p>
+      <p class="footer__motto">Fazendo bem feito!</p>
+    </div>
+    <nav class="footer__col" aria-label="Mapa do site">
+      <p class="footer__title">Navegue</p>
+      <ul>
+        <li><a href={inicio ? "#calendario" : "index.html#calendario"}>Calendário</a></li>
+        <li><a href="portfolio.html">Portfólio</a></li>
+        <li><a href="empresas.html">Para empresas</a></li>
+        <li><a href="institucional.html">Institucional</a></li>
+        {parceiro && <li><a href="parceiro.html">Área do parceiro</a></li>}
+        <li><a href="empresas.html#orcamento">Pedir orçamento</a></li>
+      </ul>
+    </nav>
+    <div class="footer__col">
+      <p class="footer__title">Contato</p>
+      <ul>
+        <li><a href="https://wa.me/5531984289667" target="_blank" rel="noopener">WhatsApp (31) 98428-9667</a></li>
+        <li><a href="mailto:tardimproducoes.corridas@gmail.com">tardimproducoes.corridas@gmail.com</a></li>
+        <li><a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">Instagram @tardimproducoes</a></li>
+        {linktree && <li><a href="https://linktr.ee/Tardim" target="_blank" rel="noopener">Inscrições: linktr.ee/Tardim</a></li>}
+        <li>Belo Horizonte, MG</li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer__bottom">
+    <span id="footer-legal">Tardim Produções e Eventos Ltda · CNPJ 33.787.309/0001-22</span>
+    <span><a href="privacidade.html">Política de privacidade</a> · © <span id="ano">2026</span></span>
+  </div>
+</footer>

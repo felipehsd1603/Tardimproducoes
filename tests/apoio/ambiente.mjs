@@ -1,4 +1,5 @@
-// Ambiente dos testes de integração: a Tardim inteira (wrangler pages dev) num banco D1 local
+// Ambiente dos testes de integração: a Tardim inteira (wrangler pages dev publico/, montada pelo
+// npm run site:build, que o npm test roda antes) num banco D1 local
 // descartável, com segredos de teste. Nada aqui toca o banco de produção nem o .wrangler do dia a dia.
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -38,7 +39,7 @@ export async function sobeTardim() {
   const dir = mkdtempSync(join(tmpdir(), "tardim-teste-"));
   criaBanco(dir);
   const jwk = await chaveAssinatura();
-  const proc = spawn(process.execPath, [WRANGLER, "pages", "dev", ".", "--port", String(PORTA), "--ip", "127.0.0.1", "--persist-to", dir,
+  const proc = spawn(process.execPath, [WRANGLER, "pages", "dev", "publico", "--port", String(PORTA), "--ip", "127.0.0.1", "--persist-to", dir,
     "--binding", `ADMIN_SENHA=${SENHA}`, "--binding", `SESSAO_SEGREDO=${SEGREDO}`, "--binding", `TARDIM_ASSINATURA_JWK=${jwk}`,
     "--show-interactive-dev-session=false"], { cwd: RAIZ, stdio: ["ignore", "pipe", "pipe"] });
   let saida = "";

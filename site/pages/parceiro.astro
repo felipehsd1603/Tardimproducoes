@@ -1,0 +1,30 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+
+const SCRIPTS = ["js/menu.js","js/eventos.js","js/provas-db.js","js/convite.js","js/parceiro.js","js/ui.js"];
+---
+<Pagina
+  titulo="Área do parceiro · Tardim Produções"
+  descricao="Assessorias, influenciadores e embaixadores: cadastre-se e acompanhe seus convites, cupons e links."
+  og={{ titulo: "Área do parceiro · Tardim Produções", descricao: "Assessorias, influenciadores e embaixadores: cadastre-se e acompanhe seus convites, cupons e links.", caminho: "parceiro.html" }}
+  ogNoTopo
+  css={["css/painel.css"]}
+  scripts={SCRIPTS}
+>
+    <Topo atual="parceiro" />
+
+    <main id="conteudo" class="assess">
+      <section class="assess-hero">
+        <div class="wrap">
+          <p class="eyebrow">Parceiros Tardim Produções</p>
+          <h1>Área do parceiro</h1>
+          <p class="assess-hero__lead" id="parc-lead">Assessorias, influenciadores e embaixadores: entre ou faça o seu cadastro.</p>
+        </div>
+      </section>
+      <div class="wrap assess-body parc" id="parceiro"><p class="muted">Carregando...</p></div>
+    </main>
+
+    <Rodape />
+</Pagina>

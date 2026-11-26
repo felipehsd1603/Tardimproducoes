@@ -1,0 +1,180 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+import WhatsFlutuante from "../components/WhatsFlutuante.astro";
+import { ORGANIZACAO } from "../lib/organizacao.ts";
+
+const SCRIPTS = ["js/eventos.js","js/provas-db.js","js/realizadas.js","js/demo.js","js/avise.js","js/main.js","js/extras.js","js/mapa.js","js/ui.js"];
+---
+<Pagina
+  titulo="Tardim Produções · Corridas de rua em Belo Horizonte"
+  descricao="Tardim Produções: calendário de corridas de rua, inscrições e produção de eventos esportivos, feiras e congressos, locação de estrutura para eventos, com regularização, licenciamento e prevenção contra incêndio. Belo Horizonte e Minas Gerais."
+  og={{ titulo: "Tardim Produções", descricao: "Fazendo bem feito!", caminho: "" }}
+  icones
+  scripts={SCRIPTS}
+>
+    <script type="application/ld+json" slot="head" is:inline set:html={JSON.stringify(ORGANIZACAO)} />
+    <Topo inicio />
+
+    <main id="conteudo">
+      <!-- Abertura: foto de fundo + próxima prova -->
+      <section class="hero">
+        <div class="hero__bg" aria-hidden="true">
+          <img src="assets/fotos/hulk-run-largada.webp" alt="" width="399" height="462" fetchpriority="high" />
+          <img src="assets/fotos/crefito4-run-bh.webp" alt="" width="399" height="431" />
+          <img src="assets/fotos/hulk-run-2.webp" alt="" width="399" height="462" />
+          <img src="assets/fotos/hulk-run-3.webp" alt="" width="400" height="462" />
+          <img src="assets/fotos/hulk-run-medalha.webp" alt="" width="399" height="462" />
+        </div>
+        <div class="wrap hero__grid">
+          <div class="hero__text">
+            <h1>Da ideia à <span>linha de chegada.</span></h1>
+            <p class="hero__lead">Para quem corre, o calendário de provas. Para quem realiza, planejamento, licenças e produção completa.</p>
+            <div class="actions">
+              <a class="btn btn--red btn--lg" href="#calendario">Quero correr</a>
+              <a class="btn btn--white btn--lg" href="empresas.html">Quero contratar uma corrida</a>
+            </div>
+          </div>
+
+          <aside class="next-card" id="next" hidden>
+            <img class="next-card__poster" id="next-poster" alt="" width="399" height="531" />
+            <div class="next-card__body">
+              <span class="next-card__label">Próxima prova</span>
+              <strong class="next-card__name" id="next-name"></strong>
+              <span class="next-card__count"><b id="next-days"></b> <span id="next-days-label"></span></span>
+              <a class="btn btn--red next-card__btn" id="next-link" href="#calendario">Inscreva-se</a>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Calendário -->
+      <section class="block" id="calendario">
+        <div class="wrap">
+          <div class="block__head">
+            <h2>Calendário</h2>
+            <p>Inscrições sempre pelo link oficial de cada prova.</p>
+          </div>
+          <!-- Carrossel das artes: aparece sozinho com 3 ou mais provas abertas -->
+          <div class="banners" id="banners-wrap" hidden>
+            <div class="carousel-nav carousel-nav--float" data-for="banners">
+              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Provas anteriores">←</button>
+              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas provas">→</button>
+            </div>
+            <div class="carousel carousel--banners" id="banners" tabindex="0" role="region" aria-label="Artes das próximas provas"></div>
+          </div>
+          <div id="proximas" class="races"></div>
+          <p id="sem-provas" class="muted" hidden>
+            Estamos fechando as próximas datas. Acompanhe no
+            <a href="https://www.instagram.com/tardimproducoes/" target="_blank" rel="noopener">@tardimproducoes</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Galeria de fotos (carrossel) -->
+      <section class="block gallery" aria-labelledby="galeria-titulo">
+        <div class="wrap">
+          <div class="carousel-head">
+            <div>
+              <h2 id="galeria-titulo">Na rua com a Tardim Produções</h2>
+              <p class="muted">Momentos das provas que produzimos.</p>
+            </div>
+            <div class="carousel-nav" data-for="galeria">
+              <button type="button" class="carousel-btn" data-dir="-1" aria-label="Fotos anteriores">←</button>
+              <button type="button" class="carousel-btn" data-dir="1" aria-label="Próximas fotos">→</button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel" id="galeria" tabindex="0" role="region" aria-label="Galeria de fotos dos eventos"></div>
+      </section>
+
+      <!-- Faixa de confiança: números + clientes -->
+      <section class="trust" aria-label="Números da Tardim Produções e clientes atendidos">
+        <div class="wrap trust__inner">
+          <p class="trust__title">Quem confia na Tardim Produções</p>
+          <div class="trust__stats" id="trust-stats"></div>
+        </div>
+        <div class="marquee" aria-hidden="true">
+          <div class="marquee__track" id="marquee"></div>
+        </div>
+        <p class="sr-only" id="trust-clientes"></p>
+      </section>
+
+      <!-- Depoimentos do painel (aba Depoimentos): a seção só aparece quando há algum publicado -->
+      <section class="block block--paper" id="depoimentos" hidden>
+        <div class="wrap">
+          <div class="block__head">
+            <h2>Quem viveu conta</h2>
+            <p>O que dizem clientes e atletas das provas da Tardim Produções.</p>
+          </div>
+          <div class="depo-grid" data-depoimentos="inicio"></div>
+        </div>
+      </section>
+
+      <!-- Mapa: onde já corremos -->
+      <section class="block mapa-sec" id="mapa">
+        <div class="wrap mapa">
+          <div class="mapa__texto">
+            <div class="block__head">
+              <h2>Onde já corremos</h2>
+              <p>Corridas organizadas pela Tardim Produções na capital e no interior de Minas Gerais.</p>
+            </div>
+            <ul class="mapa__lista" id="mapa-lista" aria-label="Corridas por cidade"></ul>
+            <p class="mapa__credito">Contorno do mapa: svg-maps/brazil (CC BY 4.0).</p>
+          </div>
+          <div class="mapa__desenho" id="mapa-mg"></div>
+        </div>
+      </section>
+
+      <!-- Provas realizadas -->
+      <section class="block block--paper" id="provas">
+        <div class="wrap">
+          <div class="block__head">
+            <h2>Portfólio</h2>
+            <p>Eventos esportivos e serviços de prevenção contra incêndio para tribunais, prefeituras, conselhos, federações e empresas.</p>
+          </div>
+          <ul class="logos" id="realizadas"></ul>
+          <div class="portfolio-cta">
+            <a class="btn btn--navy btn--lg" id="ver-portfolio" href="portfolio.html">Ver portfólio completo</a>
+          </div>
+          <p class="portfolio-inst"><a class="race-card__more" href="institucional.html">Órgão público ou conselho? Veja a página institucional →</a></p>
+        </div>
+      </section>
+
+      <!-- Faixa de palavras grandes -->
+      <div class="wordband" aria-hidden="true">
+        <div class="wordband__track">
+          <span>Corridas de rua</span><i></i><span class="is-fill">Licenças</span><i></i><span>Prevenção contra incêndio</span><i></i><span class="is-fill">Eventos</span><i></i><span>Staff</span><i></i>
+          <span>Corridas de rua</span><i></i><span class="is-fill">Licenças</span><i></i><span>Prevenção contra incêndio</span><i></i><span class="is-fill">Eventos</span><i></i><span>Staff</span><i></i>
+        </div>
+      </div>
+
+      <!-- Para quem contrata: resumo que leva à página de empresas -->
+      <section class="block contrate" id="contrate">
+        <div class="wrap contrate__inner">
+          <div class="contrate__texto">
+            <p class="eyebrow">Para empresas e órgãos públicos</p>
+            <h2>Vai organizar uma corrida ou um evento?</h2>
+            <p>A Tardim Produções cuida de tudo, do planejamento à desmontagem: um só fornecedor, com licenças e segurança resolvidas.</p>
+            <div class="actions">
+              <a class="btn btn--red btn--lg" href="empresas.html">Conhecer os serviços</a>
+              <a class="btn btn--line btn--lg" href="empresas.html#orcamento">Pedir orçamento</a>
+            </div>
+          </div>
+          <ul class="contrate__lista">
+            <li><svg aria-hidden="true"><use href="#i-run" /></svg>Corridas de rua e corridas corporativas</li>
+            <li><svg aria-hidden="true"><use href="#i-fire" /></svg>Prevenção contra incêndio e brigada</li>
+            <li><svg aria-hidden="true"><use href="#i-doc" /></svg>Licenças, alvarás e operação de trânsito</li>
+            <li><svg aria-hidden="true"><use href="#i-tent" /></svg>Locação de estrutura: tendas, gradis, pórtico</li>
+            <li><svg aria-hidden="true"><use href="#i-store" /></svg>Feiras, congressos e festas</li>
+            <li><svg aria-hidden="true"><use href="#i-team" /></svg>Staff para o dia do evento</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <Rodape inicio linktree />
+
+    <WhatsFlutuante mensagem="Olá! Vim pelo site da Tardim Produções." />
+</Pagina>

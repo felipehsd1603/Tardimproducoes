@@ -1,6 +1,6 @@
 name: Testes
 
-# Roda a suíte de integração (tests/) em todo push e pull request.
+# Roda a suíte (tests/) em todo push e pull request. O npm test monta o site antes (pretest: npm run site:build).
 # Os testes sobem o site inteiro com o wrangler num banco D1 local descartável: nada toca a produção.
 on:
   push:
@@ -24,9 +24,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Tipos das Functions (TypeScript)
+      - name: Tipos (Functions e site Astro)
         run: npm run tipos
-      - name: Gerador de páginas
-        run: node scripts/gerar-paginas.js
-      - name: Testes de integração
+      - name: Site (Astro -> publico/)
+        run: npm run site:build
+      - name: Testes (páginas geradas + integração)
         run: npm test

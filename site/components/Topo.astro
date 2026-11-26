@@ -1,0 +1,36 @@
+---
+// Topo com o menu. "inicio": a própria página inicial (links para as seções da página).
+// "simples": só a marca (página 404).
+interface Props {
+  inicio?: boolean;
+  atual?: "empresas" | "parceiro";
+  /** Destino do botão "Pedir orçamento" */
+  cta?: string;
+  simples?: boolean;
+}
+const { inicio = false, atual, cta = "empresas.html#orcamento", simples = false } = Astro.props;
+const pagina = (nome: string) => (atual === nome ? "page" : undefined);
+---
+{!simples && <a class="skip" href="#conteudo">Pular para o conteúdo</a>}
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a href={inicio ? "#" : "index.html"} class="brand">
+      <img src="assets/logo-tardim.webp" alt="" width="42" height="42" />
+      <span>Tardim <b>Produções</b></span>
+    </a>
+    {!simples && (
+      <>
+        <button class="menu-btn" aria-expanded="false" aria-controls="menu">Menu</button>
+        <nav id="menu" class="nav">
+          <a href={inicio ? "#calendario" : "index.html#calendario"}>Calendário</a>
+          <a href={inicio ? "#provas" : "portfolio.html"}>Portfólio</a>
+          <a href="empresas.html" aria-current={pagina("empresas")}>Para empresas</a>
+          <a href="#contato">Contato</a>
+          <a href="parceiro.html" class="nav__login" aria-current={pagina("parceiro")}>Parceiros</a>
+          <a href={cta} class="nav__cta">Pedir orçamento</a>
+        </nav>
+      </>
+    )}
+  </div>
+</header>

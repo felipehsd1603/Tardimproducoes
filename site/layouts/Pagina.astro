@@ -1,0 +1,64 @@
+---
+// Esqueleto das páginas do site: <head> (título, descrição, previa, ícones, fontes, CSS),
+// ícones SVG, o conteúdo da página e os scripts (arquivos .js externos: o CSP não aceita script inline).
+// Slot "head": o que entra no fim do <head> (ex.: JSON-LD).
+import Icones from "../components/Icones.astro";
+import { blocoOG, metaDescricao, type Og } from "../lib/og.ts";
+import { esc } from "../lib/dados.ts";
+import { comVersao } from "../lib/versao.ts";
+
+interface Props {
+  titulo: string;
+  descricao: string;
+  robots?: string;
+  /** Prévia para WhatsApp e redes (sem ela, a página não tem canonical nem og:) */
+  og?: Og;
+  /** Prévia logo depois da descrição (kit e parceiro), em vez de depois dos ícones */
+  ogNoTopo?: boolean;
+  /** Arte da prova: o navegador começa a baixar antes do js/prova.js */
+  preloadImagem?: string;
+  /** Id da prova ou do trabalho (data-pagina no <html>; os js leem dali) */
+  pagina?: string;
+  /** Folhas de estilo além de css/style.css */
+  css?: string[];
+  scripts?: string[];
+  /** Todos os ícones SVG (início e empresas) */
+  icones?: boolean;
+}
+
+const { titulo, descricao, robots, og, ogNoTopo = false, preloadImagem, pagina, css = [], scripts = [], icones = false } = Astro.props;
+const previa = og
+  ? blocoOG(og) + (preloadImagem ? `\n    <link rel="preload" as="image" href="${esc(preloadImagem)}" fetchpriority="high" />` : "")
+  : "";
+---
+<!doctype html>
+<html lang="pt-BR" data-pagina={pagina}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{titulo}</title>
+    <Fragment set:html={metaDescricao(descricao)} />
+    {robots && <meta name="robots" content={robots} />}
+    {ogNoTopo && <Fragment set:html={previa} />}
+    <meta name="theme-color" content="#24325a" />
+
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Tardim Produções" />
+    <meta name="application-name" content="Tardim Produções" />
+    {!ogNoTopo && <Fragment set:html={previa} />}
+    <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href={comVersao("css/style.css")} />
+    {css.map((f) => <link rel="stylesheet" href={comVersao(f)} />)}
+    <slot name="head" />
+  </head>
+  <body>
+    <Icones todos={icones} />
+
+    <slot />
+
+    {scripts.map((s) => <script is:inline src={comVersao(s)}></script>)}
+  </body>
+</html>

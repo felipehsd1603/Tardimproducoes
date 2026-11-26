@@ -1,0 +1,28 @@
+---
+// Página de um trabalho do portfólio: evento.html e trabalho-<id>.html. O conteúdo é montado pelo js/portfolio.js.
+import Pagina from "./Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+import WhatsFlutuante from "../components/WhatsFlutuante.astro";
+import type { Og } from "../lib/og.ts";
+
+interface Props {
+  titulo: string;
+  descricao: string;
+  og: Og;
+  pagina?: string;
+}
+const { titulo, descricao, og, pagina } = Astro.props;
+const SCRIPTS = ["js/eventos.js", "js/provas-db.js", "js/realizadas.js", "js/demo.js", "js/portfolio.js", "js/ui.js"];
+---
+<Pagina titulo={titulo} descricao={descricao} og={og} pagina={pagina} scripts={SCRIPTS}>
+    <Topo />
+
+    <main id="conteudo">
+      <div id="evento"></div>
+    </main>
+
+    <Rodape />
+
+    <WhatsFlutuante />
+</Pagina>

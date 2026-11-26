@@ -1,0 +1,6 @@
+{
+  // Tipos do site em Astro (npm run tipos: astro check). As Functions usam o tsconfig.json da raiz.
+  "extends": "astro/tsconfigs/strict",
+  "include": ["../.astro/types.d.ts", "./**/*"],
+  "compilerOptions": { "types": ["node"] }
+}

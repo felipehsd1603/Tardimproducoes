@@ -1,0 +1,40 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+
+const SCRIPTS = ["js/menu.js","js/eventos.js","js/provas-db.js","js/realizadas.js","js/demo.js","js/convite.js","js/assessorias.js","js/ui.js"];
+---
+<Pagina
+  titulo="Inscrição coletiva para assessorias · Tardim Produções"
+  descricao="Inscreva sua assessoria ou equipe de corrida de uma vez: baixe o modelo de planilha, confira os dados no site e envie para a Tardim Produções."
+  robots="noindex, nofollow"
+  og={{ titulo: "Inscrição coletiva para assessorias · Tardim Produções", descricao: "Baixe o modelo, confira a planilha da sua equipe e envie para a Tardim Produções.", caminho: "assessorias.html" }}
+  scripts={SCRIPTS}
+>
+    <Topo />
+
+    <main id="conteudo" class="assess">
+      <section class="assess-hero">
+        <div class="wrap">
+          <nav class="legal__crumb assess-hero__crumb" aria-label="Você está em"><a href="index.html">Início</a> <span aria-hidden="true">›</span> <span aria-current="page">Assessorias</span></nav>
+          <p class="eyebrow">Assessorias e equipes</p>
+          <h1>Inscrição coletiva sem dor de cabeça</h1>
+          <p class="assess-hero__lead">Inscreva toda a sua equipe de uma vez. Baixe o modelo, preencha, confira aqui no site e envie para a Tardim Produções com tudo certo na primeira.</p>
+          <ol class="assess-steps" aria-label="Como funciona">
+            <li><b>1</b><span>Baixe o modelo da planilha</span></li>
+            <li><b>2</b><span>Preencha com os dados dos atletas</span></li>
+            <li><b>3</b><span>Importe o arquivo aqui para conferir</span></li>
+            <li><b>4</b><span>Mande para a Tardim Produções</span></li>
+          </ol>
+          <p class="assess-hero__parceiro">Sua assessoria ainda não é parceira? <a class="btn btn--red" href="parceiro.html#cadastro">Quero ser parceiro</a> <a href="programa-embaixadores.html">Conheça o programa</a></p>
+        </div>
+      </section>
+
+      <div class="wrap assess-body" id="assess-app">
+        <noscript><p>Para usar a conferência da planilha, ative o JavaScript do navegador.</p></noscript>
+      </div>
+    </main>
+
+    <Rodape />
+</Pagina>

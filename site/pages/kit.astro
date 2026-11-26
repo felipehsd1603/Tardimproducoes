@@ -1,0 +1,31 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+
+const SCRIPTS = ["js/menu.js","js/eventos.js","js/provas-db.js","js/kit.js","js/ui.js"];
+---
+<Pagina
+  titulo="Kit de divulgação · Tardim Produções"
+  descricao="Seu link, cupom, textos prontos e card para stories."
+  robots="noindex, nofollow"
+  og={{ titulo: "Kit de divulgação · Tardim Produções", descricao: "Seu link, cupom, textos prontos e card para stories.", caminho: "kit.html" }}
+  ogNoTopo
+  css={["css/painel.css"]}
+  scripts={SCRIPTS}
+>
+    <Topo />
+
+    <main id="conteudo" class="assess">
+      <section class="assess-hero">
+        <div class="wrap">
+          <p class="eyebrow">Kit de divulgação</p>
+          <h1 id="kit-titulo">Kit de divulgação</h1>
+          <p class="assess-hero__lead" id="kit-lead">Link, cupom, textos prontos e card para stories.</p>
+        </div>
+      </section>
+      <div class="wrap assess-body kit" id="kit"></div>
+    </main>
+
+    <Rodape />
+</Pagina>

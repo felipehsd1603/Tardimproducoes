@@ -1,0 +1,31 @@
+---
+// Página de uma prova: prova.html (modelo) e prova-<id>.html. O conteúdo é montado pelo js/prova.js.
+// O prova.html também é o modelo das provas do painel (functions/_middleware.ts troca título,
+// descrição, prévia e põe data-pagina no <html>): não mude esses quatro pontos sem mexer lá.
+import Pagina from "./Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+import WhatsFlutuante from "../components/WhatsFlutuante.astro";
+import type { Og } from "../lib/og.ts";
+
+interface Props {
+  titulo: string;
+  descricao: string;
+  og: Og;
+  pagina?: string;
+  poster?: string;
+}
+const { titulo, descricao, og, pagina, poster } = Astro.props;
+const SCRIPTS = ["js/eventos.js", "js/provas-db.js", "js/realizadas.js", "js/demo.js", "js/avise.js", "js/prova.js", "js/extras.js", "js/ui.js"];
+---
+<Pagina titulo={titulo} descricao={descricao} og={og} preloadImagem={poster} pagina={pagina} scripts={SCRIPTS}>
+    <Topo />
+
+    <main id="conteudo">
+      <div id="prova"></div>
+    </main>
+
+    <Rodape />
+
+    <WhatsFlutuante />
+</Pagina>

@@ -1,0 +1,38 @@
+---
+// Página 404 do Pages. Endereço base absoluto (<base>) para funcionar em qualquer caminho quebrado.
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+import { BASE_PATH } from "../lib/dados.ts";
+import { comVersao } from "../lib/versao.ts";
+---
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href={BASE_PATH} />
+    <title>Página não encontrada · Tardim Produções</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#24325a" />
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/barlow-condensed-latin-800-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href={comVersao("css/style.css")} />
+  </head>
+  <body>
+    <Topo simples />
+    <main class="notfound">
+      <div class="wrap">
+        <p class="notfound__code">404</p>
+        <h1>Essa página saiu do percurso.</h1>
+        <p class="muted">O link pode ter mudado ou a prova já foi encerrada. Escolha um caminho:</p>
+        <div class="actions">
+          <a class="btn btn--red btn--lg" href="index.html#calendario">Ver calendário de provas</a>
+          <a class="btn btn--line" href="portfolio.html">Ver portfólio</a>
+          <a class="btn btn--line" href="#contato">Falar com a Tardim Produções</a>
+        </div>
+      </div>
+    </main>
+    <Rodape parceiro={false} />
+  </body>
+</html>

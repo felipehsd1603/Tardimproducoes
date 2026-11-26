@@ -1,0 +1,90 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+
+const SCRIPTS = ["js/menu.js","js/ui.js"];
+---
+<Pagina
+  titulo="Institucional · Tardim Produções"
+  descricao="Tardim Produções para órgãos públicos, conselhos e instituições: corridas de rua, eventos e prevenção contra incêndio com regularização e licenciamento completos."
+  og={{ titulo: "Institucional · Tardim Produções", descricao: "Corridas, eventos e prevenção contra incêndio para órgãos públicos, conselhos e instituições.", caminho: "institucional.html" }}
+  scripts={SCRIPTS}
+>
+    <Topo />
+
+    <main id="conteudo" class="block block--paper">
+      <div class="wrap">
+        <nav class="legal__crumb" aria-label="Você está em"><a href="index.html">Início</a> <span aria-hidden="true">›</span> <span aria-current="page">Institucional</span></nav>
+        <h1 class="page-title">Institucional</h1>
+      </div>
+      <div class="wrap inst">
+        <div>
+          <p class="muted">
+            A Tardim Produções realiza corridas de rua, eventos e serviços de prevenção contra incêndio
+            para tribunais, prefeituras, conselhos profissionais, instituições e empresas, com produção,
+            regularização e licenciamento completos. A empresa tem contratos registrados com o Poder
+            Executivo Federal.
+          </p>
+          <h2 class="inst__sub">Por que a Tardim Produções</h2>
+          <ul class="creds">
+            <li><strong>Contratada por órgãos públicos</strong><span>Tribunal (TRT-3), Câmara Municipal de BH, Prefeituras de Belo Horizonte e Contagem e Prodemge, por licitação e contratos de serviço contínuo.</span></li>
+            <li><strong>Provas chanceladas</strong><span>Corridas com chancela da Federação Mineira de Atletismo e percursos aferidos.</span></li>
+            <li><strong>Segurança do começo ao fim</strong><span>Projetos de prevenção contra incêndio e brigada com bombeiros civis.</span></li>
+            <li><strong>Tudo regularizado</strong><span>Alvarás, autorizações e operação de trânsito resolvidos pela própria equipe.</span></li>
+            <li><strong>Eventos de grande porte</strong><span>Provas com milhares de inscritos, como a Corrida da Polícia Penal e a Corrida da Guarda Civil Municipal de BH, e circuitos em várias cidades de Minas.</span></li>
+          </ul>
+          <a class="race-card__more" href="empresas.html">Ver todos os serviços →</a>
+        </div>
+        <div>
+          <h2 class="inst__sub">Instituições atendidas</h2>
+          <ul class="inst__clients">
+            <li>TRT-3</li>
+            <li>Câmara Municipal de BH</li>
+            <li>Prefeitura de Belo Horizonte</li>
+            <li>Prefeitura de Contagem</li>
+            <li>Prodemge</li>
+            <li>FHEMIG</li>
+            <li>Crea-MG</li>
+            <li>Crefito-4</li>
+            <li>CRO-MG</li>
+            <li>CRA-MG</li>
+            <li>CEAPOLC/MG (Polícia Civil)</li>
+            <li>Sindppen-MG</li>
+            <li>Guarda Civil Municipal de BH</li>
+            <li>Guarda Civil de Contagem</li>
+            <li>Batalhão de Trânsito da PMMG</li>
+            <li>SEST SENAT</li>
+            <li>Colégio Santa Maria Minas</li>
+            <li>Vila Nova Atlético Clube</li>
+            <li>ACAPO</li>
+            <li>Copass Saúde</li>
+            <li>Rádio Liberdade FM</li>
+            <li>Federação Mineira de Atletismo</li>
+          </ul>
+          <p class="inst__legal">Tardim Produções e Eventos Ltda · CNPJ 33.787.309/0001-22</p>
+          <div class="actions inst__acoes">
+            <a class="btn btn--red" href="empresas.html#orcamento">Pedir orçamento</a>
+            <a class="btn btn--line" href="portfolio.html">Ver portfólio</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Como uma contratação é entregue, na ordem em que acontece -->
+      <div class="wrap entrega-sec" id="como-entregamos">
+        <h2 class="inst__sub">Como entregamos uma contratação</h2>
+        <p class="muted">O mesmo roteiro em todo contrato, com prazos combinados por escrito e um responsável da Tardim Produções do começo ao fim.</p>
+        <ol class="entrega">
+          <li><strong>Reunião inicial e plano de execução</strong><span>Logo após a assinatura: cronograma, responsáveis, fiscalização e forma de medir o resultado.</span></li>
+          <li><strong>Percurso, artes e regulamento para aprovação</strong><span>Opções de trajeto, camisa, medalha, página do evento e regulamento vão para aprovação do contratante antes de irem a público.</span></li>
+          <li><strong>Licenças e autorizações</strong><span>Alvarás, taxas, operação de trânsito e prevenção contra incêndio ficam por conta da Tardim Produções.</span></li>
+          <li><strong>Inscrições e divulgação</strong><span>Página oficial da prova, lotes com datas definidas e acompanhamento das inscrições.</span></li>
+          <li><strong>Entrega de kits</strong><span>Na sede do contratante ou em local combinado, com logística para evitar filas.</span></li>
+          <li><strong>Montagem, prova e desmontagem</strong><span>Estrutura pronta e testada antes da largada, equipe no percurso, local limpo e desmontado no mesmo dia.</span></li>
+          <li><strong>Relatório final</strong><span>Número de inscritos e de participantes, fotos do evento e relatório das atividades, para o recebimento do serviço.</span></li>
+        </ol>
+      </div>
+    </main>
+
+    <Rodape />
+</Pagina>

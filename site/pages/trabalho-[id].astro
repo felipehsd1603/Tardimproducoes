@@ -1,0 +1,17 @@
+---
+// Uma página por trabalho do portfólio (js/realizadas.js): trabalho-<id>.html.
+import type { GetStaticPaths } from "astro";
+import PaginaTrabalho from "../layouts/PaginaTrabalho.astro";
+import { TRABALHOS, descricaoTrabalho, type Trabalho } from "../lib/dados.ts";
+
+export const getStaticPaths = (() => TRABALHOS.map((tr) => ({ params: { id: tr.id }, props: { tr } }))) satisfies GetStaticPaths;
+
+const { tr } = Astro.props as { tr: Trabalho & { id: string } };
+const descricao = descricaoTrabalho(tr);
+---
+<PaginaTrabalho
+  titulo={`${tr.nome} · Portfólio · Tardim Produções`}
+  descricao={descricao}
+  og={{ titulo: tr.nome, descricao, imagem: tr.capa || tr.logo, caminho: `trabalho-${tr.id}.html`, tipo: "article" }}
+  pagina={tr.id}
+/>

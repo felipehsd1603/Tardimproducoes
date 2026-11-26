@@ -1,0 +1,24 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+import WhatsFlutuante from "../components/WhatsFlutuante.astro";
+
+const SCRIPTS = ["js/eventos.js","js/provas-db.js","js/realizadas.js","js/demo.js","js/portfolio.js","js/ui.js"];
+---
+<Pagina
+  titulo="Portfólio · Tardim Produções"
+  descricao="Portfólio da Tardim Produções: eventos esportivos e serviços de prevenção contra incêndio para órgãos públicos, conselhos profissionais e empresas em Minas Gerais."
+  og={{ titulo: "Portfólio · Tardim Produções", descricao: "Fazendo bem feito!", caminho: "portfolio.html" }}
+  scripts={SCRIPTS}
+>
+    <Topo />
+
+    <main id="conteudo">
+      <div id="portfolio"></div>
+    </main>
+
+    <Rodape />
+
+    <WhatsFlutuante />
+</Pagina>

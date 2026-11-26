@@ -1,0 +1,31 @@
+---
+import Pagina from "../layouts/Pagina.astro";
+import Topo from "../components/Topo.astro";
+import Rodape from "../components/Rodape.astro";
+
+const SCRIPTS = ["js/menu.js","js/eventos.js","js/provas-db.js","js/realizadas.js","js/demo.js","js/convite.js","js/equipe.js","js/ui.js"];
+---
+<Pagina
+  titulo="Página da equipe · Tardim Produções"
+  descricao="Página da equipe na prova: prazo, dados para a inscrição coletiva e ritmos por pelotão."
+  robots="noindex, nofollow"
+  og={{ titulo: "Página da equipe · Tardim Produções", descricao: "Corra com a sua assessoria: veja a prova, o prazo e mande seus dados para a inscrição.", caminho: "equipe.html" }}
+  scripts={SCRIPTS}
+>
+    <Topo />
+
+    <main id="conteudo" class="assess">
+      <section class="assess-hero">
+        <div class="wrap">
+          <p class="eyebrow">Equipe</p>
+          <h1>Página da equipe</h1>
+          <p class="assess-hero__lead"></p>
+        </div>
+      </section>
+      <div class="wrap assess-body" id="equipe-app">
+        <noscript><p>Para ver a página da equipe, ative o JavaScript do navegador.</p></noscript>
+      </div>
+    </main>
+
+    <Rodape />
+</Pagina>

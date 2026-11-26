@@ -1,9 +1,8 @@
-# Arquivos gerados por scripts/gerar-paginas.js (o workflow de publicação recria todos)
-/prova-*.html
-/trabalho-*.html
-/404.html
-/sitemap.xml
-/robots.txt
+# Build do site (npm run site:build): Astro gera dist/, scripts/montar-publico.mjs junta tudo em publico/
+/dist/
+/.astro/
+# Pasta que o wrangler serve (testes, dev) e que o deploy sobe
+/publico/
 
 # Cloudflare (estado local do wrangler)
 /.wrangler/
@@ -11,6 +10,3 @@
 
 # Dependências (npm install)
 /node_modules/
-
-# Pasta que o deploy sobe (scripts/montar-publico.mjs)
-/publico/

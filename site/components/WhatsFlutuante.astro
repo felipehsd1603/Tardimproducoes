@@ -1,0 +1,13 @@
+---
+// Botão flutuante do WhatsApp. Sem mensagem: id="wa-float" (o js da página põe o texto).
+// Com mensagem: data-wa (o js/ui.js usa) e, se "naUrl", a mesma mensagem já no link.
+interface Props {
+  mensagem?: string;
+  naUrl?: boolean;
+}
+const { mensagem, naUrl = false } = Astro.props;
+const href = "https://wa.me/5531984289667" + (mensagem && naUrl ? "?text=" + encodeURIComponent(mensagem) : "");
+---
+<a class="wa-float" id={mensagem ? undefined : "wa-float"} data-wa={mensagem} href={href} target="_blank" rel="noopener" aria-label="Falar com a Tardim Produções no WhatsApp">
+  <svg aria-hidden="true"><use href="#i-whatsapp" /></svg>
+</a>

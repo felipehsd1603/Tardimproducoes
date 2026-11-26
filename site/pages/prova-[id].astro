@@ -1,0 +1,18 @@
+---
+// Uma página por prova do js/eventos.js (prova-<id>.html), com a prévia certa para WhatsApp e redes.
+import type { GetStaticPaths } from "astro";
+import PaginaProva from "../layouts/PaginaProva.astro";
+import { PROVAS, descricaoProva, type Prova } from "../lib/dados.ts";
+
+export const getStaticPaths = (() => PROVAS.map((ev) => ({ params: { id: ev.id }, props: { ev } }))) satisfies GetStaticPaths;
+
+const { ev } = Astro.props as { ev: Prova & { id: string } };
+const descricao = descricaoProva(ev);
+---
+<PaginaProva
+  titulo={`${ev.nome} · Tardim Produções`}
+  descricao={descricao}
+  og={{ titulo: ev.nome, descricao, imagem: ev.poster, caminho: `prova-${ev.id}.html` }}
+  pagina={ev.id}
+  poster={ev.poster}
+/>

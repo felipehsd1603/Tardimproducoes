@@ -1,25 +1,30 @@
 {
   "name": "tardim-producoes",
   "private": true,
-  "description": "Site e painel da Tardim Produções: Cloudflare Pages + Functions + D1",
+  "description": "Site (Astro) e painel da Tardim Produções: Cloudflare Pages + Functions + D1",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.23.4"
   },
   "scripts": {
-    "dev": "wrangler pages dev . --port 8791",
+    "site:build": "node scripts/construir-site.mjs",
+    "site:comparar": "node scripts/comparar-paginas.mjs",
+    "dev": "npm run site:build && wrangler pages dev publico --port 8791",
+    "pretest": "npm run site:build",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.mjs\"",
-    "tipos": "tsc --noEmit",
-    "paginas": "node scripts/gerar-paginas.js",
+    "tipos": "tsc --noEmit && astro check --tsconfig site/tsconfig.json",
     "db:migracoes:local": "wrangler d1 migrations apply tardim --local",
     "db:migracoes:producao": "wrangler d1 migrations apply tardim --remote",
     "db:migracoes:lista": "wrangler d1 migrations list tardim --remote",
-    "publicar": "node scripts/gerar-paginas.js --versao && node scripts/montar-publico.mjs && wrangler pages deploy publico --project-name tardim-teste --branch main"
+    "publicar": "npm run site:build && wrangler pages deploy publico --project-name tardim-teste --branch main"
   },
   "dependencies": {
     "hono": "4.13.18"
   },
   "devDependencies": {
+    "@astrojs/check": "0.9.11",
     "@cloudflare/workers-types": "5.20261123.1",
+    "@types/node": "22.20.5",
+    "astro": "7.4.10",
     "typescript": "5.9.3",
     "wrangler": "4.168.0"
   },
