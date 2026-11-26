@@ -87,7 +87,7 @@ async function paginaProva(env: Env, id: string, url: URL): Promise<Response | n
 // O deploy sobe só publico/ (scripts/montar-publico.mjs), mas o Pages guarda em cache respostas
 // de deploys antigos, que publicavam a pasta inteira. Por isso o _routes.json manda quase tudo
 // para cá e o caminho é normalizado antes de conferir (//, \, /./, %2f, maiúsculas).
-const PRIVADO = /^\/(functions|d1|docs|scripts|tests|site|dist|\.astro|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore|tsconfig\.json|astro\.config\.mjs)$/i;
+const PRIVADO = /^\/(functions|d1|docs|scripts|tests|site|dist|painel|\.astro|\.github|node_modules|\.wrangler|\.git)(\/|$)|^\/(wrangler\.toml|README\.md|CHANGELOG\.md|package\.json|package-lock\.json|\.gitignore|\.gitattributes|\.editorconfig|_routes\.json|_headers|_redirects|\.dev\.vars|\.assetsignore|tsconfig\.json|astro\.config\.mjs)$/i;
 function caminhoNormal(pathname: string): string {
   let p = pathname;
   for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(p); if (d === p) break; p = d; } catch (e) { break; } }

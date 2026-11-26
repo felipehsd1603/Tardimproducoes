@@ -214,3 +214,12 @@
   .andamento-barra li { font-size: 0.7rem; }
   .andamento-passo { padding: 14px 10px; gap: 2px 10px; }
 }
+
+/* Listas editáveis em linhas (painel novo: valores, programação, perguntas, percursos e itens do kit) */
+.painel-linhas { display: grid; gap: 8px; }
+.painel-linhas td { vertical-align: top; }
+.painel-linhas td input[type="text"], .painel-linhas td input[type="date"], .painel-linhas td textarea { width: 100%; min-width: 7rem; min-height: 38px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; font: inherit; }
+.painel-linhas td textarea { min-width: 14rem; resize: vertical; }
+.painel-linhas td input[type="checkbox"] { width: 20px; height: 20px; margin-top: 9px; accent-color: var(--red-btn); }
+.painel-linhas__acoes { flex-wrap: nowrap; gap: 4px 10px; }
+.painel-linhas__acoes .orc__email { min-height: 38px; }

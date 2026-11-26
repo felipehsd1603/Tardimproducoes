@@ -6,12 +6,15 @@
     "node": ">=22.23.4"
   },
   "scripts": {
-    "site:build": "node scripts/construir-site.mjs",
+    "painel:dev": "vite --config painel/vite.config.mts",
+    "painel:build": "vite build --config painel/vite.config.mts",
+    "painel:tipos": "tsc --noEmit -p painel",
+    "site:build": "npm run painel:build && node scripts/construir-site.mjs",
     "site:comparar": "node scripts/comparar-paginas.mjs",
     "dev": "npm run site:build && wrangler pages dev publico --port 8791",
     "pretest": "npm run site:build",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.mjs\"",
-    "tipos": "tsc --noEmit && astro check --tsconfig site/tsconfig.json",
+    "tipos": "tsc --noEmit && astro check --tsconfig site/tsconfig.json && tsc --noEmit -p painel",
     "db:migracoes:local": "wrangler d1 migrations apply tardim --local",
     "db:migracoes:producao": "wrangler d1 migrations apply tardim --remote",
     "db:migracoes:lista": "wrangler d1 migrations list tardim --remote",
@@ -24,8 +27,14 @@
     "@astrojs/check": "0.9.11",
     "@cloudflare/workers-types": "5.20261123.1",
     "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
     "astro": "7.4.10",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "typescript": "5.9.3",
+    "vite": "8.3.8",
     "wrangler": "4.168.0"
   },
   "allowScripts": {

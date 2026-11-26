@@ -4,13 +4,13 @@ Guia para quem mantém o código. O README explica o que cada página faz e como
 
 ## Visão geral
 
-Site estático servido pelo **Cloudflare Pages** (as páginas públicas em **Astro**, `site/`, geradas como HTML por `npm run site:build`; CSS e JS comuns em `css/` e `js/`; o painel `admin.html` escrito à mão), com o backend em **Pages Functions** (`functions/`) e o banco no **Cloudflare D1** (binding `DB`, banco `tardim`).
+Site estático servido pelo **Cloudflare Pages** (as páginas públicas em **Astro**, `site/`, geradas como HTML por `npm run site:build`; CSS e JS comuns em `css/` e `js/`; o painel `/admin` em React + TypeScript, `painel/`, gerado pelo Vite), com o backend em **Pages Functions** (`functions/`) e o banco no **Cloudflare D1** (binding `DB`, banco `tardim`).
 
 O código do servidor é **TypeScript** (`functions/**/*.ts`). Não há passo de build: o wrangler compila os `.ts` sozinho (esbuild) no `wrangler pages dev` e no deploy. O `tsc` só confere os tipos (`npm run tipos`, configuração em `tsconfig.json`). Os roteadores `api/admin`, `api/v1` e `api/parceiro` são apps **Hono** (`hono/cloudflare-pages`); as rotas simples e o middleware continuam como funções do Pages.
 
 | Área | Endereço | Quem usa | Login | Formato de erro | Documentação |
 | --- | --- | --- | --- | --- | --- |
-| Painel | `/api/admin/*` | `admin.html` (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
+| Painel | `/api/admin/*` | `/admin` (React, `painel/`; reserva: `/admin-classico`) (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
 | Área do parceiro | `/api/parceiro/*` | `parceiro.html` | E-mail/senha ou Google + cookie `tardim_parceiro` | `{ erro: <status>, mensagem }` | `/api/admin/docs` |
 | Site | `/api/orcamento`, `/api/inscricao`, `/api/aviso`, `/api/evento`, `/api/ticketsports` | Páginas do site; Ticket Sports | Nenhum (origem e limite por IP) | `{ erro: "<campo>" }` | `/api/admin/docs` |
 | API v1 para parceiros | `/api/v1/*` | Sistemas das assessorias (ex.: IM3), servidor a servidor | `Authorization: Bearer tdm_live_...` | `{ erro: { codigo, mensagem } }` | `/api/v1/docs` (pública) e `docs/api-v1-parceiros.md` |
@@ -69,7 +69,7 @@ site/
                 og.ts (bloco <!--og-->), versao.ts (?v=), organizacao.ts (JSON-LD)
 ```
 
-- **Build**: `npm run site:build` = `scripts/construir-site.mjs` (Astro com telemetria desligada: `site/` -> `dist/`) + `scripts/montar-publico.mjs` (`dist/` + `admin.html` com o mesmo `?v=` + `css/`, `js/`, `assets/`, `manifest.webmanifest`, `_headers`, `_redirects`, `_routes.json` -> `publico/`). `publico/` é a pasta que `npm run dev`, os testes e o deploy usam; as Functions vêm de `functions/`.
+- **Build**: `npm run site:build` = `scripts/construir-site.mjs` (Astro com telemetria desligada: `site/` -> `dist/`) + `scripts/montar-publico.mjs` (`dist/` + o painel gerado (`admin.html`, `assets/painel/`) + `admin-classico.html` com o mesmo `?v=` + `css/`, `js/`, `assets/`, `manifest.webmanifest`, `_headers`, `_redirects`, `_routes.json` -> `publico/`). `publico/` é a pasta que `npm run dev`, os testes e o deploy usam; as Functions vêm de `functions/`.
 - **Saída**: `build.format: "file"` (mesmos endereços: `prova.html`, não `prova/index.html`) e `compressHTML: false` (o HTML sai como está escrito, com os comentários).
 - **CSP**: nenhuma ilha (`client:*`) nem `<script>` processado pelo Astro. Os scripts são os arquivos de `js/`, com `<script is:inline src=...>`; o JSON-LD (`application/ld+json`) pode. `tests/paginas.test.mjs` procura script inline e `on*=` nas páginas de `publico/`.
 - **Modelo das provas do painel**: o middleware lê `/prova.html` e troca `<title>`, `<meta name="description" content="..." />` (precisa do ` />`: por isso a descrição e a prévia saem como texto pronto pelo `set:html`), o bloco `<!--og-->...<!--/og-->` e `<html lang="pt-BR">`.

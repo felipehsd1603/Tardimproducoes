@@ -6,7 +6,7 @@ Hospedado no **Cloudflare Pages** (plano gratuito), com funções em `functions/
 
 ## Estrutura
 
-As páginas públicas são escritas em **Astro** (TypeScript) em `site/` e geradas como HTML estático por `npm run site:build` (veja [Páginas geradas automaticamente](#páginas-geradas-automaticamente)). Os endereços continuam os mesmos (`index.html`, `prova.html`...). O painel (`admin.html`) continua escrito à mão na raiz.
+As páginas públicas são escritas em **Astro** (TypeScript) em `site/` e geradas como HTML estático por `npm run site:build` (veja [Páginas geradas automaticamente](#páginas-geradas-automaticamente)). Os endereços continuam os mesmos (`index.html`, `prova.html`...). O painel (`/admin`) é um app React + TypeScript em `painel/` (veja Desenvolvimento do painel).
 
 ```
 site/pages/index.astro          página inicial (para quem corre) -> index.html
@@ -49,7 +49,8 @@ d1/migracoes/010-propostas.sql  aba "Propostas" do painel: monta o orçamento do
 _redirects          endereços curtos para divulgar (ex.: /copmbm leva à página da prova)
 functions/api/evento.ts     função POST /api/evento: medição do site (js/ui.js): soma totais por dia de visitas e cliques, sem identificar ninguém; o painel mostra na aba "Medição". Banco já criado: rode d1/migracoes/009-medicao-faq.sql (cria a medição e as perguntas frequentes das provas)
 functions/api/inscricao.ts  função POST /api/inscricao: valida e grava a inscrição coletiva (equipe + atletas) no D1
-admin.html          painel da Tardim Produções (fora do menu e do Google): js/admin.js + css/painel.css
+painel/             painel da Tardim Produções em React + TypeScript (Vite): npm run painel:build gera admin.html e assets/painel/ (gerados, fora do git)
+admin-classico.html painel antigo (js/admin.js), mantido como reserva em /admin-classico até a conferência do painel novo
 site/pages/kit.astro  kit de divulgação de cada parceiro: js/kit.js
 site/pages/programa-embaixadores.astro  regras do programa de embaixadores
 js/provas-db.js     provas e depoimentos do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
@@ -114,7 +115,9 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 2. Defina a senha do painel e o segredo da sessão (o segundo é um texto longo e aleatório, que ninguém precisa decorar):
    `npx wrangler pages secret put ADMIN_SENHA --project-name <projeto>` e
    `npx wrangler pages secret put SESSAO_SEGREDO --project-name <projeto>`
-3. Publique o site de novo e abra `admin.html`.
+3. Publique o site de novo e abra `/admin`.
+
+**Desenvolvimento do painel** (`painel/`, React + TypeScript): `npm run dev` (wrangler na porta 8791) e, em outro terminal, `npm run painel:dev` (Vite em http://localhost:5173, repassa `/api`, `/js`, `/css`, `/assets` e `/arquivos` ao wrangler). `npm run painel:tipos` confere os tipos; `npm run painel:build` gera `admin.html` + `assets/painel/` na raiz (o `npm test` e o `npm run publicar` já fazem isso). O HTML gerado não tem script inline (CSP do site): `tests/painel-csp.test.mjs` confere. O painel antigo continua em `/admin-classico`.
 
 **Segurança:** a senha nunca fica em arquivo do repositório (a pasta inteira é publicada). O login usa cookie HttpOnly, Secure e SameSite=Strict, válido por 14 dias; trocar `ADMIN_SENHA` derruba todas as sessões. Depois de 5 senhas erradas em 15 minutos, o mesmo endereço IP fica bloqueado por 15 minutos. As escritas só são aceitas a partir do próprio site.
 
@@ -203,7 +206,7 @@ Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Co
 
 ## Depois de editar CSS ou JS
 
-Nada a fazer: cada `npm run site:build` (e portanto cada `npm run publicar`) põe um `?v=...` novo nos arquivos CSS e JS de todas as páginas, para o navegador dos visitantes baixar a versão nova em vez de usar a cópia antiga em cache. A versão é o commit no GitHub Actions ou no Cloudflare Pages ligado ao GitHub, `TARDIM_VERSAO` se definida, ou a data e hora do build (`site/lib/versao.ts`). O `admin.html` recebe a mesma versão na cópia que vai para `publico/` (o arquivo da raiz não muda).
+Nada a fazer: cada `npm run site:build` (e portanto cada `npm run publicar`) põe um `?v=...` novo nos arquivos CSS e JS de todas as páginas, para o navegador dos visitantes baixar a versão nova em vez de usar a cópia antiga em cache. A versão é o commit no GitHub Actions ou no Cloudflare Pages ligado ao GitHub, `TARDIM_VERSAO` se definida, ou a data e hora do build (`site/lib/versao.ts`). O painel React usa arquivos com hash no nome (`assets/painel/`); o `admin-classico.html` recebe a mesma versão na cópia que vai para `publico/`.
 
 ## Páginas geradas automaticamente
 

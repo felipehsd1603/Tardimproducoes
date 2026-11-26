@@ -26,7 +26,9 @@ jobs:
       - run: npm ci
       - name: Tipos (Functions e site Astro)
         run: npm run tipos
-      - name: Site (Astro -> publico/)
+      - name: Painel (React) - tipos
+        run: npm run painel:tipos
+      - name: Site (Astro) + painel (React) -> publico/
         run: npm run site:build
-      - name: Testes (páginas geradas + integração)
+      - name: Testes (páginas geradas, painel + integração)
         run: npm test

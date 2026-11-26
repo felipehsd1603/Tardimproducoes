@@ -4,11 +4,17 @@
 // testes e segredos (.dev.vars) nunca entram no ar. As funções vêm de functions/ (o wrangler lê da pasta do projeto).
 import { cpSync, existsSync, readdirSync, readFileSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 
+// assets/ leva também o painel gerado (assets/painel/, de npm run painel:build); o HTML dele vai como os outros da raiz
 const PASTAS = ["assets", "css", "js"];
 const REGRAS = ["manifest.webmanifest", "_headers", "_redirects", "_routes.json"];
 
 if (!existsSync("dist/index.html")) {
   console.error("dist/ não tem as páginas do site: rode npm run site:build");
+  process.exit(1);
+}
+// O painel (React) é gerado, não fica no git: sem ele, o deploy sairia sem o /admin
+if (!existsSync("assets/painel") || !existsSync("admin.html")) {
+  console.error("Falta o painel: rode npm run painel:build antes (o npm run site:build já faz isso).");
   process.exit(1);
 }
 rmSync("publico", { recursive: true, force: true });

@@ -10,3 +10,9 @@
 
 # Dependências (npm install)
 /node_modules/
+
+# Painel (React): gerado por npm run painel:build a partir de painel/ (painel/vite.config.mts)
+/admin.html
+/admin-novo.html
+/assets/painel/
+/painel/dist/

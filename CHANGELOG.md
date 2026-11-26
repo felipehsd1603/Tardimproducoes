@@ -2,13 +2,23 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-25 · Painel em React + TypeScript
+
+### Mudou
+- O painel (`/admin`) foi refeito em **React + TypeScript** (`painel/`, build com Vite), com as mesmas abas, endereços (#provas, #prova/<id>, #convite/<id>/links, #proposta/<id>...), textos e regras. `npm run painel:build` gera `admin.html` + `assets/painel/` (fora do git); `npm test`, `npm run publicar` e o CI geram antes.
+- Formulário da prova: valores, programação, perguntas frequentes, percursos e itens do kit agora são linhas editáveis com botões (antes, texto com "|").
+- O painel antigo continua em `/admin-classico` (`admin-classico.html` + `js/admin.js`) até a conferência.
+- Dependências de desenvolvimento novas, versões exatas e gratuitas: `vite` 8.3.8, `react`/`react-dom` 19.3.1, `@vitejs/plugin-react` 6.3.0, `@types/react`/`@types/react-dom` 19.3.0.
+
+### Segurança
+- O HTML do painel só carrega `<script src>` do próprio site (sem script inline nem polyfill de modulepreload): teste `tests/painel-csp.test.mjs`. A pasta `painel/` (código-fonte) não sai pelo site.
+
 ## 2026-11-25 · Site público em Astro
 
 ### Mudou
 - As páginas públicas (início, empresas, prova, portfólio, evento, institucional, assessorias, equipe, parceiro, kit, privacidade, programa de embaixadores, link-assessoria e 404) agora são escritas em **Astro + TypeScript** em `site/`, com um layout comum (head, prévia, ícones, scripts) e componentes para o topo, o rodapé, os ícones e o botão do WhatsApp. O HTML gerado é o mesmo de antes para visitantes e para o Google: as 50 páginas (incluindo cada `prova-<id>` e `trabalho-<id>`), `sitemap.xml` e `robots.txt` foram comparadas com as da versão anterior (`npm run site:comparar`), sem diferença de título, descrição, prévia, canonical, JSON-LD, textos, links, scripts ou atributos.
 - `prova-<id>.html`, `trabalho-<id>.html`, `sitemap.xml`, `robots.txt` e `404.html` saem do Astro (`getStaticPaths`), com os dados do `js/eventos.js` e do `js/realizadas.js`. Saíram o `scripts/gerar-paginas.js` e o `scripts/404-modelo.html`.
 - `npm run site:build` gera `dist/` e monta `publico/`; `npm run dev`, `npm test` e `npm run publicar` usam `publico/`. O `?v=` dos CSS e JS muda a cada build (antes, só com `--versao`).
-- O painel (`admin.html`, `js/admin.js`, `css/painel.css`) não mudou.
 - Dependências novas, versões exatas e gratuitas (só desenvolvimento): `astro` 7.4.10, `@astrojs/check` 0.9.11, `@types/node` 22.20.5. Node.js 22.23.4 ou mais novo.
 
 ### Segurança
