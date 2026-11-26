@@ -460,6 +460,34 @@ type PerfilEu = Pick<Parceiro, "id" | "tipo" | "nome" | "responsavel" | "whatsap
   | "tiktok" | "tt_situacao" | "tt_seguidores" | "tt_conferido_em">
   & { ativo: number | boolean; convites: Dados[] };
 
+// ---------- inscrições feitas no site da Tardim (pagamentos_site), por convite ----------
+interface ContagemSite { atletas: number; pedidos: number; aguardando: number; ultima: string }
+async function contagemSite(env: Env, parceiros: string[]): Promise<Record<string, ContagemSite>> {
+  const out: Record<string, ContagemSite> = {};
+  if (!parceiros.length) return out;
+  const rs = (await env.DB.prepare(
+    "SELECT convite_id, " +
+    "SUM(CASE WHEN situacao IN ('pago', 'cortesia') THEN n_atletas ELSE 0 END) AS atletas, " +
+    "SUM(CASE WHEN situacao IN ('pago', 'cortesia') THEN 1 ELSE 0 END) AS pedidos, " +
+    "SUM(CASE WHEN situacao = 'aguardando' THEN n_atletas ELSE 0 END) AS aguardando, " +
+    "MAX(CASE WHEN situacao IN ('pago', 'cortesia') THEN pago_em ELSE '' END) AS ultima " +
+    "FROM pagamentos_site WHERE parceiro_id IN (" + parceiros.map(() => "?").join(",") + ") GROUP BY convite_id"
+  ).bind(...parceiros).all<Dados>().catch(() => ({ results: [] as Dados[] }))).results;
+  rs.forEach((l) => { out[l.convite_id] = { atletas: Number(l.atletas) || 0, pedidos: Number(l.pedidos) || 0, aguardando: Number(l.aguardando) || 0, ultima: l.ultima || "" }; });
+  return out;
+}
+// Perfis aprovados do login (os únicos que veem convites)
+async function perfisAprovados(env: Env, conta: Conta): Promise<string[]> {
+  return (await env.DB.prepare("SELECT id FROM parceiros WHERE (id = ?1 OR conta_id = ?2) AND situacao = 'aprovado' AND ativo = 1")
+    .bind(conta.parceiro_id, conta.id).all<Dados>()).results.map((x) => String(x.id));
+}
+// Só os números, para a área do parceiro atualizar sozinha
+async function inscricoesSite(request: Request, env: Env): Promise<Response> {
+  const conta = await contaDaSessao(request, env);
+  if (!conta) throw new Erro(401, "Entre na sua conta.");
+  return json({ convites: await contagemSite(env, await perfisAprovados(env, conta)) }, 200, { "cache-control": "no-store" });
+}
+
 async function eu(request: Request, env: Env): Promise<Response> {
   const conta = await contaDaSessao(request, env);
   if (!conta) throw new Erro(401, "Entre na sua conta.");
@@ -481,6 +509,8 @@ async function eu(request: Request, env: Env): Promise<Response> {
     }
     p.ativo = !!p.ativo;
   }
+  const site = await contagemSite(env, perfis.filter((p) => p.convites.length).map((p) => p.id));
+  perfis.forEach((p) => p.convites.forEach((c) => { c.site = site[c.id] || { atletas: 0, pedidos: 0, aguardando: 0, ultima: "" }; }));
   return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, tiktok: tiktokPronto(env), perfis });
 }
 
@@ -556,6 +586,7 @@ app.post("/esqueci", (c) => esqueci(c.req.raw, c.env));
 app.post("/nova-senha", (c) => novaSenha(c.req.raw, c.env));
 app.post("/sair", () => json({ ok: true }, 200, { "set-cookie": cookieFim() }));
 app.get("/eu", metodo("GET", (c) => eu(c.req.raw, c.env)));
+app.get("/inscricoes-site", metodo("GET", (c) => inscricoesSite(c.req.raw, c.env)));
 app.get("/tiktok-conectar", metodo("GET", (c) => tiktokConectar(c.req.raw, c.env)));
 app.get("/tiktok-retorno", metodo("GET", (c) => tiktokRetorno(c.req.raw, c.env)));
 app.post("/tiktok-desconectar", (c) => tiktokDesconectar(c.req.raw, c.env));

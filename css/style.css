@@ -1515,3 +1515,8 @@ a:hover .seta, .case-card:hover .seta { translate: 5px 0; }
 .pag-pix__lado { flex: 1 1 260px; display: grid; gap: 10px; }
 .pag-pix__codigo { width: 100%; padding: 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font: 0.85rem/1.35 monospace; resize: none; overflow-wrap: anywhere; }
 .pag-ok { padding: 16px 18px; border-radius: 12px; background: #eaf7ef; color: #0b5d2f; font-weight: 600; }
+
+/* Área do parceiro: inscrições pagas pelo site da Tardim (js/parceiro.js) */
+.parc-contador{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:12px 0;padding:12px 16px;border-radius:10px;background:rgba(46,160,67,.08);border:1px solid rgba(46,160,67,.35)}
+.parc-contador__num{font-size:2rem;line-height:1;color:#1f7a35}
+.parc-contador small{flex-basis:100%}

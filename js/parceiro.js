@@ -574,6 +574,7 @@
       if (cv.condicoes) cond.push(cv.condicoes);
       if (cond.length) { var ul = el("ul", "parc-cond"); cond.forEach(function (t) { ul.append(el("li", null, t)); }); bloco.append(ul); }
       var l = linksConvite(cv, pa);
+      if (cv.site && (l.coletiva || cv.site.atletas || cv.site.aguardando)) bloco.append(contadorSite(cv.id, cv.site));
       var caixa = el("div", "painel-links");
       [["Link para os atletas", l.atleta], ["Kit de divulgação", l.kit], l.coletiva ? ["Inscrição coletiva da equipe", l.coletiva] : null].forEach(function (x) {
         if (!x) return;
@@ -591,6 +592,41 @@
       c.append(bloco);
     });
     app.append(c);
+    acompanhaContadores();
+  }
+
+  // ---------- Inscrições feitas no site da Tardim (pagas por PIX), atualizando sozinho ----------
+  var contadores = {};
+  function contadorSite(id, n) {
+    var box = el("div", "parc-contador");
+    box.setAttribute("aria-live", "polite");
+    contadores[id] = box;
+    preencheContador(box, n);
+    return box;
+  }
+  function preencheContador(box, n) {
+    box.innerHTML = "";
+    box.append(el("strong", "parc-contador__num", String(n.atletas)),
+      el("span", null, n.atletas === 1 ? "inscrição paga pelo site da Tardim" : "inscrições pagas pelo site da Tardim"));
+    var det = [];
+    if (n.pedidos) det.push(n.pedidos === 1 ? "1 envio da equipe" : n.pedidos + " envios da equipe");
+    if (n.aguardando) det.push(n.aguardando + (n.aguardando === 1 ? " atleta aguardando o pagamento" : " atletas aguardando o pagamento"));
+    if (n.ultima) { var u = new Date(Date.parse(n.ultima)); if (!isNaN(u.getTime())) det.push("último pagamento em " + u.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })); }
+    det.push("atualiza sozinho");
+    box.append(el("small", "muted", det.join(" · ")));
+  }
+  var relogio = null;
+  function acompanhaContadores() {
+    if (relogio) clearInterval(relogio);
+    if (!Object.keys(contadores).length) return;
+    relogio = setInterval(function () {
+      if (document.hidden) return;
+      var vivos = Object.keys(contadores).filter(function (k) { return document.body.contains(contadores[k]); });
+      if (!vivos.length) { clearInterval(relogio); relogio = null; return; }
+      api("GET", "inscricoes-site").then(function (r) {
+        vivos.forEach(function (k) { preencheContador(contadores[k], (r.convites || {})[k] || { atletas: 0, pedidos: 0, aguardando: 0, ultima: "" }); });
+      }).catch(function () { /* tenta de novo no próximo */ });
+    }, 20000);
   }
 
   // ---------- início ----------

@@ -194,6 +194,26 @@ describe("pelo site, com o banco e o Mercado Pago simulados", () => {
     assert.equal(situacao(r.json.id), "pago");
   });
 
+  test("área do parceiro: mostra as inscrições pagas pelo site no convite dele", async () => {
+    const { webcrypto } = await import("node:crypto");
+    const sal = webcrypto.getRandomValues(new Uint8Array(16));
+    const k = await webcrypto.subtle.importKey("raw", new TextEncoder().encode("senha-parceiro-1"), "PBKDF2", false, ["deriveBits"]);
+    const bits = new Uint8Array(await webcrypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: sal, iterations: 1000 }, k, 256));
+    const b64 = (u) => Buffer.from(u).toString("base64url");
+    const guardada = ["pbkdf2", "1000", b64(sal), b64(bits)].join("$");
+    T.sql("UPDATE parceiros SET situacao = 'aprovado', ativo = 1 WHERE id = 'eq-a'");
+    T.sql("INSERT INTO contas (id, parceiro_id, email, senha) VALUES ('ct-a', 'eq-a', 'eqa@exemplo.com', '" + guardada + "')");
+    const parc = cliente();
+    assert.equal((await parc.chama("GET", "/api/parceiro/inscricoes-site")).status, 401);
+    assert.equal((await parc.chama("POST", "/api/parceiro/login", { email: "eqa@exemplo.com", senha: "senha-parceiro-1" })).status, 200);
+    const eu = await parc.chama("GET", "/api/parceiro/eu");
+    const cv = eu.json.perfis[0].convites.find((x) => x.id === "cv-a");
+    assert.deepEqual([cv.site.atletas, cv.site.pedidos], [5, 2]);
+    const n = await parc.chama("GET", "/api/parceiro/inscricoes-site");
+    assert.equal(n.json.convites["cv-a"].atletas, 5);
+    assert.equal(n.json.convites["cv-b"], undefined); // convite de outra equipe não aparece
+  });
+
   test("cartão: checkout do Mercado Pago com a taxa repassada; aprovado, o pedido fica pago", async () => {
     const r = await pedido(linkCartao, atletas(2), { forma: "cartao" });
     assert.equal(r.status, 201, r.texto);
