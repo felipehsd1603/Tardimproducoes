@@ -6,14 +6,21 @@ Hospedado no **Cloudflare Pages** (plano gratuito), com funções em `functions/
 
 ## Estrutura
 
+As páginas públicas são escritas em **Astro** (TypeScript) em `site/` e geradas como HTML estático por `npm run site:build` (veja [Páginas geradas automaticamente](#páginas-geradas-automaticamente)). Os endereços continuam os mesmos (`index.html`, `prova.html`...). O painel (`admin.html`) continua escrito à mão na raiz.
+
 ```
-index.html          página inicial (para quem corre)
-empresas.html       página de quem contrata: serviços, "Sua corrida do começo ao fim", simulador e orçamento
-prova.html          página de cada prova (prova.html?id=...)
-portfolio.html      portfólio de trabalhos (eventos e serviços)
-evento.html         página de cada trabalho do portfólio (evento.html?id=...)
-institucional.html  página para órgãos públicos e conselhos (credenciais e instituições atendidas)
-privacidade.html    política de privacidade (LGPD)
+site/pages/index.astro          página inicial (para quem corre) -> index.html
+site/pages/empresas.astro       página de quem contrata: serviços, "Sua corrida do começo ao fim", simulador e orçamento
+site/pages/prova.astro          página de cada prova (prova.html?id=...); prova-[id].astro gera prova-<id>.html
+site/pages/portfolio.astro      portfólio de trabalhos (eventos e serviços)
+site/pages/evento.astro         página de cada trabalho do portfólio (evento.html?id=...); trabalho-[id].astro gera trabalho-<id>.html
+site/pages/institucional.astro  página para órgãos públicos e conselhos (credenciais e instituições atendidas)
+site/pages/privacidade.astro    política de privacidade (LGPD)
+site/pages/404.astro, sitemap.xml.ts, robots.txt.ts   página de erro, sitemap e robots
+site/layouts/       esqueleto das páginas (<head>, prévia OG, ícones, scripts); PaginaProva e PaginaTrabalho
+site/components/    topo com menu, rodapé, ícones SVG e botão do WhatsApp
+site/lib/           dados do js/eventos.js e js/realizadas.js no build, prévia OG, versão (?v=), JSON-LD
+astro.config.mjs    configuração do Astro (saída em dist/, HTML sem compressão, nada de script inline)
 css/style.css       estilos (cores da logo: vermelho #d6505b e azul #24325a)
 js/eventos.js       ← CONTATOS, CALENDÁRIO E GALERIA (edite aqui)
 js/realizadas.js    ← PORTFÓLIO: trabalhos realizados (edite aqui)
@@ -43,12 +50,12 @@ _redirects          endereços curtos para divulgar (ex.: /copmbm leva à págin
 functions/api/evento.ts     função POST /api/evento: medição do site (js/ui.js): soma totais por dia de visitas e cliques, sem identificar ninguém; o painel mostra na aba "Medição". Banco já criado: rode d1/migracoes/009-medicao-faq.sql (cria a medição e as perguntas frequentes das provas)
 functions/api/inscricao.ts  função POST /api/inscricao: valida e grava a inscrição coletiva (equipe + atletas) no D1
 admin.html          painel da Tardim Produções (fora do menu e do Google): js/admin.js + css/painel.css
-kit.html            kit de divulgação de cada parceiro: js/kit.js
-programa-embaixadores.html  regras do programa de embaixadores
+site/pages/kit.astro  kit de divulgação de cada parceiro: js/kit.js
+site/pages/programa-embaixadores.astro  regras do programa de embaixadores
 js/provas-db.js     provas e depoimentos do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
                     depoimentos: aba "Depoimentos" do painel; aparecem na página inicial e ao lado do orçamento em empresas.html (js/ui.js). Banco já criado: rode d1/migracoes/008-depoimentos.sql
 functions/api/admin/[[rota]].ts  API do painel: login, provas, parceiros, convites, imagens, orçamentos e inscrições
-parceiro.html       área do parceiro: cadastro, login (e-mail/senha ou Google) e convites: js/parceiro.js
+site/pages/parceiro.astro  área do parceiro: cadastro, login (e-mail/senha ou Google) e convites: js/parceiro.js
 functions/api/parceiro/[[rota]].ts  API da área do parceiro: cadastro, login, Google e "minha área"
 functions/arquivos/[[caminho]].ts  serve as imagens enviadas pelo painel (/arquivos/...)
 functions/_middleware.ts  serve js/provas-db.js e prova-<id>.html das provas do painel, na hora
@@ -196,20 +203,22 @@ Abra `index.html?demo=1` para ver o site com provas e imagens **fictícias** (Co
 
 ## Depois de editar CSS ou JS
 
-O `scripts/gerar-paginas.js` troca o `?v=...` dos arquivos CSS e JS de todas as páginas, para o navegador dos visitantes baixar a versão nova em vez de usar a cópia antiga em cache. Ele usa o código do commit quando roda no GitHub Actions ou no build do Cloudflare Pages ligado ao GitHub. Rodando no seu computador, só troca se você pedir com `node scripts/gerar-paginas.js --versao` (usa data e hora); sem `--versao`, o `?v=` não muda. Isso altera o `?v=` em todas as páginas do repositório; use na hora de publicar.
+Nada a fazer: cada `npm run site:build` (e portanto cada `npm run publicar`) põe um `?v=...` novo nos arquivos CSS e JS de todas as páginas, para o navegador dos visitantes baixar a versão nova em vez de usar a cópia antiga em cache. A versão é o commit no GitHub Actions ou no Cloudflare Pages ligado ao GitHub, `TARDIM_VERSAO` se definida, ou a data e hora do build (`site/lib/versao.ts`). O `admin.html` recebe a mesma versão na cópia que vai para `publico/` (o arquivo da raiz não muda).
 
 ## Páginas geradas automaticamente
 
-O script `scripts/gerar-paginas.js` cria, a partir do `js/eventos.js` e do `js/realizadas.js`:
+`npm run site:build` roda o Astro (`site/` -> `dist/`) e o `scripts/montar-publico.mjs` (junta `dist/`, `admin.html`, `css/`, `js/`, `assets/` e as regras do Pages em `publico/`). A partir do `js/eventos.js` e do `js/realizadas.js` saem:
 
 - `prova-<id>.html`: uma página por prova, com a prévia certa (arte e título) ao compartilhar no WhatsApp;
 - `trabalho-<id>.html`: uma página por trabalho do portfólio, também com prévia própria;
 - `sitemap.xml` e `robots.txt`, para o Google;
 - `404.html`, a página de erro com a cara da Tardim Produções.
 
-Esses arquivos não ficam guardados no repositório (estão no `.gitignore`). Rode `node scripts/gerar-paginas.js` antes de cada publicação (veja [Publicar](#publicar-cloudflare-pages)).
+`dist/` e `publico/` não ficam guardados no repositório (estão no `.gitignore`); `npm run dev`, `npm test` e `npm run publicar` geram de novo. Regra das páginas: nenhum `<script>` inline nem `onclick=` (o CSP bloqueia; `tests/paginas.test.mjs` confere) e nada de ilhas/`client:*` do Astro: os scripts são os arquivos de `js/`, carregados com `<script is:inline src=...>`. O `prova.html` é também o modelo das provas do painel: o middleware troca o `<title>`, o `<meta name="description" ... />`, o bloco `<!--og-->...<!--/og-->` e o `<html lang="pt-BR">` (o teste confere que eles continuam lá).
 
-Os endereços das prévias de compartilhamento vêm de `SITE.urlBase` (`js/eventos.js`) e das tags `canonical` e `og:` fixas no `<head>` de cada página. Hoje todos ainda apontam para o endereço antigo do GitHub Pages; quando o domínio entrar no ar, troque para `https://tardimproducoes.com.br/`.
+`npm run site:comparar` compara o DOM das páginas geradas com as de um commit antigo (padrão: `servidor-ts-sem-inscricao`, o último antes do Astro; `--ref <commit>` para outro), gerado com o `gerar-paginas.js` daquele commit.
+
+Os endereços das prévias de compartilhamento vêm de `SITE.urlBase` (`js/eventos.js`): o `canonical` e as tags `og:` de cada página são montados no build (prop `og` de cada página em `site/pages/`, `site/lib/og.ts`). Hoje todos ainda apontam para o endereço antigo do GitHub Pages; quando o domínio entrar no ar, troque para `https://tardimproducoes.com.br/`.
 
 ## Mapa "Onde já corremos"
 
@@ -217,9 +226,9 @@ O mapa conta as corridas de cada cidade a partir das edições em `REALIZADAS`. 
 
 ## Ver localmente
 
-Para ver só as páginas, abra o `index.html` no navegador. Assim os formulários funcionam, mas nada é gravado no banco.
+Para ver só as páginas, rode `npm install` e `npm run site:build` e abra `publico/index.html` no navegador. Assim os formulários funcionam, mas nada é gravado no banco.
 
-Para testar com as funções e um banco local (precisa do Node.js 20 ou mais novo):
+Para testar com as funções e um banco local (precisa do Node.js 22.23.4 ou mais novo, por causa do Astro):
 
 ```
 npm install
@@ -229,9 +238,9 @@ node scripts/db-registrar-migracoes.mjs --local --todas
 npm run dev -- --binding ADMIN_SENHA=teste --binding SESSAO_SEGREDO=segredo-local
 ```
 
-O site abre em `http://127.0.0.1:8791`. O banco local fica em `.wrangler/` (fora do repositório) e não tem relação com o banco real. Para a integração com as assessorias, ponha `TARDIM_ASSINATURA_JWK` em `.dev.vars` (veja [API v1 para parceiros](#api-v1-para-parceiros-integração-com-plataformas-de-assessoria)).
+`npm run dev` gera o site (`npm run site:build`) e sobe o wrangler servindo `publico/`; depois de editar uma página, CSS ou JS, rode de novo. O site abre em `http://127.0.0.1:8791`. O banco local fica em `.wrangler/` (fora do repositório) e não tem relação com o banco real. Para a integração com as assessorias, ponha `TARDIM_ASSINATURA_JWK` em `.dev.vars` (veja [API v1 para parceiros](#api-v1-para-parceiros-integração-com-plataformas-de-assessoria)).
 
-**Testes automáticos:** `npm test` sobe o site inteiro num banco descartável e roda os testes de `tests/` (cerca de 2 minutos). O GitHub roda os mesmos testes a cada push. Como o backend é organizado, como acrescentar uma rota e as regras de segurança: [docs/arquitetura.md](docs/arquitetura.md).
+**Testes automáticos:** `npm test` gera o site (`pretest`), confere as páginas geradas e sobe o site inteiro num banco descartável e roda os testes de `tests/` (cerca de 2 minutos). O GitHub roda os mesmos testes a cada push. Como o backend é organizado, como acrescentar uma rota e as regras de segurança: [docs/arquitetura.md](docs/arquitetura.md).
 
 **Documentação das APIs (Swagger):** `/api/v1/docs` (API para parceiros, pública) e `/api/admin/docs` (APIs internas, com login no painel).
 
@@ -244,10 +253,10 @@ npm run db:migracoes:producao   # só se houver migração nova em d1/migracoes/
 npm run publicar                # gera as páginas com a versão nova e publica
 ```
 
-(`npm run publicar` = `node scripts/gerar-paginas.js --versao` + `node scripts/montar-publico.mjs` + `wrangler pages deploy publico --project-name tardim-teste --branch main`. Só a pasta `publico/` sobe: código, banco, docs, testes e `.dev.vars` nunca vão para o ar.)
+(`npm run publicar` = `npm run site:build` (Astro + `scripts/montar-publico.mjs`, com versão nova no `?v=`) + `wrangler pages deploy publico --project-name tardim-teste --branch main`. Só a pasta `publico/` sobe: código, banco, docs, testes e `.dev.vars` nunca vão para o ar.)
 
 - Hoje existe só o projeto de teste `tardim-teste`, em `https://tardim-teste.pages.dev`. O projeto definitivo (`tardim-producoes`, o nome que está no `wrangler.toml`) ainda não foi criado; crie com `npx wrangler pages project create tardim-producoes --production-branch main` e passe a publicar com esse nome.
-- A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.ts` responde 404 para `functions/`, `d1/`, `docs/`, `scripts/`, `tests/`, `.github/`, `node_modules/`, `wrangler.toml`, `README.md`, `CHANGELOG.md`, `package.json`, `package-lock.json`, `.gitignore`, `.editorconfig` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas; o teste "arquivos privados" (`npm test`) confere. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.
+- A pasta inteira do repositório é publicada. Para o código do servidor e a configuração não ficarem legíveis pelo endereço do site, `functions/_middleware.ts` responde 404 para `functions/`, `d1/`, `docs/`, `scripts/`, `tests/`, `site/`, `dist/`, `.astro/`, `.github/`, `node_modules/`, `wrangler.toml`, `README.md`, `CHANGELOG.md`, `package.json`, `package-lock.json`, `.gitignore`, `.editorconfig`, `astro.config.mjs` e `_routes.json` (essas rotas estão em `_routes.json`). Arquivo novo de uso interno na raiz precisa entrar nas duas listas; o teste "arquivos privados" (`npm test`) confere. Mesmo assim, **nunca coloque senha ou chave em arquivo do repositório**: segredos vão em `npx wrangler pages secret put NOME --project-name <projeto>`.
 - As funções em `functions/` e a ligação com o banco (`wrangler.toml`) sobem junto, no mesmo comando.
 - A Cloudflare serve as páginas sem o `.html` (`/assessorias.html` redireciona para `/assessorias`).
 - Publicando do computador, o `--versao` carimba o `?v=` dos arquivos CSS e JS com data e hora, para os visitantes baixarem a versão nova (veja [Depois de editar CSS ou JS](#depois-de-editar-css-ou-js)).

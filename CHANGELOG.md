@@ -2,6 +2,19 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-25 · Site público em Astro
+
+### Mudou
+- As páginas públicas (início, empresas, prova, portfólio, evento, institucional, assessorias, equipe, parceiro, kit, privacidade, programa de embaixadores, link-assessoria e 404) agora são escritas em **Astro + TypeScript** em `site/`, com um layout comum (head, prévia, ícones, scripts) e componentes para o topo, o rodapé, os ícones e o botão do WhatsApp. O HTML gerado é o mesmo de antes para visitantes e para o Google: as 50 páginas (incluindo cada `prova-<id>` e `trabalho-<id>`), `sitemap.xml` e `robots.txt` foram comparadas com as da versão anterior (`npm run site:comparar`), sem diferença de título, descrição, prévia, canonical, JSON-LD, textos, links, scripts ou atributos.
+- `prova-<id>.html`, `trabalho-<id>.html`, `sitemap.xml`, `robots.txt` e `404.html` saem do Astro (`getStaticPaths`), com os dados do `js/eventos.js` e do `js/realizadas.js`. Saíram o `scripts/gerar-paginas.js` e o `scripts/404-modelo.html`.
+- `npm run site:build` gera `dist/` e monta `publico/`; `npm run dev`, `npm test` e `npm run publicar` usam `publico/`. O `?v=` dos CSS e JS muda a cada build (antes, só com `--versao`).
+- O painel (`admin.html`, `js/admin.js`, `css/painel.css`) não mudou.
+- Dependências novas, versões exatas e gratuitas (só desenvolvimento): `astro` 7.4.10, `@astrojs/check` 0.9.11, `@types/node` 22.20.5. Node.js 22.23.4 ou mais novo.
+
+### Segurança
+- Teste novo (`tests/paginas.test.mjs`): nenhuma página gerada tem script inline (fora JSON-LD) nem atributo `on*=`, e o `prova.html` mantém os pontos que o middleware troca.
+- `site/`, `dist/`, `.astro/` e `astro.config.mjs` não saem pelo endereço do site (lista de arquivos privados do middleware).
+
 ## 2026-11-25 · Servidor em TypeScript + Hono
 
 ### Mudou

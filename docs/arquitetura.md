@@ -4,7 +4,7 @@ Guia para quem mantém o código. O README explica o que cada página faz e como
 
 ## Visão geral
 
-Site estático (HTML, CSS e JS na raiz) servido pelo **Cloudflare Pages**, com o backend em **Pages Functions** (`functions/`) e o banco no **Cloudflare D1** (binding `DB`, banco `tardim`).
+Site estático servido pelo **Cloudflare Pages** (as páginas públicas em **Astro**, `site/`, geradas como HTML por `npm run site:build`; CSS e JS comuns em `css/` e `js/`; o painel `admin.html` escrito à mão), com o backend em **Pages Functions** (`functions/`) e o banco no **Cloudflare D1** (binding `DB`, banco `tardim`).
 
 O código do servidor é **TypeScript** (`functions/**/*.ts`). Não há passo de build: o wrangler compila os `.ts` sozinho (esbuild) no `wrangler pages dev` e no deploy. O `tsc` só confere os tipos (`npm run tipos`, configuração em `tsconfig.json`). Os roteadores `api/admin`, `api/v1` e `api/parceiro` são apps **Hono** (`hono/cloudflare-pages`); as rotas simples e o middleware continuam como funções do Pages.
 
@@ -57,6 +57,25 @@ functions/
 
 Regra: arquivo em `api/` só **mapeia rota para função**; regra de negócio fica em `_admin/`, `_api-v1/` ou `_lib/`. Pastas e arquivos com `_` não viram rota (não exportam `onRequest`).
 
+## Site (Astro)
+
+```
+site/
+  pages/        uma página por arquivo (index.astro -> index.html; prova-[id].astro e trabalho-[id].astro
+                por getStaticPaths; 404.astro; sitemap.xml.ts e robots.txt.ts)
+  layouts/      Pagina.astro (head, prévia OG, ícones, scripts), PaginaProva.astro, PaginaTrabalho.astro
+  components/   Topo (menu), Rodape, Icones (SVG), WhatsFlutuante
+  lib/          dados.ts (lê js/eventos.js e js/realizadas.js no Node, como o antigo gerar-paginas.js),
+                og.ts (bloco <!--og-->), versao.ts (?v=), organizacao.ts (JSON-LD)
+```
+
+- **Build**: `npm run site:build` = `scripts/construir-site.mjs` (Astro com telemetria desligada: `site/` -> `dist/`) + `scripts/montar-publico.mjs` (`dist/` + `admin.html` com o mesmo `?v=` + `css/`, `js/`, `assets/`, `manifest.webmanifest`, `_headers`, `_redirects`, `_routes.json` -> `publico/`). `publico/` é a pasta que `npm run dev`, os testes e o deploy usam; as Functions vêm de `functions/`.
+- **Saída**: `build.format: "file"` (mesmos endereços: `prova.html`, não `prova/index.html`) e `compressHTML: false` (o HTML sai como está escrito, com os comentários).
+- **CSP**: nenhuma ilha (`client:*`) nem `<script>` processado pelo Astro. Os scripts são os arquivos de `js/`, com `<script is:inline src=...>`; o JSON-LD (`application/ld+json`) pode. `tests/paginas.test.mjs` procura script inline e `on*=` nas páginas de `publico/`.
+- **Modelo das provas do painel**: o middleware lê `/prova.html` e troca `<title>`, `<meta name="description" content="..." />` (precisa do ` />`: por isso a descrição e a prévia saem como texto pronto pelo `set:html`), o bloco `<!--og-->...<!--/og-->` e `<html lang="pt-BR">`.
+- **Tipos**: `npm run tipos` roda `tsc` nas Functions e `astro check` no site (`site/tsconfig.json`, `astro/tsconfigs/strict`).
+- **Comparar com o HTML de antes**: `npm run site:comparar` (`scripts/comparar-paginas.mjs`).
+
 ## Como acrescentar uma rota
 
 1. Escreva a função no módulo da área (ex.: `_admin/inscricoes.ts`), recebendo `env` e o que precisar, e devolvendo `json(...)`.
@@ -85,7 +104,7 @@ npm run tipos   # TypeScript: zero erros
 npm test
 ```
 
-`tests/api.test.mjs` sobe o site inteiro (`wrangler pages dev`) num banco D1 descartável criado de `d1/schema.sql` + `d1/painel.sql`, com segredos de teste, e uma plataforma de assessoria falsa (`tests/apoio/plataforma.mjs`) que confere a assinatura dos convites e o HMAC dos avisos de verdade. Leva cerca de 2 minutos (um teste espera virar o minuto do limite de uso). O CI (`.github/workflows/ci.yml`) roda os mesmos testes a cada push e pull request.
+O `npm test` gera o site antes (`pretest`). `tests/paginas.test.mjs` confere as páginas geradas (CSP e modelo do prova.html). `tests/api.test.mjs` sobe o site inteiro (`wrangler pages dev publico`) num banco D1 descartável criado de `d1/schema.sql` + `d1/painel.sql`, com segredos de teste, e uma plataforma de assessoria falsa (`tests/apoio/plataforma.mjs`) que confere a assinatura dos convites e o HMAC dos avisos de verdade. Leva cerca de 2 minutos (um teste espera virar o minuto do limite de uso). O CI (`.github/workflows/ci.yml`) roda os mesmos testes a cada push e pull request.
 
 ## Banco de dados e migrações
 
@@ -99,7 +118,7 @@ npm test
 npm run publicar
 ```
 
-Gera as páginas com a versão nova dos arquivos (`scripts/gerar-paginas.js --versao`) e publica no projeto Cloudflare `tardim-teste` (domínio `tardimproducoes.com.br`). Rode as migrações antes, se houver. O deploy não sobe `node_modules`, `functions` (vai como Functions), `.wrangler` nem `.git`.
+Gera o site com a versão nova dos arquivos (`npm run site:build`) e publica a pasta `publico/` no projeto Cloudflare `tardim-teste` (domínio `tardimproducoes.com.br`). Rode as migrações antes, se houver. O deploy não sobe `node_modules`, `functions` (vai como Functions), `.wrangler` nem `.git`.
 
 ## Segredos do projeto Cloudflare
 
