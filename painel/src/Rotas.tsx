@@ -1,7 +1,7 @@
 // Cada tela tem endereço próprio: #provas, #prova/<id>, #prova/novo, #parceiro/<id>, #convite/novo?prova=<id>,
 // #convite/<id>, #convite/<id>/links, #depoimento/<id>, #proposta/<id>, #proposta/<id>/editar, #proposta/novo?de=<id>,
 // #minutario, #modelo-contrato (os mesmos do painel antigo: links antigos continuam funcionando).
-import { useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { api } from "./api.ts";
 import { falha, ir, muda, nav, naoAchou, partesDa, pega, usaEstado } from "./loja.tsx";
 import { porId, provaPorId } from "./dados.ts";
@@ -93,7 +93,9 @@ function tela(rota: string): { titulo: string; conteudo: ReactNode } {
 
 export function Rotas({ rota }: { rota: string }) {
   const { valida } = partesDa(rota);
-  const { titulo, conteudo } = tela(rota);
+  // A tela é resolvida uma vez ao abrir (o registro do formulário não some no meio da edição quando a lista muda;
+  // as listas acompanham os dados sozinhas). redesenha() abre de novo.
+  const [{ titulo, conteudo }] = useState(() => tela(rota));
   useEffect(() => {
     nav.destaque = null;
     if (!valida) { history.replaceState(null, "", "#provas"); muda({ rota: "provas" }); }
