@@ -18,7 +18,6 @@
     ["corrida", "Corrida de rua"],
     ["corporativa", "Corrida corporativa ou de marca"],
     ["esportivo", "Outro evento esportivo"],
-    ["feira", "Feira, congresso ou festa"],
     ["estrutura", "Locação de estrutura"],
     ["incendio", "Prevenção contra incêndio"],
     ["licencas", "Licenças e regularização"],

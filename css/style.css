@@ -894,6 +894,7 @@ button.btn--white { background-color: transparent; }
 .bento__item--fire p { color: #ffe3e5; font-size: 1rem; }
 .bento__item--fire .bento__icon { flex: none; background: rgba(255, 255, 255, 0.18); width: 56px; height: 56px; }
 .bento__item--fire .bento__icon svg { width: 30px; height: 30px; }
+.bento__item--fire .btn { margin-top: 14px; }
 .bento__item--wide { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; }
 .bento__item--wide > div { flex: 1 1 280px; }
 .bento__item--wide h3 { margin: 0 0 4px; }
