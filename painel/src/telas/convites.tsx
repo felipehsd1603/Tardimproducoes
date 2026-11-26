@@ -5,7 +5,7 @@ import { api } from "../api.ts";
 import { aviso, cancelar, falha, filtros, ir, muda, nav, usaEstado, voltarPara } from "../loja.tsx";
 import { camposDa, opcoesProvas, parceiroPorId, provaPorId } from "../dados.ts";
 import { Acoes, BarraForm, Bloco, Botao, Campo, Card, Escolha, Form, LinkExt, Situacao, Tabela, Trilha, pergunta, useCampos } from "../ui.tsx";
-import { base, copiar, dataDe, enc, hoje, numeroWa, quando, slug, TIPOS } from "../util.ts";
+import { base, COMISSAO_PADRAO, copiar, dataDe, enc, hoje, numeroWa, quando, slug, TIPOS } from "../util.ts";
 import type { Coletiva, Convite, AvisoPlataforma } from "../tipos.ts";
 
 const coletivaDe = (cv: Partial<Convite>): Coletiva => (cv.coletiva && !Array.isArray(cv.coletiva) ? cv.coletiva as Coletiva : {});
@@ -85,7 +85,7 @@ const BENEFICIOS: [string, string][] = [["t", "Espaço para tenda"], ["k", "Reti
 
 export function FormConvite({ cv: original, padrao }: { cv: Convite | null; padrao?: { prova_id?: string; parceiro_id?: string } }) {
   const { parceiros } = usaEstado();
-  const cv: Partial<Convite> = original || Object.assign({ desconto: "", comissao_pct: 0, cortesias: 0 }, padrao || {});
+  const cv: Partial<Convite> = original || Object.assign({ desconto: "", comissao_pct: COMISSAO_PADRAO, cortesias: 0 }, padrao || {});
   const ativos = parceiros.filter((p) => p.ativo || p.id === cv.parceiro_id);
   const futuras = opcoesProvas(false);
   const co = coletivaDe(cv);
@@ -164,7 +164,7 @@ export function FormConvite({ cv: original, padrao }: { cv: Convite | null; padr
             }}>Sugerir cupom</Botao>
           </Bloco>
           <Campo rotulo="Desconto do cupom" dica="Só para aparecer na mensagem e no kit. O desconto de verdade é o da Ticket Sports."><input type="text" placeholder="10%" maxLength={20} {...liga("desconto")} /></Campo>
-          <Campo rotulo="Comissão (% por inscrição paga)"><input type="number" min={0} max={100} step={0.5} {...liga("comissao_pct")} /></Campo>
+          <Campo rotulo="Comissão (% por inscrição paga)" dica="10% para todas as categorias, para ninguém ter benefício maior que o outro."><input type="number" min={0} max={100} step={0.5} {...liga("comissao_pct")} /></Campo>
           <Campo rotulo="Cortesias" dica="Inscrições gratuitas para o próprio parceiro."><input type="number" min={0} max={50} step={1} {...liga("cortesias")} /></Campo>
           <Campo rotulo="Contrapartida da cortesia" cheio><input type="text" maxLength={300} placeholder="Ex.: 2 posts no feed e 3 stories até 01/12" {...liga("contrapartida")} /></Campo>
           <Campo rotulo="Outras condições" dica="Vão na mensagem do convite." cheio><textarea maxLength={1000} {...liga("condicoes")} /></Campo>

@@ -173,7 +173,7 @@
   if (cupom) {
     var c5 = el("p", "muted assess-nota");
     c5.append("Regras de comissão, cortesia e divulgação: ");
-    var rg = el("a", null, "programa de embaixadores");
+    var rg = el("a", null, "programa de parceiros");
     rg.href = "programa-embaixadores.html";
     c5.append(rg, ".");
     app.append(c5);

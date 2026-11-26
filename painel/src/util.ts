@@ -4,7 +4,11 @@ export const site: SiteTardim = typeof SITE !== "undefined" ? SITE : {};
 export const ESTATICAS: ProvaEventos[] = (typeof PROXIMAS !== "undefined" ? PROXIMAS : []).filter((p) => p.id && !p.demo);
 
 export const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-export const TIPOS: Record<string, string> = { embaixador: "Embaixador", influenciador: "Influenciador", assessoria: "Assessoria", equipe: "Equipe" };
+// Três categorias com o mesmo benefício. "embaixador" ficou como chave no banco: na tela é o profissional de Educação Física.
+// "equipe" (cadastros antigos) aparece junto com assessoria.
+export const TIPOS: Record<string, string> = { assessoria: "Assessoria, grupo ou equipe", influenciador: "Influenciador", embaixador: "Profissional de Educação Física", equipe: "Assessoria, grupo ou equipe" };
+// Comissão padrão de um convite novo: a mesma para as três categorias
+export const COMISSAO_PADRAO = 10;
 export const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 // Mesma lista de functions/_admin/comum.ts; o primeiro tem registro conferido no CREF6
 export const PROFISSOES = [
