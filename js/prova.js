@@ -25,6 +25,8 @@
 
   var site = typeof SITE !== "undefined" ? SITE : {};
   var provas = typeof PROXIMAS !== "undefined" ? PROXIMAS : [];
+  // Inscrições que fecharam (painel, Ticket Sports ou datas dos lotes): js/eventos.js
+  if (typeof FECHAR_INSCRICOES === "function") FECHAR_INSCRICOES(provas);
   var id = document.documentElement.getAttribute("data-pagina") || new URLSearchParams(location.search).get("id");
   var ev = provas.filter(function (p) { return p.id === id; })[0];
   var raiz = document.getElementById("prova");
@@ -62,7 +64,7 @@
   // comAviso: no topo da página mostra o "Me avise" (id="avise", alvo do link do calendário)
   function btnInscricao(cls, comAviso) {
     var semVermelho = String(cls || "").replace(/\bbtn--red\b/, "");
-    if (ev.esgotado) return el("span", semVermelho + " btn--esgotado", "Inscrições esgotadas");
+    if (ev.esgotado) return el("span", semVermelho + " btn--esgotado", ev.encerrado ? "Inscrições encerradas" : "Inscrições esgotadas");
     if (!ev.inscricao && !ev.demo && typeof AVISE !== "undefined") {
       if (!comAviso) return el("span", semVermelho + " btn--embreve", "Inscrições em breve");
       var b = AVISE.bloco(ev, semVermelho);
@@ -198,7 +200,7 @@
       at.append(el("small", null, "Inscrições abertas · " + ad.getDate() + " de " + MESES[ad.getMonth()]), el("strong", null, alt.nome), el("span", "alt-prova__ir", "Ver a prova →"));
       ac.append(at);
       var altBox = el("div", "alt-prova-box");
-      altBox.append(el("p", null, "Esta prova esgotou. Que tal correr esta?"), ac);
+      altBox.append(el("p", null, ev.encerrado ? "As inscrições desta prova encerraram. Que tal correr esta?" : "Esta prova esgotou. Que tal correr esta?"), ac);
       txt.append(altBox);
     }
   }

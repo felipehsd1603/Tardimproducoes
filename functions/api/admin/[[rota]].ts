@@ -16,6 +16,7 @@ import { segmentos, type AppHono } from "../../_lib/hono.ts";
 import type { Env, Contexto, Convite } from "../../_lib/tipos.ts";
 import { consultaCref6 } from "../../_lib/cref6.ts";
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
+import { confereTicketSports } from "../../_lib/ticketsports-situacao.ts";
 import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.ts";
 import { Erro, corpo } from "../../_admin/comum.ts";
 import { sessaoValida, login, cookie } from "../../_admin/sessao.ts";
@@ -48,6 +49,8 @@ const ROTAS: Rota[] = [
   ["POST", "arquivos", ({ request, env, url }) => enviaArquivo(request, env, url)],
   // Consulta ao CREF6 só para quem está no painel (não vira proxy aberto do CREF)
   ["GET", "cref6", async ({ url }) => json(await consultaCref6(url.searchParams.get("numero") || ""))],
+  // Situação das inscrições na Ticket Sports (a mesma conferência do Worker agendado), na hora
+  ["POST", "provas/conferir-ticketsports", async ({ env }) => json({ resultado: await confereTicketSports(env), provas: await lista(env, "provas") })],
   ["POST", "parceiros/:id/instagram", async ({ env, p }) => {
     const r = await confereInstagramParceiro(env, p.id);
     if (!r) throw new Erro(404, "Registro não encontrado.");

@@ -2,6 +2,14 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-26 · Inscrições fechadas seguem o painel e a Ticket Sports
+
+### Mudou
+- Prova com campo **Inscrições** no painel: automático (segue a Ticket Sports e as datas dos lotes), abertas, esgotadas ou encerradas. Esgotada ou encerrada, o botão "Inscreva-se" do site vira aviso ("Inscrições encerradas" ou "esgotadas").
+- Conferência na Ticket Sports (`functions/_lib/ticketsports-situacao.ts`): lê o `availability` do schema.org da página da prova. Roda às 6h e às 18h no Worker `workers/conferencia-ticketsports` (gratuito) e na hora pelo botão "Conferir inscrições na Ticket Sports" do painel.
+- Site: `FECHAR_INSCRICOES` (js/eventos.js) fecha a prova quando todos os lotes com data passaram.
+- Trazido da branch `inscricoes-fechadas` (feita no código antigo) para o servidor em TypeScript e o painel em React; banco: `d1/migracoes/017-inscricoes-fechadas.sql`.
+
 ## 2026-11-25 · Painel em React + TypeScript
 
 ### Mudou

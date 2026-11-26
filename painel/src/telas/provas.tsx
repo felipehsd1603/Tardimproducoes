@@ -3,12 +3,32 @@ import { useEffect, useRef, useState } from "react";
 import { api, enviaImagem } from "../api.ts";
 import { aviso, cancelar, falha, ir, muda, nav, pega, usaEstado, voltarPara } from "../loja.tsx";
 import { todasProvas } from "../dados.ts";
-import { Acoes, BarraForm, Botao, Bloco, Campo, Card, Form, LinkExt, Marcador, Situacao, Tabela, Trilha, pergunta, useCampos } from "../ui.tsx";
+import { Acoes, BarraForm, Botao, BotaoAcao, Bloco, Campo, Card, Escolha, Form, LinkExt, Marcador, Situacao, Tabela, Trilha, pergunta, useCampos } from "../ui.tsx";
 import { LinhasEditaveis, ListaTextos } from "../editores.tsx";
-import { base, comprime, curta, dataDe, enc, hoje, slug } from "../util.ts";
+import { base, comprime, curta, dataDe, dataHora, enc, hoje, slug } from "../util.ts";
 import type { Prova, ProvaLista, Valor } from "../tipos.ts";
 
 const NOMES = { publicada: ["Publicada", "is-pub"], rascunho: ["Rascunho", "is-rasc"], codigo: ["No código (eventos.js)", "is-off"] } as const;
+
+// Situação das inscrições (functions/_lib/ticketsports-situacao.ts e js/eventos.js FECHAR_INSCRICOES)
+const INSCRICOES_TXT: Record<string, string> = { aberta: "abertas", esgotado: "esgotadas", encerrado: "encerradas" };
+function textoConferencia(r: Partial<Prova>): string {
+  if (!r.ts_conferido_em) return r.inscricao ? "Ainda não conferida na Ticket Sports." : "";
+  let t = "Ticket Sports conferida em " + dataHora(r.ts_conferido_em) + ": ";
+  t += r.ts_situacao ? "inscrições " + INSCRICOES_TXT[r.ts_situacao] : "sem leitura";
+  if (r.ts_mudou_em && r.ts_situacao) t += " desde " + dataHora(r.ts_mudou_em);
+  return t + (r.ts_erro ? ". Última tentativa: " + r.ts_erro + "." : ".");
+}
+function conferirTicketSports() {
+  return api<{ resultado: { situacao: string; erro: string }[]; provas: Prova[] }>("POST", "provas/conferir-ticketsports").then((r) => {
+    muda(() => ({ provas: r.provas }));
+    const fechadas = r.resultado.filter((x) => x.situacao === "esgotado" || x.situacao === "encerrado").length;
+    const erros = r.resultado.filter((x) => x.erro).length;
+    aviso(!r.resultado.length ? "Nenhuma prova futura com link da Ticket Sports." :
+      r.resultado.length + (r.resultado.length === 1 ? " prova conferida" : " provas conferidas") + (fechadas ? ", " + fechadas + " com inscrições fechadas" : "") +
+      (erros ? ". " + erros + " sem resposta da Ticket Sports (veja na prova)." : "."), !!erros);
+  }).catch(falha);
+}
 
 export function AbaProvas() {
   const { convites } = usaEstado();
@@ -16,13 +36,19 @@ export function AbaProvas() {
   return (
     <Card passo="Calendário" titulo="Provas">
       <p className="muted">Cadastre a prova e marque como publicada: a página da prova, o kit de divulgação e o card para stories saem prontos na hora.</p>
-      <Acoes><Botao cls="btn btn--red" onClick={() => ir("prova/novo")}>Nova prova</Botao></Acoes>
+      <Acoes>
+        <Botao cls="btn btn--red" onClick={() => ir("prova/novo")}>Nova prova</Botao>
+        <BotaoAcao cls="btn btn--line" acao={conferirTicketSports} esperando="Conferindo...">Conferir inscrições na Ticket Sports</BotaoAcao>
+      </Acoes>
+      <p className="assess-dica">A conferência também roda sozinha às 6h e às 18h: prova esgotada ou encerrada na Ticket Sports troca o botão "Inscreva-se" do site.</p>
       {!lista.length ? <p className="muted">Nenhuma prova cadastrada ainda.</p> : (
         <Tabela cab={["Prova", "Data", "Situação", "Divulgadores", ""]} ids={lista.map((p) => p.id)} linhas={lista.map((p) => {
           const n = convites.filter((x) => x.prova_id === p.id).length;
           const passada = dataDe(p.data) < hoje();
+          const sit = p.linha ? INSCRICOES_TXT[p.linha.inscricoes || p.linha.ts_situacao || ""] : (p.obj?.encerrado ? INSCRICOES_TXT.encerrado : (p.obj?.esgotado ? INSCRICOES_TXT.esgotado : ""));
           return [
-            <div><strong>{p.nome}</strong>{passada ? <small className="muted"> (realizada)</small> : null}</div>,
+            <div><strong>{p.nome}</strong>{passada ? <small className="muted"> (realizada)</small> : null}
+              {sit && !passada ? <><br /><small className="muted">{"Inscrições " + sit + (p.linha && !p.linha.inscricoes && p.linha.ts_situacao ? " (Ticket Sports)" : "")}</small></> : null}</div>,
             curta(p.data), <Situacao cls={NOMES[p.fonte][1]}>{NOMES[p.fonte][0]}</Situacao>, String(n),
             <Acoes>
               <Botao onClick={() => ir("prova/" + enc(p.id))}>{p.fonte === "codigo" ? "Trazer para o painel" : "Editar"}</Botao>
@@ -45,6 +71,8 @@ function deObjeto(p: ProvaEventos): Prova {
     percurso_mapa: p.percursoMapa || "", regulamento: p.regulamento || "", resultados: p.resultados || "",
     fotos: p.fotos || "", realizacao: p.realizacao || "", texto_divulgacao: p.textoDivulgacao || "",
     hashtags: p.hashtags || "", faq: p.faq || [], publicada: true,
+    // A prova trazida do eventos.js não perde o "esgotado"/"encerrado" de lá
+    inscricoes: p.encerrado ? "encerrado" : (p.esgotado ? "esgotado" : ""),
   };
 }
 
@@ -80,6 +108,7 @@ export function FormProva({ item }: { item: ProvaLista | null }) {
   const faqAntes = (r0.faq || []).length > 0;
   const [faq, setFaq] = useState<LinhaFaq[]>((r0.faq || []).map((q) => ({ p: q[0] || "", r: q[1] || "" })));
   const [publicada, setPublicada] = useState(r0.publicada == null ? true : !!r0.publicada);
+  const [inscricoes, setInscricoes] = useState(r0.inscricoes || "");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState(r0.poster || "");
   const [salvando, setSalvando] = useState(false);
@@ -115,7 +144,7 @@ export function FormProva({ item }: { item: ProvaLista | null }) {
       programacao: programacao.filter((p) => p.h.trim() || p.a.trim()).map((p): [string, string] => [p.h.trim(), p.a.trim()]),
       premiacao: v.premiacao.trim(), percurso_mapa: v.percurso_mapa.trim(), regulamento: v.regulamento.trim(),
       resultados: v.resultados.trim(), fotos: v.fotos.trim(), realizacao: v.realizacao.trim(),
-      texto_divulgacao: v.texto_divulgacao.trim(), hashtags: v.hashtags.trim(), publicada,
+      texto_divulgacao: v.texto_divulgacao.trim(), hashtags: v.hashtags.trim(), publicada, inscricoes,
     };
     // Só envia as perguntas quando há o que gravar ou apagar: banco ainda sem a coluna faq continua salvando a prova
     const perguntas = faq.filter((q) => q.p.trim() || q.r.trim());
@@ -160,6 +189,14 @@ export function FormProva({ item }: { item: ProvaLista | null }) {
           </Bloco>
           <Campo rotulo="Link de inscrição (Ticket Sports)" dica="O link público da página do evento, não o da ficha." cheio>
             <input type="url" placeholder="https://www.ticketsports.com.br/e/..." {...liga("inscricao")} />
+          </Campo>
+          <Campo rotulo="Inscrições" cheio dica={["Esgotadas ou encerradas: o botão \"Inscreva-se\" do site vira aviso.", textoConferencia(r0)].filter(Boolean).join(" ")}>
+            <Escolha value={inscricoes} onChange={setInscricoes} aria-label="Situação das inscrições" opcoes={[
+              ["", "Automático: segue a Ticket Sports e as datas dos lotes"],
+              ["aberta", "Abertas (ignora a Ticket Sports e as datas)"],
+              ["esgotado", "Esgotadas"],
+              ["encerrado", "Encerradas"],
+            ]} />
           </Campo>
           <Bloco rotulo="Valores" cheio dica={"O último dia é opcional e só vai nos lotes, na ordem em que acontecem: o site passa para o lote seguinte sozinho e mostra \"1º lote até 21/02\". Linhas sem data valem sempre."}>
             <LinhasEditaveis linhas={valores} onChange={setValores} textoNovo="Adicionar valor"

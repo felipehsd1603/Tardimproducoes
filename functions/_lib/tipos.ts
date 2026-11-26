@@ -43,6 +43,8 @@ export interface Prova {
   percursos: string; resumo: string; poster: string; inscricao: string; valores: string; kit: string; programacao: string;
   premiacao: string; percurso_mapa: string; regulamento: string; resultados: string; fotos: string; realizacao: string;
   texto_divulgacao: string; hashtags: string; faq: string;
+  // Situação das inscrições (d1/migracoes/017): painel '' (automático) | aberta | esgotado | encerrado; ts_* = conferência na Ticket Sports
+  inscricoes: string; ts_situacao: string; ts_conferido_em: string; ts_mudou_em: string; ts_erro: string;
   publicada: number; criado_em: string; atualizado_em: string;
 }
 

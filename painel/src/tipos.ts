@@ -10,6 +10,8 @@ export interface Prova {
   inscricao: string; valores: Valor[]; kit: Kit; programacao: [string, string][]; premiacao: string; percurso_mapa: string;
   regulamento: string; resultados: string; fotos: string; realizacao: string; texto_divulgacao: string; hashtags: string;
   faq: [string, string][]; publicada: boolean; criado_em?: string; atualizado_em?: string;
+  /** '' automático (Ticket Sports e datas dos lotes) | aberta | esgotado | encerrado; ts_* = última conferência na Ticket Sports */
+  inscricoes?: string; ts_situacao?: string; ts_conferido_em?: string; ts_mudou_em?: string; ts_erro?: string;
 }
 
 export type TipoParceiro = "embaixador" | "influenciador" | "assessoria" | "equipe";

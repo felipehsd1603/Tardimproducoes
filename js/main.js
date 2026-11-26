@@ -19,6 +19,9 @@
   var hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
+  // Inscrições que fecharam (painel, Ticket Sports ou datas dos lotes): js/eventos.js
+  if (typeof FECHAR_INSCRICOES === "function" && typeof PROXIMAS !== "undefined") FECHAR_INSCRICOES(PROXIMAS);
+
   var proximas = (typeof PROXIMAS !== "undefined" ? PROXIMAS : [])
     .filter(function (e) { return e.data && data(e.data) >= hoje; })
     .sort(function (a, b) { return a.data.localeCompare(b.data); });
@@ -124,7 +127,7 @@
     var acoes = el("div", "race-card__actions");
     var a;
     if (ev.esgotado) {
-      a = el("span", "btn btn--sm btn--esgotado", "Inscrições esgotadas");
+      a = el("span", "btn btn--sm btn--esgotado", ev.encerrado ? "Inscrições encerradas" : "Inscrições esgotadas");
     } else if (!ev.inscricao && !ev.demo && typeof AVISE !== "undefined") {
       // Sem link da Ticket Sports ainda: "Inscrições em breve" + "Me avise"
       a = AVISE.bloco(ev, "btn btn--sm");
@@ -372,7 +375,7 @@
         var a = el("a", null, e.nome);
         a.href = linkProva(e.id);
         if (i) nota.append(" · ");
-        nota.append(i ? "" : "Esgotada: ", a, " (" + de.getDate() + "/" + (de.getMonth() + 1) + ")");
+        nota.append(i ? "" : (esgotadasAntes.every(function (x) { return x.encerrado; }) ? "Inscrições encerradas: " : (esgotadasAntes.some(function (x) { return x.encerrado; }) ? "Inscrições fechadas: " : "Esgotada: ")), a, " (" + de.getDate() + "/" + (de.getMonth() + 1) + ")");
       });
       document.querySelector(".next-card__body").append(nota);
     }
@@ -414,7 +417,7 @@
     var nl = document.getElementById("next-link");
     if (p.esgotado) {
       // Esgotada: o botão vira aviso e leva para a página da prova
-      nl.textContent = "Inscrições esgotadas";
+      nl.textContent = p.encerrado ? "Inscrições encerradas" : "Inscrições esgotadas";
       nl.classList.remove("btn--red");
       nl.classList.add("btn--esgotado");
       nl.href = "prova-" + p.id + ".html";

@@ -22,7 +22,7 @@ const atleta = (id, cpf, extra = {}) => ({ id_externo: id, nome: "Atleta " + id,
   email: id + "@exemplo.com", telefone: "+5531988880000", consentimento_em: "2026-11-20T09:00:00Z", ...extra });
 
 describe("arquivos privados", () => {
-  for (const caminho of ["/README.md", "/wrangler.toml", "/d1/schema.sql", "/docs/api-v1-parceiros.md", "/functions/_api-v1/avisos.js", "/scripts/gerar-paginas.js", "/site/pages/index.astro", "/astro.config.mjs", "/package.json", "/package-lock.json", "/tests/api.test.mjs", "/painel/src/main.tsx", "/painel/vite.config.mts", "/.dev.vars", "/node_modules/wrangler/package.json"]) {
+  for (const caminho of ["/README.md", "/wrangler.toml", "/d1/schema.sql", "/docs/api-v1-parceiros.md", "/functions/_api-v1/avisos.js", "/workers/conferencia-ticketsports/index.js", "/scripts/gerar-paginas.js", "/site/pages/index.astro", "/astro.config.mjs", "/package.json", "/package-lock.json", "/tests/api.test.mjs", "/painel/src/main.tsx", "/painel/vite.config.mts", "/.dev.vars", "/node_modules/wrangler/package.json"]) {
     test("não sai pelo site: " + caminho, async () => {
       const r = await fetch(BASE + caminho, { redirect: "manual" });
       assert.equal(r.status, 404, caminho);
@@ -83,6 +83,16 @@ describe("painel (api/admin)", () => {
     assert.equal(a.json.cidade, "Belo Horizonte");
     assert.equal((await painel.chama("DELETE", "/api/admin/parceiros/" + c.json.id)).status, 200);
     assert.equal((await painel.chama("PUT", "/api/admin/parceiros/" + c.json.id, { nome: "x" })).status, 404);
+  });
+  test("prova: situação das inscrições vai para o site, a do painel manda na da Ticket Sports", async () => {
+    assert.equal((await painel.chama("PUT", "/api/admin/provas/prova-teste-2099", { inscricoes: "fechou" })).status, 400);
+    T.sql("UPDATE provas SET ts_situacao = 'esgotado' WHERE id = 'prova-teste-2099'");
+    const js = async () => (await (await fetch(BASE + "/js/provas-db.js", { cache: "no-store" })).text());
+    assert.match(await js(), /"inscricoes":"esgotado"/);
+    assert.equal((await painel.chama("PUT", "/api/admin/provas/prova-teste-2099", { inscricoes: "aberta" })).json.inscricoes, "aberta");
+    assert.match(await js(), /"inscricoes":"aberta"/);
+    await painel.chama("PUT", "/api/admin/provas/prova-teste-2099", { inscricoes: "" });
+    T.sql("UPDATE provas SET ts_situacao = '' WHERE id = 'prova-teste-2099'");
   });
   test("prova: identificador e data validados", async () => {
     assert.equal((await painel.chama("POST", "/api/admin/provas", { id: "Prova Ruim", nome: "x", data: "2099-01-01" })).status, 400);

@@ -8,6 +8,7 @@ interface SiteTardim {
 
 /** Prova no formato do js/eventos.js (PROXIMAS). */
 interface ProvaEventos {
+  esgotado?: boolean; encerrado?: boolean;
   id: string; nome: string; data: string; hora?: string; local?: string; percursos?: string[] | string; resumo?: string;
   poster?: string; inscricao?: string; valores?: { nome: string; valor: string; detalhe?: string; esgotado?: boolean; ate?: string }[];
   kit?: { itens: string[]; retirada: string }; programacao?: [string, string][]; premiacao?: string; percursoMapa?: string;
