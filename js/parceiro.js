@@ -464,6 +464,43 @@
     return l;
   }
 
+  // TikTok do influenciador (Login Kit): conecta no TikTok e volta para parceiro#tiktok=<resultado>
+  var avisoTiktok = "";
+  var MSG_TIKTOK = {
+    ok: ["TikTok conectado. Obrigado!", false],
+    cancelado: ["Você cancelou a conexão com o TikTok. Quando quiser, é só tentar de novo.", true],
+    permissao: ["Para conectar, autorize também as estatísticas da conta (seguidores e curtidas).", true],
+    sessao: ["Sua sessão expirou durante a conexão. Entre de novo e toque em Conectar TikTok.", true],
+    config: ["A conexão com o TikTok ainda não está disponível. Fale com a Tardim Produções.", true],
+    perfil: ["Só o perfil de influenciador conecta o TikTok.", true],
+    erro: ["O TikTok não respondeu agora. Tente de novo em alguns minutos.", true],
+  };
+  function cardTiktok(pa, ativo) {
+    var c = card("TikTok", pa.tt_situacao === "conectado" ? "TikTok conectado" : "Conecte o seu TikTok");
+    if (avisoTiktok) {
+      var m = MSG_TIKTOK[avisoTiktok] || MSG_TIKTOK.erro;
+      var a = el("p", m[1] ? "assess-alerta" : "painel-cref__ok", m[0]); a.setAttribute("role", "status");
+      c.append(a);
+      avisoTiktok = "";
+    }
+    if (pa.tt_situacao === "conectado") {
+      c.append(el("p", null, "@" + pa.tiktok + " · " + Number(pa.tt_seguidores || 0).toLocaleString("pt-BR") + " seguidores"));
+      c.append(el("p", "muted", "A Tardim Produções vê os seus seguidores, curtidas e número de vídeos. Nada é publicado na sua conta."));
+      var erro = erroEl();
+      var b = botao("Desconectar TikTok", "orc__email", function () {
+        b.disabled = true; mostraErro(erro, "");
+        api("POST", "tiktok-desconectar", { perfil: pa.id }).then(inicio).catch(function (e) { b.disabled = false; mostraErro(erro, e.message); });
+      });
+      c.append(b, erro);
+      return c;
+    }
+    c.append(el("p", null, "Conecte a sua conta do TikTok para a Tardim Produções ver os seus seguidores e curtidas" + (ativo ? "." : " e agilizar a aprovação.") + " Funciona com conta pessoal. Nada é publicado na sua conta e você pode desconectar quando quiser."));
+    var ir = el("a", "btn btn--red", "Conectar TikTok");
+    ir.href = "api/parceiro/tiktok-conectar?perfil=" + encodeURIComponent(pa.id);
+    c.append(ir);
+    return c;
+  }
+
   // Um login pode ter vários perfis (assessoria, influenciador, embaixador): abas para trocar
   var perfilAtual = "";
   function area(d) {
@@ -503,7 +540,9 @@
       w1.href = linkWa("Olá! Fiz o cadastro de parceiro como " + pa.nome + " e queria saber da aprovação.");
       w1.target = "_blank"; w1.rel = "noopener";
       c1.append(w1);
-      return app.append(c1);
+      app.append(c1);
+      if (pa.tipo === "influenciador" && d.tiktok) app.append(cardTiktok(pa, false));
+      return;
     }
     if (pa.situacao === "recusado" || !pa.ativo) {
       var c2 = card("Cadastro", pa.situacao === "recusado" ? "Cadastro não aprovado" : "Cadastro inativo");
@@ -515,6 +554,7 @@
       return app.append(c2);
     }
 
+    if (pa.tipo === "influenciador" && d.tiktok) app.append(cardTiktok(pa, true));
     var c = card("Seus convites", d.convites.length ? (d.convites.length === 1 ? "1 prova" : d.convites.length + " provas") : "Nenhum convite ainda");
     if (!d.convites.length) {
       c.append(el("p", "muted", "Cadastro aprovado! Quando a Tardim Produções te convidar para uma prova, o cupom e os links aparecem aqui."));
@@ -566,6 +606,8 @@
   }
   // Links dos e-mails (senha nova, confirmar cadastro): tira o código do endereço (não fica no histórico)
   var redefinir = /^#redefinir=([\w.-]+)$/.exec(location.hash);
+  var tk = /^#tiktok=(\w+)$/.exec(location.hash);
+  if (tk) { avisoTiktok = tk[1]; history.replaceState(null, "", location.pathname + location.search); }
   var confirmar = /^#confirmar=([\w.-]+)$/.exec(location.hash);
   if (redefinir || confirmar) history.replaceState(null, "", location.pathname + location.search);
   api("GET", "config").then(function (c) { googleId = c.google || ""; }, function () {})

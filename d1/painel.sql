@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS parceiros (
   yt_videos     INTEGER NOT NULL DEFAULT 0,
   yt_views      INTEGER NOT NULL DEFAULT 0,
   yt_conferido_em TEXT NOT NULL DEFAULT '',
+  tiktok        TEXT NOT NULL DEFAULT '',      -- @ da conta do TikTok conectada pelo parceiro (functions/_lib/tiktok.ts)
+  tt_situacao   TEXT NOT NULL DEFAULT '',      -- '' | conectado | desconectado
+  tt_seguidores INTEGER NOT NULL DEFAULT 0,
+  tt_curtidas   INTEGER NOT NULL DEFAULT 0,
+  tt_videos     INTEGER NOT NULL DEFAULT 0,
+  tt_conferido_em TEXT NOT NULL DEFAULT '',
   documento     TEXT NOT NULL DEFAULT '',      -- CPF ou CNPJ, para o pagamento
   pix           TEXT NOT NULL DEFAULT '',
   observacoes   TEXT NOT NULL DEFAULT '',
@@ -296,3 +302,15 @@ CREATE TABLE IF NOT EXISTS avisos_fila (
   criado_em     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS avisos_fila_pendentes ON avisos_fila (proxima_em) WHERE entregue_em = '' AND desistido_em = '';
+
+-- Tokens do TikTok conectado pelo parceiro, cifrados (AES-GCM, segredo TIKTOK_CHAVE); fora de parceiros
+-- para nunca irem nas listas do painel. d1/migracoes/019-parceiros-tiktok.sql
+CREATE TABLE IF NOT EXISTS tiktok_contas (
+  parceiro_id   TEXT PRIMARY KEY REFERENCES parceiros(id) ON DELETE CASCADE,
+  open_id       TEXT NOT NULL,
+  tokens        TEXT NOT NULL,
+  acesso_expira INTEGER NOT NULL DEFAULT 0,
+  renova_expira INTEGER NOT NULL DEFAULT 0,
+  escopos       TEXT NOT NULL DEFAULT '',
+  conectado_em  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);

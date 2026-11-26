@@ -19,6 +19,9 @@
 //   POST nova-senha             { token, senha }  -> troca a senha e já entra
 //   POST sair
 //   GET  eu                    { email, perfis: [parceiro + convites] }   (convites só depois de aprovado)
+//   GET  tiktok-conectar?perfil=<id>   -> TikTok (Login Kit) para o influenciador autorizar
+//   GET  tiktok-retorno?code&state     <- volta do TikTok; grava e manda para parceiro#tiktok=ok|erro
+//   POST tiktok-desconectar     { perfil }  -> revoga no TikTok e apaga os tokens
 //
 // Segredos/variáveis: SESSAO_SEGREDO (obrigatório), GOOGLE_CLIENT_ID (login com Google),
 // RESEND_API_KEY + AVISO_EMAIL (+ AVISO_REMETENTE opcional) para o e-mail de novo cadastro.
@@ -30,6 +33,7 @@ import { segmentos, metodo, type AppHono } from "../../_lib/hono.ts";
 import type { Env, Contexto, Dados, Conta, Contagem, ComEspera, Parceiro } from "../../_lib/tipos.ts";
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
 import { canalYoutube, confereYoutubeParceiro } from "../../_lib/youtube.ts";
+import { configurado as tiktokPronto, criaEstado, leEstado, urlAutorizacao, trocaCodigo, conectaParceiro, desconectaParceiro } from "../../_lib/tiktok.ts";
 import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.ts";
 
 const COOKIE = "tardim_parceiro";
@@ -452,7 +456,8 @@ async function loginGoogle(request: Request, env: Env): Promise<Response> {
   return entra(env, conta);
 }
 
-type PerfilEu = Pick<Parceiro, "id" | "tipo" | "nome" | "responsavel" | "whatsapp" | "instagram" | "cidade" | "logo" | "cor" | "situacao" | "motivo_recusa" | "criado_em">
+type PerfilEu = Pick<Parceiro, "id" | "tipo" | "nome" | "responsavel" | "whatsapp" | "instagram" | "cidade" | "logo" | "cor" | "situacao" | "motivo_recusa" | "criado_em"
+  | "tiktok" | "tt_situacao" | "tt_seguidores" | "tt_conferido_em">
   & { ativo: number | boolean; convites: Dados[] };
 
 async function eu(request: Request, env: Env): Promise<Response> {
@@ -460,7 +465,7 @@ async function eu(request: Request, env: Env): Promise<Response> {
   if (!conta) throw new Erro(401, "Entre na sua conta.");
   // Perfil principal primeiro, depois os outros na ordem assessoria, influenciador, embaixador
   const perfis = (await env.DB.prepare(
-    "SELECT id, tipo, nome, responsavel, whatsapp, instagram, cidade, logo, cor, ativo, situacao, motivo_recusa, criado_em FROM parceiros " +
+    "SELECT id, tipo, nome, responsavel, whatsapp, instagram, cidade, logo, cor, ativo, situacao, motivo_recusa, criado_em, tiktok, tt_situacao, tt_seguidores, tt_conferido_em FROM parceiros " +
     "WHERE id = ?1 OR conta_id = ?2 ORDER BY id = ?1 DESC, CASE tipo WHEN 'assessoria' THEN 0 WHEN 'influenciador' THEN 1 ELSE 2 END"
   ).bind(conta.parceiro_id, conta.id).all<PerfilEu>()).results;
   if (!perfis.length) throw new Erro(401, "Cadastro não encontrado. Fale com a Tardim Produções.");
@@ -476,7 +481,54 @@ async function eu(request: Request, env: Env): Promise<Response> {
     }
     p.ativo = !!p.ativo;
   }
-  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, perfis });
+  return json({ email: conta.email, google: !!conta.google_sub, senha: !!conta.senha, tiktok: tiktokPronto(env), perfis });
+}
+
+// ---------- TikTok (functions/_lib/tiktok.ts) ----------
+// Só o perfil de influenciador do próprio login conecta
+async function perfilInfluenciador(env: Env, conta: Conta, id: string): Promise<boolean> {
+  const p = await env.DB.prepare("SELECT id FROM parceiros WHERE id = ?1 AND tipo = 'influenciador' AND (id = ?2 OR conta_id = ?3)")
+    .bind(id, conta.parceiro_id, conta.id).first();
+  return !!p;
+}
+const voltaParceiro = (origem: string, resultado: string): Response =>
+  new Response(null, { status: 302, headers: { location: origem + "/parceiro#tiktok=" + resultado, "cache-control": "no-store" } });
+
+async function tiktokConectar(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const conta = await contaDaSessao(request, env);
+  if (!conta) return voltaParceiro(url.origin, "sessao");
+  if (!tiktokPronto(env)) return voltaParceiro(url.origin, "config");
+  const perfil = texto(url.searchParams.get("perfil"), 60);
+  if (!(await perfilInfluenciador(env, conta, perfil))) return voltaParceiro(url.origin, "perfil");
+  const estado = await criaEstado(env, conta.id, perfil);
+  return new Response(null, { status: 302, headers: { location: urlAutorizacao(env, url.origin, estado), "cache-control": "no-store" } });
+}
+
+async function tiktokRetorno(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const q = url.searchParams;
+  if (q.get("error")) return voltaParceiro(url.origin, q.get("error") === "access_denied" ? "cancelado" : "erro");
+  const est = await leEstado(env, q.get("state") || "");
+  const conta = await contaDaSessao(request, env);
+  // o retorno precisa ser de quem pediu, na mesma sessão
+  if (!est || !conta || conta.id !== est.c || !(await perfilInfluenciador(env, conta, est.p))) return voltaParceiro(url.origin, "sessao");
+  const escopos = String(q.get("scopes") || "");
+  if (escopos && !/user\.info\.stats/.test(escopos)) return voltaParceiro(url.origin, "permissao");
+  const t = await trocaCodigo(env, url.origin, q.get("code") || "");
+  if ("erro" in t) return voltaParceiro(url.origin, "erro");
+  const r = await conectaParceiro(env, est.p, t);
+  return voltaParceiro(url.origin, r.ok ? "ok" : "erro");
+}
+
+async function tiktokDesconectar(request: Request, env: Env): Promise<Response> {
+  const conta = await contaDaSessao(request, env);
+  if (!conta) throw new Erro(401, "Entre na sua conta.");
+  const d = await corpo(request);
+  const perfil = texto(d.perfil, 60);
+  if (!(await perfilInfluenciador(env, conta, perfil))) throw new Erro(404, "Perfil não encontrado.");
+  await desconectaParceiro(env, perfil);
+  return json({ ok: true });
 }
 
 // ---------- app Hono ----------
@@ -504,6 +556,9 @@ app.post("/esqueci", (c) => esqueci(c.req.raw, c.env));
 app.post("/nova-senha", (c) => novaSenha(c.req.raw, c.env));
 app.post("/sair", () => json({ ok: true }, 200, { "set-cookie": cookieFim() }));
 app.get("/eu", metodo("GET", (c) => eu(c.req.raw, c.env)));
+app.get("/tiktok-conectar", metodo("GET", (c) => tiktokConectar(c.req.raw, c.env)));
+app.get("/tiktok-retorno", metodo("GET", (c) => tiktokRetorno(c.req.raw, c.env)));
+app.post("/tiktok-desconectar", (c) => tiktokDesconectar(c.req.raw, c.env));
 
 app.notFound(() => json({ erro: 404, mensagem: "Rota não encontrada." }, 404));
 

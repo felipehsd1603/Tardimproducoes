@@ -223,6 +223,7 @@ async function apaga(env: Env, tabela: string, id: string): Promise<{ ok: true }
       env.DB.prepare("DELETE FROM envios_api WHERE integracao_id IN (SELECT id FROM integracoes WHERE parceiro_id = ?)").bind(id),
       env.DB.prepare("DELETE FROM integracoes WHERE parceiro_id = ?").bind(id),
     ]).catch(() => {});
+    await env.DB.prepare("DELETE FROM tiktok_contas WHERE parceiro_id = ?").bind(id).run().catch(() => {});
   }
   passos.push(env.DB.prepare(`DELETE FROM ${tabela} WHERE id = ?`).bind(id));
   await env.DB.batch(passos);

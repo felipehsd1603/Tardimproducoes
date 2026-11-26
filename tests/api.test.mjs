@@ -99,6 +99,21 @@ describe("painel (api/admin)", () => {
     assert.deepEqual(r.json.resultado, { ok: false, erro: "config" });
     await painel.chama("DELETE", "/api/admin/parceiros/" + c.json.id);
   });
+  test("parceiro: TikTok exige sessão, state válido e configuração", async () => {
+    // sem sessão, conectar e o retorno do TikTok voltam para a área do parceiro com aviso
+    let r = await fetch(BASE + "/api/parceiro/tiktok-conectar?perfil=x", { redirect: "manual" });
+    assert.equal(r.status, 302);
+    assert.match(r.headers.get("location"), /\/parceiro#tiktok=sessao$/);
+    r = await fetch(BASE + "/api/parceiro/tiktok-retorno?code=abc&state=forjado.assinatura", { redirect: "manual" });
+    assert.match(r.headers.get("location"), /#tiktok=sessao$/);
+    r = await fetch(BASE + "/api/parceiro/tiktok-retorno?error=access_denied", { redirect: "manual" });
+    assert.match(r.headers.get("location"), /#tiktok=cancelado$/);
+    // painel: sem os segredos do TikTok no ambiente de teste
+    const c = await painel.chama("POST", "/api/admin/parceiros", { tipo: "influenciador", nome: "Influ TikTok" });
+    const t = await painel.chama("POST", "/api/admin/parceiros/" + c.json.id + "/tiktok", {});
+    assert.equal(t.json.resultado.erro, "config");
+    assert.equal((await painel.chama("DELETE", "/api/admin/parceiros/" + c.json.id)).status, 200);
+  });
   test("prova: situação das inscrições vai para o site, a do painel manda na da Ticket Sports", async () => {
     assert.equal((await painel.chama("PUT", "/api/admin/provas/prova-teste-2099", { inscricoes: "fechou" })).status, 400);
     T.sql("UPDATE provas SET ts_situacao = 'esgotado' WHERE id = 'prova-teste-2099'");

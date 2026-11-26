@@ -17,6 +17,7 @@ import type { Env, Contexto, Convite } from "../../_lib/tipos.ts";
 import { consultaCref6 } from "../../_lib/cref6.ts";
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
 import { confereYoutubeParceiro } from "../../_lib/youtube.ts";
+import { confereTiktokParceiro } from "../../_lib/tiktok.ts";
 import { confereTicketSports } from "../../_lib/ticketsports-situacao.ts";
 import { avisaConvite, avisaConviteCancelado, avisaConvitesDaProva, origemPublica } from "../../_api-v1/avisos.ts";
 import { Erro, corpo } from "../../_admin/comum.ts";
@@ -59,6 +60,11 @@ const ROTAS: Rota[] = [
   }],
   ["POST", "parceiros/:id/youtube", async ({ env, p }) => {
     const r = await confereYoutubeParceiro(env, p.id);
+    if (!r) throw new Erro(404, "Registro não encontrado.");
+    return json({ resultado: r, parceiro: await uma(env, "parceiros", p.id) });
+  }],
+  ["POST", "parceiros/:id/tiktok", async ({ env, p }) => {
+    const r = await confereTiktokParceiro(env, p.id);
     if (!r) throw new Erro(404, "Registro não encontrado.");
     return json({ resultado: r, parceiro: await uma(env, "parceiros", p.id) });
   }],

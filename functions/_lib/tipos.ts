@@ -28,6 +28,11 @@ export interface Env {
   // YouTube Data API v3
   YOUTUBE_API_KEY?: string;
 
+  // TikTok (Login Kit): credenciais do app e a chave que cifra os tokens no banco
+  TIKTOK_CLIENT_KEY?: string;
+  TIKTOK_CLIENT_SECRET?: string;
+  TIKTOK_CHAVE?: string;
+
   // Ticket Sports ("Url do post")
   TICKETSPORTS_TOKEN?: string;
   TICKETSPORTS_CHAVE?: string;
@@ -55,6 +60,7 @@ export interface Parceiro {
   id: string; tipo: string; nome: string; responsavel: string; whatsapp: string; email: string; instagram: string;
   cidade: string; uf: string; seguidores: number; ig_situacao: string; ig_seguidores: number; ig_posts: number; ig_conferido_em: string;
   youtube: string; yt_situacao: string; yt_inscritos: number; yt_videos: number; yt_views: number; yt_conferido_em: string;
+  tiktok: string; tt_situacao: string; tt_seguidores: number; tt_curtidas: number; tt_videos: number; tt_conferido_em: string;
   documento: string; pix: string; observacoes: string; profissao: string; registro: string; registro_situacao: string;
   registro_nome: string; registro_conferido_em: string; logo: string; cor: string; ativo: number; situacao: string;
   origem: string; motivo_recusa: string; conta_id: string | null; criado_em: string; atualizado_em: string;

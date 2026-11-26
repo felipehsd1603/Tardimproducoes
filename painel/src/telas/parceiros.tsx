@@ -91,11 +91,46 @@ function BotaoYoutube({ p }: { p: Parceiro }) {
   );
 }
 
+// TikTok conectado pelo próprio parceiro (functions/_lib/tiktok.ts, rota parceiros/<id>/tiktok)
+function SelosTiktok({ p }: { p: Parceiro }) {
+  if (p.tt_situacao === "conectado") {
+    const titulo = "@" + p.tiktok + " · conferido em " + new Date(p.tt_conferido_em).toLocaleDateString("pt-BR") + " · " +
+      Number(p.tt_curtidas || 0).toLocaleString("pt-BR") + " curtidas · " + Number(p.tt_videos || 0).toLocaleString("pt-BR") + " vídeos";
+    return <span>{" "}<Situacao cls="is-pub" title={titulo}>{"TikTok: " + Number(p.tt_seguidores || 0).toLocaleString("pt-BR") + " seguidores"}</Situacao></span>;
+  }
+  if (p.tt_situacao === "desconectado") return <span>{" "}<Situacao cls="is-rasc" title="O parceiro desconectou ou tirou a autorização no TikTok. Os números são da última conferência.">TikTok desconectado</Situacao></span>;
+  return null;
+}
+
+function BotaoTiktok({ p }: { p: Parceiro }) {
+  const [consultando, setConsultando] = useState(false);
+  if (p.tt_situacao !== "conectado") return null;
+  return (
+    <Botao disabled={consultando} onClick={() => {
+      setConsultando(true);
+      api<{ resultado: { ok: boolean; erro?: string; detalhe?: string; usuario?: string; seguidores?: number }; parceiro: Parceiro }>("POST", "parceiros/" + encodeURIComponent(p.id) + "/tiktok", {}).then((r) => {
+        const res = r.resultado || { ok: false };
+        setConsultando(false);
+        muda((e) => ({ parceiros: e.parceiros.map((x) => (x.id === p.id ? r.parceiro : x)) }));
+        if (!res.ok) {
+          return aviso((({
+            config: "Falta configurar o TikTok (segredos TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET e TIKTOK_CHAVE). Veja o README.",
+            nao_conectado: "Este parceiro ainda não conectou o TikTok.",
+            revogado: "O parceiro tirou a autorização no TikTok. Peça para ele conectar de novo na área do parceiro.",
+          } as Record<string, string>)[res.erro || ""] || "O TikTok não respondeu. Tente de novo em alguns minutos.") + (res.detalhe ? " (TikTok: " + res.detalhe + ")" : ""), true);
+        }
+        aviso("@" + res.usuario + ": " + Number(res.seguidores || 0).toLocaleString("pt-BR") + " seguidores no TikTok.");
+      }).catch((e) => { setConsultando(false); falha(e); });
+    }}>{consultando ? "Consultando..." : "Conferir TikTok"}</Botao>
+  );
+}
+
 function Contato({ p, comEmail }: { p: Parceiro; comEmail?: boolean }) {
   const partes = [];
   if (comEmail && p.email) partes.push(<LinkExt key="e" href={"mailto:" + p.email}>{p.email}</LinkExt>);
   if (p.whatsapp) partes.push(<LinkExt key="w" href={linkWa(p.whatsapp)}>{p.whatsapp}</LinkExt>);
   if (p.instagram) partes.push(<LinkExt key="i" href={linkInsta(p.instagram)}>{"@" + semArroba(p.instagram)}</LinkExt>);
+  if (p.tiktok) partes.push(<LinkExt key="t" href={"https://www.tiktok.com/@" + p.tiktok}>{"TikTok @" + p.tiktok}</LinkExt>);
   if (p.youtube) partes.push(<LinkExt key="y" href={linkYoutube(p.youtube)}>{"YouTube " + nomeCanal(p.youtube)}</LinkExt>);
   return <div>{partes.flatMap((x, i) => (i ? [" ", x] : [x]))}</div>;
 }
@@ -141,6 +176,7 @@ function CardPendentes({ lista }: { lista: Parceiro[] }) {
           {p.seguidores && p.ig_situacao !== "ok" ? <small className="muted">{" · " + seguidoresTxt(p.seguidores) + " (informado)"}</small> : null}
           <SelosInsta p={p} />
           <SelosYoutube p={p} />
+          <SelosTiktok p={p} />
         </div>,
         TIPOS[p.tipo] || p.tipo, <Contato p={p} comEmail />, cidadeUf(p),
         <Acoes>
@@ -149,6 +185,7 @@ function CardPendentes({ lista }: { lista: Parceiro[] }) {
           <Botao onClick={() => ir("parceiro/" + enc(p.id))}>Editar</Botao>
           <BotaoInsta p={p} />
           <BotaoYoutube p={p} />
+          <BotaoTiktok p={p} />
         </Acoes>,
       ])} />
     </Card>
@@ -165,7 +202,7 @@ export function AbaParceiros() {
   const lista = parceiros.filter((p) => {
     if (tipo && p.tipo !== tipo) return false;
     if (!termo) return true;
-    return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram, p.youtube].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
+    return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram, p.youtube, p.tiktok].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
   });
   return (
     <>
@@ -188,6 +225,7 @@ export function AbaParceiros() {
                   {p.profissao === PROFISSOES[0] ? <>{" "}<Situacao cls={okCref ? "is-pub" : "is-rasc"}>{okCref ? "CREF6 ativo" : (p.registro_conferido_em ? "CREF6: " + (p.registro_situacao || "?") : "CREF6 não conferido")}</Situacao></> : null}
                   <SelosInsta p={p} />
                   <SelosYoutube p={p} />
+                  <SelosTiktok p={p} />
                 </div>,
                 TIPOS[p.tipo], <Contato p={p} />,
                 String(convites.filter((x) => x.parceiro_id === p.id).length),
@@ -197,7 +235,7 @@ export function AbaParceiros() {
                 <Acoes>
                   <Botao onClick={() => ir("parceiro/" + enc(p.id))}>Editar</Botao>
                   {p.ativo ? <Botao onClick={() => ir("convite/novo?parceiro=" + enc(p.id))}>Novo convite</Botao> : null}
-                  {p.tipo === "influenciador" ? <><BotaoInsta p={p} /><BotaoYoutube p={p} /></> : null}
+                  {p.tipo === "influenciador" ? <><BotaoInsta p={p} /><BotaoYoutube p={p} /><BotaoTiktok p={p} /></> : null}
                 </Acoes>,
               ];
             })} />
