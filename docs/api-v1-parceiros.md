@@ -446,9 +446,9 @@ Corpo:
 
 | Peça | Onde |
 |---|---|
-| Rotas da v1 | `functions/api/v1/[[rota]].js` (separada de `/api/inscricao`, que continua para a planilha) |
+| Rotas da v1 | `functions/api/v1/[[rota]].ts` (separada de `/api/inscricao`, que continua para a planilha) |
 | Chaves | tabela `integracoes` (parceiro_id, prefixo, hash, webhook_url, webhook_segredo, ambiente, criada_em, revogada_em) |
-| Conexão | tabela `conexoes` (convite assinado: endereço da plataforma, hash do código, situação, expira); segredo `TARDIM_ASSINATURA_JWK` (chave privada ES256, gerada por `scripts/gerar-chave-assinatura.mjs`); `functions/_lib/assinatura.js` e `functions/_api-v1/avisos.js` |
+| Conexão | tabela `conexoes` (convite assinado: endereço da plataforma, hash do código, situação, expira); segredo `TARDIM_ASSINATURA_JWK` (chave privada ES256, gerada por `scripts/gerar-chave-assinatura.mjs`); `functions/_lib/assinatura.ts` e `functions/_api-v1/avisos.ts` |
 | Convites de prova | `convites` ganha `api_situacao`, `api_modo_pagamento`, `api_motivo`, `api_respondido_em`, `api_aviso` (resultado do último aviso) |
 | Envios | tabela `envios_api` (id, integracao_id, prova_id, referencia_externa, idempotency_key, hash do corpo, resposta, criado_em) |
 | Atletas | `atletas` ganha `origem` (`planilha` / `api`), `id_externo`, `situacao`, `motivo`, `numero_peito`, `modo_pagamento` |
