@@ -2,6 +2,17 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-25 · Painel em React + TypeScript
+
+### Mudou
+- O painel (`/admin`) foi refeito em **React + TypeScript** (`painel/`, build com Vite), com as mesmas abas, endereços (#provas, #prova/<id>, #convite/<id>/links, #proposta/<id>...), textos e regras. `npm run painel:build` gera `admin.html` + `assets/painel/` (fora do git); `npm test`, `npm run publicar` e o CI geram antes.
+- Formulário da prova: valores, programação, perguntas frequentes, percursos e itens do kit agora são linhas editáveis com botões (antes, texto com "|").
+- O painel antigo continua em `/admin-classico` (`admin-classico.html` + `js/admin.js`) até a conferência.
+- Dependências de desenvolvimento novas, versões exatas e gratuitas: `vite` 8.3.8, `react`/`react-dom` 19.3.1, `@vitejs/plugin-react` 6.3.0, `@types/react`/`@types/react-dom` 19.3.0.
+
+### Segurança
+- O HTML do painel só carrega `<script src>` do próprio site (sem script inline nem polyfill de modulepreload): teste `tests/painel-csp.test.mjs`. A pasta `painel/` (código-fonte) não sai pelo site.
+
 ## 2026-11-25 · Servidor em TypeScript + Hono
 
 ### Mudou

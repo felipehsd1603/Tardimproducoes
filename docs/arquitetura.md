@@ -10,7 +10,7 @@ O código do servidor é **TypeScript** (`functions/**/*.ts`). Não há passo de
 
 | Área | Endereço | Quem usa | Login | Formato de erro | Documentação |
 | --- | --- | --- | --- | --- | --- |
-| Painel | `/api/admin/*` | `admin.html` (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
+| Painel | `/api/admin/*` | `/admin` (React, `painel/`; reserva: `/admin-classico`) (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
 | Área do parceiro | `/api/parceiro/*` | `parceiro.html` | E-mail/senha ou Google + cookie `tardim_parceiro` | `{ erro: <status>, mensagem }` | `/api/admin/docs` |
 | Site | `/api/orcamento`, `/api/inscricao`, `/api/aviso`, `/api/evento`, `/api/ticketsports` | Páginas do site; Ticket Sports | Nenhum (origem e limite por IP) | `{ erro: "<campo>" }` | `/api/admin/docs` |
 | API v1 para parceiros | `/api/v1/*` | Sistemas das assessorias (ex.: IM3), servidor a servidor | `Authorization: Bearer tdm_live_...` | `{ erro: { codigo, mensagem } }` | `/api/v1/docs` (pública) e `docs/api-v1-parceiros.md` |

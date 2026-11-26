@@ -42,7 +42,8 @@ d1/migracoes/010-propostas.sql  aba "Propostas" do painel: monta o orçamento do
 _redirects          endereços curtos para divulgar (ex.: /copmbm leva à página da prova)
 functions/api/evento.ts     função POST /api/evento: medição do site (js/ui.js): soma totais por dia de visitas e cliques, sem identificar ninguém; o painel mostra na aba "Medição". Banco já criado: rode d1/migracoes/009-medicao-faq.sql (cria a medição e as perguntas frequentes das provas)
 functions/api/inscricao.ts  função POST /api/inscricao: valida e grava a inscrição coletiva (equipe + atletas) no D1
-admin.html          painel da Tardim Produções (fora do menu e do Google): js/admin.js + css/painel.css
+painel/             painel da Tardim Produções em React + TypeScript (Vite): npm run painel:build gera admin.html e assets/painel/ (gerados, fora do git)
+admin-classico.html painel antigo (js/admin.js), mantido como reserva em /admin-classico até a conferência do painel novo
 kit.html            kit de divulgação de cada parceiro: js/kit.js
 programa-embaixadores.html  regras do programa de embaixadores
 js/provas-db.js     provas e depoimentos do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
@@ -107,7 +108,9 @@ Com o link, a assessoria baixa o modelo de planilha (Excel ou CSV), confere a pl
 2. Defina a senha do painel e o segredo da sessão (o segundo é um texto longo e aleatório, que ninguém precisa decorar):
    `npx wrangler pages secret put ADMIN_SENHA --project-name <projeto>` e
    `npx wrangler pages secret put SESSAO_SEGREDO --project-name <projeto>`
-3. Publique o site de novo e abra `admin.html`.
+3. Publique o site de novo e abra `/admin`.
+
+**Desenvolvimento do painel** (`painel/`, React + TypeScript): `npm run dev` (wrangler na porta 8791) e, em outro terminal, `npm run painel:dev` (Vite em http://localhost:5173, repassa `/api`, `/js`, `/css`, `/assets` e `/arquivos` ao wrangler). `npm run painel:tipos` confere os tipos; `npm run painel:build` gera `admin.html` + `assets/painel/` na raiz (o `npm test` e o `npm run publicar` já fazem isso). O HTML gerado não tem script inline (CSP do site): `tests/painel-csp.test.mjs` confere. O painel antigo continua em `/admin-classico`.
 
 **Segurança:** a senha nunca fica em arquivo do repositório (a pasta inteira é publicada). O login usa cookie HttpOnly, Secure e SameSite=Strict, válido por 14 dias; trocar `ADMIN_SENHA` derruba todas as sessões. Depois de 5 senhas erradas em 15 minutos, o mesmo endereço IP fica bloqueado por 15 minutos. As escritas só são aceitas a partir do próprio site.
 

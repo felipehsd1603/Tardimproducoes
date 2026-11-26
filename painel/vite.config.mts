@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 const RAIZ = resolve(import.meta.dirname, "..");
 const SAIDA = resolve(import.meta.dirname, "dist");
 // Endereço do painel novo: admin.html (o painel antigo fica em admin-classico.html)
-const ARQUIVO_HTML = "admin-novo.html";
+const ARQUIVO_HTML = "admin.html";
 
 // Arquivos do site que o painel usa como estão (fora do bundle): estilos, dados das provas (SITE,
 // PROXIMAS), gerador do link de convite (CONVITE), planilhas (XLSX) e o menu/animações (ui.js).
