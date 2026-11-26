@@ -360,6 +360,8 @@
     carregaCidades();
     var insta = entrada("text", { maxLength: 100, placeholder: "@perfil" });
     var cInsta = campo("Seu Instagram", insta, "Opcional, mas ajuda na aprovação.");
+    var yt = entrada("text", { maxLength: 100, placeholder: "@canal" });
+    var cYt = campo("Seu canal no YouTube", yt, "Opcional. O @ do canal ou o link dele.");
     var seg = entrada("text", { maxLength: 13, inputMode: "numeric", placeholder: "Ex.: 15000" });
     var cSeg = campo("Seguidores (número estimado)", seg, "Somando o perfil principal.");
     seg.addEventListener("input", function () {
@@ -379,7 +381,7 @@
     var ir = el("button", "btn btn--red btn--lg assess-grid__full", "Enviar cadastro");
     ir.type = "submit";
 
-    f.append(tipos, cNome, cANome, cCnpj, cAInsta, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cSeg);
+    f.append(tipos, cNome, cANome, cCnpj, cAInsta, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cYt, cSeg);
     if (!google) f.append(campo("E-mail", email, null, true), campo("Senha", senha, "Pelo menos 8 caracteres."), campo("Repita a senha", senha2));
     f.append(lAceite, ir);
     c.append(f, erro);
@@ -390,7 +392,7 @@
       cANome.hidden = cCnpj.hidden = cAInsta.hidden = !ass;
       cNome.querySelector("span").textContent = ass && !pessoa ? "Seu nome (responsável pela assessoria)" : "Seu nome";
       cInsta.hidden = ass && !pessoa;
-      cSeg.hidden = !inf;
+      cSeg.hidden = cYt.hidden = !inf;
       cInsta.querySelector("small").textContent = inf ? "Obrigatório para influenciador." : "Opcional, mas ajuda na aprovação.";
     }
     ajusta();
@@ -424,7 +426,7 @@
       var dados = {
         tipos: lista_, nome: nome.value.trim(),
         whatsapp: wa.value.trim(), uf: uf.value, cidade: cidadeDaLista(), instagram: cInsta.hidden ? "" : insta.value.trim(),
-        seguidores: inf ? Number(seg.value.replace(/\D/g, "")) : 0, aceite: true,
+        seguidores: inf ? Number(seg.value.replace(/\D/g, "")) : 0, youtube: inf ? yt.value.trim() : "", aceite: true,
       };
       if (ass) { dados.assessoria_nome = aNome.value.trim(); dados.cnpj = cnpj.value; dados.assessoria_instagram = aInsta.value.trim(); }
       if (google) dados.credential = google.credential;

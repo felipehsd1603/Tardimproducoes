@@ -18,6 +18,7 @@ export type TipoParceiro = "embaixador" | "influenciador" | "assessoria" | "equi
 export interface Parceiro {
   id: string; tipo: TipoParceiro; nome: string; responsavel: string; whatsapp: string; email: string; instagram: string;
   cidade: string; uf: string; seguidores: number; ig_situacao: string; ig_seguidores: number; ig_posts: number; ig_conferido_em: string;
+  youtube: string; yt_situacao: string; yt_inscritos: number; yt_videos: number; yt_views: number; yt_conferido_em: string;
   documento: string; pix: string; observacoes: string; profissao: string; registro: string; registro_situacao: string;
   registro_nome: string; registro_conferido_em: string; logo: string; cor: string; ativo: boolean; situacao: string;
   origem?: string; motivo_recusa: string; criado_em: string; atualizado_em?: string;

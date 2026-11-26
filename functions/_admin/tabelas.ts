@@ -2,6 +2,7 @@
 // campos permitidos, validação por tabela, conversão de saída e o CRUD genérico.
 
 import { numeroCref } from "../_lib/cref6.ts";
+import { canalYoutube } from "../_lib/youtube.ts";
 import { Erro, PROFISSOES, RE_ID_PROVA, TIPOS_PARCEIRO } from "./comum.ts";
 import type { Env, Dados } from "../_lib/tipos.ts";
 
@@ -23,7 +24,7 @@ const TABELAS: Record<string, DefTabela> = {
   },
   parceiros: {
     campos: {
-      tipo: 20, nome: 120, responsavel: 120, whatsapp: 20, email: 120, instagram: 60, cidade: 80,
+      tipo: 20, nome: 120, responsavel: 120, whatsapp: 20, email: 120, instagram: 60, youtube: 60, cidade: 80,
       documento: 20, pix: 120, observacoes: 1000, logo: 200, cor: 7, ativo: "bool",
       profissao: 60, registro: 20, registro_situacao: 40, registro_nome: 120, registro_conferido_em: 30,
       situacao: 12, motivo_recusa: 300, // cadastro feito pelo site (parceiro.html): pendente | aprovado | recusado
@@ -106,6 +107,12 @@ function limpa(tabela: string, d: Dados, criando: boolean): Dados {
       if (!n) throw new Erro(400, "Número do CREF6 inválido.");
       v.registro = "MG-" + n;
     }
+    if ("youtube" in v && v.youtube) {
+      // aceita "@canal", "canal" ou o link do canal; grava "@canal" ou "UC..."
+      const c = canalYoutube(v.youtube);
+      if (!c) throw new Erro(400, "Canal do YouTube inválido. Use o @ do canal ou o link dele.");
+      v.youtube = c;
+    }
     if ("registro_conferido_em" in v && v.registro_conferido_em && isNaN(Date.parse(v.registro_conferido_em))) throw new Erro(400, "Data de conferência inválida.");
   }
   if (tabela === "depoimentos") {
@@ -176,6 +183,13 @@ async function altera(env: Env, tabela: string, id: string, d: Dados): Promise<D
     const atual = await env.DB.prepare("SELECT instagram FROM parceiros WHERE id = ?").bind(id).first<{ instagram: string }>();
     if (atual && atual.instagram.replace(/^@/, "").toLowerCase() !== v.instagram.replace(/^@/, "").toLowerCase()) {
       Object.assign(v, { ig_situacao: "", ig_seguidores: 0, ig_posts: 0, ig_conferido_em: "" });
+    }
+  }
+  // Idem para o canal do YouTube
+  if (tabela === "parceiros" && "youtube" in v) {
+    const atual = await env.DB.prepare("SELECT youtube FROM parceiros WHERE id = ?").bind(id).first<{ youtube: string }>();
+    if (atual && canalYoutube(atual.youtube) !== canalYoutube(v.youtube)) {
+      Object.assign(v, { yt_situacao: "", yt_inscritos: 0, yt_videos: 0, yt_views: 0, yt_conferido_em: "" });
     }
   }
   const cols = Object.keys(v);

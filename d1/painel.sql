@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS parceiros (
   ig_seguidores INTEGER NOT NULL DEFAULT 0,    -- seguidores reais na última conferência
   ig_posts      INTEGER NOT NULL DEFAULT 0,
   ig_conferido_em TEXT NOT NULL DEFAULT '',
+  youtube       TEXT NOT NULL DEFAULT '',      -- "@canal" ou "UC..."
+  yt_situacao   TEXT NOT NULL DEFAULT '',      -- YouTube conferido pela API (functions/_lib/youtube.ts): '' | ok | oculto | nao_encontrado
+  yt_inscritos  INTEGER NOT NULL DEFAULT 0,
+  yt_videos     INTEGER NOT NULL DEFAULT 0,
+  yt_views      INTEGER NOT NULL DEFAULT 0,
+  yt_conferido_em TEXT NOT NULL DEFAULT '',
   documento     TEXT NOT NULL DEFAULT '',      -- CPF ou CNPJ, para o pagamento
   pix           TEXT NOT NULL DEFAULT '',
   observacoes   TEXT NOT NULL DEFAULT '',

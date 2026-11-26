@@ -84,6 +84,21 @@ describe("painel (api/admin)", () => {
     assert.equal((await painel.chama("DELETE", "/api/admin/parceiros/" + c.json.id)).status, 200);
     assert.equal((await painel.chama("PUT", "/api/admin/parceiros/" + c.json.id, { nome: "x" })).status, 404);
   });
+  test("parceiro: canal do YouTube aceita @ ou link e zera a conferência ao trocar", async () => {
+    assert.equal((await painel.chama("POST", "/api/admin/parceiros", { tipo: "influenciador", nome: "X", youtube: "https://youtu.be/abc" })).status, 400);
+    const c = await painel.chama("POST", "/api/admin/parceiros", { tipo: "influenciador", nome: "Influ Teste", youtube: "https://www.youtube.com/@Canal.Teste/videos" });
+    assert.equal(c.status, 201);
+    assert.equal(c.json.youtube, "@canal.teste");
+    T.sql(`UPDATE parceiros SET yt_situacao = 'ok', yt_inscritos = 1230 WHERE id = '${c.json.id}'`);
+    assert.equal((await painel.chama("PUT", "/api/admin/parceiros/" + c.json.id, { youtube: "@canal.teste" })).json.yt_situacao, "ok");
+    const a = await painel.chama("PUT", "/api/admin/parceiros/" + c.json.id, { youtube: "@outro.canal" });
+    assert.equal(a.json.yt_situacao, "");
+    assert.equal(a.json.yt_inscritos, 0);
+    // sem YOUTUBE_API_KEY no ambiente de teste, a conferência avisa e não grava nada
+    const r = await painel.chama("POST", "/api/admin/parceiros/" + c.json.id + "/youtube", {});
+    assert.deepEqual(r.json.resultado, { ok: false, erro: "config" });
+    await painel.chama("DELETE", "/api/admin/parceiros/" + c.json.id);
+  });
   test("prova: situação das inscrições vai para o site, a do painel manda na da Ticket Sports", async () => {
     assert.equal((await painel.chama("PUT", "/api/admin/provas/prova-teste-2099", { inscricoes: "fechou" })).status, 400);
     T.sql("UPDATE provas SET ts_situacao = 'esgotado' WHERE id = 'prova-teste-2099'");

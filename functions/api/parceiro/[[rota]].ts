@@ -6,7 +6,7 @@
 //
 //   GET  config                 { google: client id ou "" }
 //   GET  cidades?uf=MG          { uf, cidades }  (municípios do IBGE, functions/_lib/cidades.ts)
-//   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], nome, whatsapp, uf, cidade, instagram, seguidores,
+//   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], nome, whatsapp, uf, cidade, instagram, seguidores, youtube,
 //                                 assessoria_nome, cnpj, assessoria_instagram, email, senha | credential, aceite }
 //                               Um perfil (linha em parceiros) por tipo marcado, todos no mesmo login (parceiros.conta_id).
 //                               Assessoria exige CNPJ válido (guardado em parceiros.documento).
@@ -29,6 +29,7 @@ import { CIDADES } from "../../_lib/cidades.ts";
 import { segmentos, metodo, type AppHono } from "../../_lib/hono.ts";
 import type { Env, Contexto, Dados, Conta, Contagem, ComEspera, Parceiro } from "../../_lib/tipos.ts";
 import { confereInstagramParceiro } from "../../_lib/instagram.ts";
+import { canalYoutube, confereYoutubeParceiro } from "../../_lib/youtube.ts";
 import { json, mesmaOrigem, enc, b64url, deB64url, hmacB64url as hmac, iguais } from "../../_lib/http.ts";
 
 const COOKIE = "tardim_parceiro";
@@ -154,7 +155,7 @@ const ipDe = (request: Request): string => request.headers.get("CF-Connecting-IP
 /** Perfil (linha de parceiros) montado no cadastro. */
 interface Perfil {
   id?: string; tipo: string; nome: string; responsavel: string; documento: string; instagram: string; seguidores: number;
-  whatsapp?: string; cidade?: string; uf?: string;
+  youtube?: string; whatsapp?: string; cidade?: string; uf?: string;
 }
 /** O que vai cifrado no link de confirmação do e-mail. */
 interface CadastroPendente { perfis: Perfil[]; email: string; senha: string; exp?: number }
@@ -171,6 +172,7 @@ async function avisaTardim(env: Env, origem: string, perfis: Perfil[], email: st
     linhas.push("", TIPOS[x.tipo] + ": " + x.nome,
       x.responsavel ? "Responsável: " + x.responsavel : "", x.documento ? "CNPJ: " + x.documento : "",
       x.instagram ? "Instagram: @" + x.instagram : "",
+      x.youtube ? "YouTube: " + x.youtube : "",
       x.seguidores ? "Seguidores (estimado): " + x.seguidores.toLocaleString("pt-BR") : "");
   });
   linhas.push("", "Aprovar ou recusar no painel: " + origem + "/admin.html");
@@ -224,7 +226,10 @@ async function cadastro(request: Request, env: Env, ctx: ComEspera): Promise<Res
     if (!comum.instagram) throw new Erro(400, "Informe o seu perfil do Instagram.");
     const seguidores = parseInt(String(d.seguidores == null ? "" : d.seguidores).replace(/\D/g, ""), 10) || 0;
     if (seguidores < 1 || seguidores > 1000000000) throw new Erro(400, "Informe o número estimado de seguidores.");
-    perfis.push({ tipo: "influenciador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores });
+    // canal do YouTube: opcional; aceita "@canal" ou o link
+    const youtube = d.youtube ? canalYoutube(texto(d.youtube, 100)) : "";
+    if (d.youtube && !youtube) throw new Erro(400, "Canal do YouTube inválido. Use o @ do canal ou o link dele.");
+    perfis.push({ tipo: "influenciador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores, youtube });
   }
   if (tem("embaixador")) {
     perfis.push({ tipo: "embaixador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores: 0 });
@@ -266,13 +271,14 @@ async function criaConta(env: Env, ctx: ComEspera, origem: string, perfis: Perfi
   const cid = crypto.randomUUID();
   perfis.forEach((x) => { x.id = crypto.randomUUID(); });
   await env.DB.batch(perfis.map((x) => env.DB.prepare(
-    "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, cidade, uf, seguidores, documento, conta_id, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
-  ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.cidade, x.uf, x.seguidores, x.documento, cid)).concat([
+    "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, youtube, cidade, uf, seguidores, documento, conta_id, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
+  ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.youtube || "", x.cidade, x.uf, x.seguidores, x.documento, cid)).concat([
     env.DB.prepare("INSERT INTO contas (id, parceiro_id, email, senha, google_sub) VALUES (?, ?, ?, ?, ?)").bind(cid, perfis[0].id, email, senha, sub),
   ]));
   ctx.waitUntil(avisaTardim(env, origem, perfis, email));
   // Já confere os seguidores reais para a tela de aprovação (sem IG_TOKEN, não faz nada)
   perfis.forEach((x) => { if (x.instagram) ctx.waitUntil(confereInstagramParceiro(env, x.id as string).catch(() => {})); });
+  perfis.forEach((x) => { if (x.youtube) ctx.waitUntil(confereYoutubeParceiro(env, x.id as string).catch(() => {})); });
   return entra(env, { id: cid });
 }
 

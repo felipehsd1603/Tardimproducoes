@@ -1,4 +1,4 @@
-// Aba Parceiros: cadastros aguardando aprovação, lista com filtros, formulário (CREF6, Instagram, logo e cor)
+// Aba Parceiros: cadastros aguardando aprovação, lista com filtros, formulário (CREF6, Instagram, YouTube, logo e cor)
 // e a integração com o sistema da assessoria (API v1: convite de conexão, reenviar, cancelar, desconectar).
 import { useEffect, useRef, useState } from "react";
 import { api, enviaImagem, urlArquivo } from "../api.ts";
@@ -52,11 +52,51 @@ function BotaoInsta({ p }: { p: Parceiro }) {
   );
 }
 
+// YouTube conferido pela YouTube Data API (functions/_lib/youtube.ts, rota parceiros/<id>/youtube)
+const linkYoutube = (c: string) => "https://www.youtube.com/" + (/^UC/.test(c) ? "channel/" + c : "@" + semArroba(c));
+const nomeCanal = (c: string) => (/^UC/.test(c) ? "YouTube" : "@" + semArroba(c));
+
+function SelosYoutube({ p }: { p: Parceiro }) {
+  if (!p.youtube) return null;
+  const conferido = p.yt_conferido_em ? "Conferido em " + new Date(p.yt_conferido_em).toLocaleDateString("pt-BR") + " · " +
+    Number(p.yt_videos || 0).toLocaleString("pt-BR") + " vídeos · " + Number(p.yt_views || 0).toLocaleString("pt-BR") + " visualizações" : "";
+  if (p.yt_situacao === "ok") return <span>{" "}<Situacao cls="is-pub" title={conferido + ". O YouTube arredonda os inscritos."}>{"YouTube: " + Number(p.yt_inscritos || 0).toLocaleString("pt-BR") + " inscritos"}</Situacao></span>;
+  if (p.yt_situacao === "oculto") return <span>{" "}<Situacao cls="is-rasc" title={conferido + "."}>YouTube: inscritos ocultos</Situacao></span>;
+  if (p.yt_situacao === "nao_encontrado") return <span>{" "}<Situacao cls="is-rasc" title="Confira o @ ou o link do canal.">YouTube não encontrado</Situacao></span>;
+  return null;
+}
+
+function BotaoYoutube({ p }: { p: Parceiro }) {
+  const [consultando, setConsultando] = useState(false);
+  if (!p.youtube) return null;
+  return (
+    <Botao disabled={consultando} onClick={() => {
+      setConsultando(true);
+      api<{ resultado: { ok: boolean; erro?: string; encontrado?: boolean; canal?: string; nome?: string; inscritos?: number; oculto?: boolean }; parceiro: Parceiro }>("POST", "parceiros/" + encodeURIComponent(p.id) + "/youtube", {}).then((r) => {
+        const res = r.resultado || { ok: false };
+        setConsultando(false);
+        if (!res.ok) {
+          return aviso(({
+            config: "Falta configurar a API do YouTube (segredo YOUTUBE_API_KEY). Veja o README.",
+            chave: "A chave do YouTube (YOUTUBE_API_KEY) é inválida ou a YouTube Data API v3 não está ativada no Google Cloud.",
+            cota: "A cota diária da API do YouTube acabou. Tente amanhã.",
+            canal: "O canal do YouTube deste parceiro é inválido.",
+          } as Record<string, string>)[res.erro || ""] || "A API do YouTube não respondeu. Tente de novo em alguns minutos.", true);
+        }
+        muda((e) => ({ parceiros: e.parceiros.map((x) => (x.id === p.id ? r.parceiro : x)) }));
+        aviso(!res.encontrado ? "Canal " + res.canal + " não encontrado. Confira o @ ou o link."
+          : (res.nome || res.canal) + ": " + (res.oculto ? "o canal esconde os inscritos." : Number(res.inscritos || 0).toLocaleString("pt-BR") + " inscritos."), !res.encontrado);
+      }).catch((e) => { setConsultando(false); falha(e); });
+    }}>{consultando ? "Consultando..." : "Conferir YouTube"}</Botao>
+  );
+}
+
 function Contato({ p, comEmail }: { p: Parceiro; comEmail?: boolean }) {
   const partes = [];
   if (comEmail && p.email) partes.push(<LinkExt key="e" href={"mailto:" + p.email}>{p.email}</LinkExt>);
   if (p.whatsapp) partes.push(<LinkExt key="w" href={linkWa(p.whatsapp)}>{p.whatsapp}</LinkExt>);
   if (p.instagram) partes.push(<LinkExt key="i" href={linkInsta(p.instagram)}>{"@" + semArroba(p.instagram)}</LinkExt>);
+  if (p.youtube) partes.push(<LinkExt key="y" href={linkYoutube(p.youtube)}>{"YouTube " + nomeCanal(p.youtube)}</LinkExt>);
   return <div>{partes.flatMap((x, i) => (i ? [" ", x] : [x]))}</div>;
 }
 
@@ -100,6 +140,7 @@ function CardPendentes({ lista }: { lista: Parceiro[] }) {
           {p.responsavel ? <small className="muted">{" · " + p.responsavel}</small> : null}
           {p.seguidores && p.ig_situacao !== "ok" ? <small className="muted">{" · " + seguidoresTxt(p.seguidores) + " (informado)"}</small> : null}
           <SelosInsta p={p} />
+          <SelosYoutube p={p} />
         </div>,
         TIPOS[p.tipo] || p.tipo, <Contato p={p} comEmail />, cidadeUf(p),
         <Acoes>
@@ -107,6 +148,7 @@ function CardPendentes({ lista }: { lista: Parceiro[] }) {
           <BotaoDecide p={p} sit="recusado" />
           <Botao onClick={() => ir("parceiro/" + enc(p.id))}>Editar</Botao>
           <BotaoInsta p={p} />
+          <BotaoYoutube p={p} />
         </Acoes>,
       ])} />
     </Card>
@@ -123,7 +165,7 @@ export function AbaParceiros() {
   const lista = parceiros.filter((p) => {
     if (tipo && p.tipo !== tipo) return false;
     if (!termo) return true;
-    return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
+    return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram, p.youtube].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
   });
   return (
     <>
@@ -145,6 +187,7 @@ export function AbaParceiros() {
                   {p.responsavel ? <small className="muted">{" · " + p.responsavel}</small> : null}
                   {p.profissao === PROFISSOES[0] ? <>{" "}<Situacao cls={okCref ? "is-pub" : "is-rasc"}>{okCref ? "CREF6 ativo" : (p.registro_conferido_em ? "CREF6: " + (p.registro_situacao || "?") : "CREF6 não conferido")}</Situacao></> : null}
                   <SelosInsta p={p} />
+                  <SelosYoutube p={p} />
                 </div>,
                 TIPOS[p.tipo], <Contato p={p} />,
                 String(convites.filter((x) => x.parceiro_id === p.id).length),
@@ -154,7 +197,7 @@ export function AbaParceiros() {
                 <Acoes>
                   <Botao onClick={() => ir("parceiro/" + enc(p.id))}>Editar</Botao>
                   {p.ativo ? <Botao onClick={() => ir("convite/novo?parceiro=" + enc(p.id))}>Novo convite</Botao> : null}
-                  {p.tipo === "influenciador" ? <BotaoInsta p={p} /> : null}
+                  {p.tipo === "influenciador" ? <><BotaoInsta p={p} /><BotaoYoutube p={p} /></> : null}
                 </Acoes>,
               ];
             })} />
@@ -183,7 +226,7 @@ export function FormParceiro({ p: original }: { p: Parceiro | null }) {
   const p: Partial<Parceiro> = original || { tipo: "embaixador", ativo: true };
   const { v, liga, muda: mudaCampo } = useCampos(() => ({
     tipo: p.tipo || "embaixador", nome: p.nome || "", responsavel: p.responsavel || "", whatsapp: mascaraTel(p.whatsapp), email: p.email || "",
-    instagram: p.instagram || "", cidade: p.cidade || "", uf: p.uf || "", seguidores: p.seguidores ? String(p.seguidores) : "",
+    instagram: p.instagram || "", youtube: p.youtube || "", cidade: p.cidade || "", uf: p.uf || "", seguidores: p.seguidores ? String(p.seguidores) : "",
     documento: p.documento || "", pix: p.pix || "", observacoes: p.observacoes || "", profissao: p.profissao || "", registro: p.registro || "",
     cor: "#" + (/^[0-9a-f]{6}$/i.test(p.cor || "") ? p.cor : "24325a"),
   }));
@@ -221,7 +264,7 @@ export function FormParceiro({ p: original }: { p: Parceiro | null }) {
     if (!v.nome.trim()) return aviso("Informe o nome do parceiro.", true);
     const linha: Partial<Parceiro> = {
       tipo: v.tipo as Parceiro["tipo"], nome: v.nome.trim(), responsavel: v.responsavel.trim(), whatsapp: v.whatsapp.trim(),
-      email: v.email.trim(), instagram: v.instagram.trim().replace(/^@/, ""), cidade: v.cidade.trim(),
+      email: v.email.trim(), instagram: v.instagram.trim().replace(/^@/, ""), youtube: v.youtube.trim(), cidade: v.cidade.trim(),
       uf: v.uf, seguidores: Number(v.seguidores) || 0,
       documento: v.documento.trim(), pix: v.pix.trim(), observacoes: v.observacoes.trim(), ativo,
     };
@@ -279,6 +322,9 @@ export function FormParceiro({ p: original }: { p: Parceiro | null }) {
           <Campo rotulo="WhatsApp"><input type="tel" placeholder="(31) 90000-0000" maxLength={20} inputMode="numeric" value={v.whatsapp} onChange={(e) => mudaCampo("whatsapp", mascaraTel(e.target.value))} /></Campo>
           <Campo rotulo="E-mail"><input type="email" maxLength={120} {...liga("email")} /></Campo>
           <Campo rotulo="Instagram"><input type="text" placeholder="@perfil" maxLength={60} {...liga("instagram")} /></Campo>
+          <Campo rotulo="YouTube" dica={p.yt_situacao === "ok" ? "No YouTube: " + Number(p.yt_inscritos).toLocaleString("pt-BR") + " inscritos (conferido em " + new Date(p.yt_conferido_em!).toLocaleDateString("pt-BR") + ")." : "O @ do canal ou o link dele."}>
+            <input type="text" placeholder="@canal" maxLength={100} {...liga("youtube")} />
+          </Campo>
           <Campo rotulo="Cidade"><input type="text" maxLength={80} {...liga("cidade")} /></Campo>
           <Campo rotulo="Estado (UF)"><Escolha opcoes={([["", "—"]] as [string, string][]).concat(UFS.map((u): [string, string] => [u, u]))} value={v.uf} onChange={(x) => mudaCampo("uf", x)} /></Campo>
           <Campo rotulo="Seguidores (estimado)" dica={p.ig_situacao === "ok" ? "No Instagram: " + seguidoresTxt(p.ig_seguidores) + " (conferido em " + new Date(p.ig_conferido_em!).toLocaleDateString("pt-BR") + ")." : undefined}>
