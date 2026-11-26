@@ -71,7 +71,7 @@ export function abre(rota: string): void {
   muda((e) => ({ rota, versao: e.versao + 1, aba: abaDe(rota) }));
 }
 const ABA_DO_TIPO: Record<string, string> = { prova: "provas", parceiro: "parceiros", convite: "convites", depoimento: "depoimentos", proposta: "propostas", minutario: "propostas", "modelo-contrato": "propostas" };
-const ABAS = ["provas", "parceiros", "convites", "apuracao", "inscricoes", "avisos", "orcamentos", "propostas", "depoimentos", "medicao"];
+const ABAS = ["provas", "parceiros", "convites", "apuracao", "inscricoes", "pagamentos", "avisos", "orcamentos", "propostas", "depoimentos", "medicao"];
 /** Partes da rota: "convite/<id>/links?x=1" -> tipo convite, id, extra links, params, aba convites */
 export function partesDa(rota: string) {
   const [caminho, busca] = rota.split("?");

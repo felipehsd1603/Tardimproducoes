@@ -35,12 +35,14 @@ export function sql(dir, comando) {
   return wrangler(["d1", "execute", "tardim", "--local", "--persist-to", dir, "--json", "--command", comando]);
 }
 
-export async function sobeTardim() {
+// extras: { NOME: "valor" } viram --binding (ex.: o banco PIX e o Mercado Pago simulados em tests/pagamento-site.test.mjs)
+export async function sobeTardim(extras = {}) {
   const dir = mkdtempSync(join(tmpdir(), "tardim-teste-"));
   criaBanco(dir);
   const jwk = await chaveAssinatura();
   const proc = spawn(process.execPath, [WRANGLER, "pages", "dev", "publico", "--port", String(PORTA), "--ip", "127.0.0.1", "--persist-to", dir,
     "--binding", `ADMIN_SENHA=${SENHA}`, "--binding", `SESSAO_SEGREDO=${SEGREDO}`, "--binding", `TARDIM_ASSINATURA_JWK=${jwk}`,
+    ...Object.entries(extras).flatMap(([k, v]) => ["--binding", k + "=" + v]),
     "--show-interactive-dev-session=false"], { cwd: RAIZ, stdio: ["ignore", "pipe", "pipe"] });
   let saida = "";
   proc.stdout.on("data", (d) => (saida += d));

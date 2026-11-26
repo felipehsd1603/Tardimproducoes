@@ -70,6 +70,14 @@ export interface Atleta {
   telefone: string; equipe: string; situacao: string; motivo: string; numero_peito: string; aviso: string;
 }
 export interface ResumoAviso { prova_id: string; pendentes: number; enviados: number }
+/** Inscrição coletiva paga pelo site (GET pagamentos-site). Valores em centavos. */
+export interface PagamentoSite {
+  id: string; convite_id: string; parceiro_id: string; cupom: string; prova_id: string; prova_nome: string; prova_data: string;
+  equipe: string; responsavel: string; telefone: string; email: string; n_atletas: number; cortesias: number;
+  valor_atleta: number; desconto_pct: number; valor_unit: number; valor_cheio: number; desconto: number; acrescimo: number;
+  valor: number; valor_pago: number; forma: string; situacao: string; txid: string; e2e_id: string; mp_pagamento: string;
+  expira_em: string; pago_em: string; conferido_em: string; registrado_em: string; aviso_email: string; criado_em: string;
+}
 export interface LinhaMedicao { evento: string; ref: string; n: number }
 
 export interface Conexao {

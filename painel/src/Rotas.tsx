@@ -14,6 +14,7 @@ import { AbaApuracao } from "./telas/apuracao.tsx";
 import { AbaAvisos, AbaInscricoes, AbaOrcamentos } from "./telas/recebidos.tsx";
 import { AbaDepoimentos, FormDepoimento } from "./telas/depoimentos.tsx";
 import { AbaMedicao } from "./telas/medicao.tsx";
+import { AbaPagamentos } from "./telas/pagamentos.tsx";
 import { AbaPropostas, FormProposta, TelaMinutario, TelaModeloContrato } from "./telas/propostas.tsx";
 import { TelaAndamento } from "./telas/andamento.tsx";
 
@@ -55,7 +56,7 @@ function tela(rota: string): { titulo: string; conteudo: ReactNode } {
   let conteudo: ReactNode = null;
   if (tipo === aba) {
     conteudo = ({ provas: <AbaProvas />, parceiros: <AbaParceiros />, convites: <AbaConvites />, apuracao: <AbaApuracao />,
-      inscricoes: <AbaInscricoes />, avisos: <AbaAvisos />, orcamentos: <AbaOrcamentos />, depoimentos: <AbaDepoimentos />,
+      inscricoes: <AbaInscricoes />, pagamentos: <AbaPagamentos />, avisos: <AbaAvisos />, orcamentos: <AbaOrcamentos />, depoimentos: <AbaDepoimentos />,
       medicao: <AbaMedicao />, propostas: <AbaPropostas /> } as Record<string, ReactNode>)[aba];
   } else if (tipo === "proposta") {
     conteudo = <TelaProposta id={id} extra={extra} de={params.get("de")} />;

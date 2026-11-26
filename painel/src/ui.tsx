@@ -3,7 +3,7 @@ import { Children, useEffect, useLayoutEffect, useRef, useState, type ReactNode,
 import { abreDialogo, cancelar, definePerguntaSair, fechaAviso, marcaSujo, nav, tiraDialogo, usaEstado, type Dialogo } from "./loja.tsx";
 
 export const NOME_ABA: Record<string, string> = {
-  provas: "Provas", parceiros: "Parceiros", convites: "Convites", apuracao: "Apuração", inscricoes: "Inscrições coletivas",
+  provas: "Provas", parceiros: "Parceiros", convites: "Convites", apuracao: "Apuração", inscricoes: "Inscrições coletivas", pagamentos: "Pagas no site",
   avisos: "Me avise", orcamentos: "Orçamentos", propostas: "Propostas", depoimentos: "Depoimentos", medicao: "Medição",
 };
 

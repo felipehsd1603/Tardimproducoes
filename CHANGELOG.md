@@ -2,6 +2,15 @@
 
 Formato: o mais recente primeiro. Datas em AAAA-MM-DD.
 
+## 2026-11-26 · Inscrição coletiva paga pelo site (PIX e cartão)
+
+### Novo
+- `assessorias.html`: depois de conferir a planilha, a equipe pode **enviar e pagar ali mesmo**, por PIX (QR Code e copia e cola, API PIX do Banco Inter) ou cartão (Checkout Pro do Mercado Pago, com a taxa repassada). O WhatsApp e o e-mail continuam como alternativa. Só aparece com `PAGAMENTO_SITE = ligado`; desligado, a página fica como antes.
+- O preço sai do convite no banco (valor por atleta, faixas de desconto, cortesias e limite), nunca do link. Pago, o envio entra em Inscrições coletivas (canal "Pago pelo site").
+- Servidor: `functions/api/pagamento-site/[[rota]].ts` (Hono) e `functions/_lib/pagamento-site.ts`, com webhooks do banco e do Mercado Pago que só disparam a consulta. Banco: `d1/migracoes/020-pagamentos-site.sql`.
+- Painel: aba **Pagas no site** (situação do pagamento, equipe, atletas, valor, conferir no banco e baixar em Excel).
+- Trazido da branch `inscricao-site-pix-cartao` (código antigo) e de `servidor-typescript-hono`; testes com banco PIX e Mercado Pago simulados.
+
 ## 2026-11-26 · Inscrições fechadas seguem o painel e a Ticket Sports
 
 ### Mudou

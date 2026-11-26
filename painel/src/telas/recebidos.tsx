@@ -59,7 +59,7 @@ export function AbaInscricoes() {
             <p className="assess-status">{lista.length + (lista.length === 1 ? " envio · " : " envios · ") + total + (total === 1 ? " atleta" : " atletas")}</p>
             <Tabela cab={["Recebida", "Prova", "Equipe", "Responsável", "Atletas", "Canal", ""]} linhas={lista.map((i) => {
               const daApi = i.origem === "api";
-              const canal = daApi ? "Sistema da assessoria" + (i.modo_pagamento === "ticketsports" ? " · paga na Ticket Sports" : i.modo_pagamento === "assessoria" ? " · PIX na assessoria" : "") : i.canal === "email" ? "E-mail" : "WhatsApp";
+              const canal = daApi ? "Sistema da assessoria" + (i.modo_pagamento === "ticketsports" ? " · paga na Ticket Sports" : i.modo_pagamento === "assessoria" ? " · PIX na assessoria" : "") : i.canal === "site" ? "Pago pelo site" + (i.modo_pagamento === "cartao" ? " · cartão" : " · PIX") : i.canal === "email" ? "E-mail" : "WhatsApp";
               return [dataHora(i.criado_em), i.prova_nome, <strong>{i.equipe}</strong>,
                 <div>{i.responsavel || ""}{i.telefone ? <>{" "}<LinkExt href={linkWa(i.telefone)}>{i.telefone}</LinkExt></> : null}</div>,
                 String(i.atletas != null ? i.atletas : i.total), canal,

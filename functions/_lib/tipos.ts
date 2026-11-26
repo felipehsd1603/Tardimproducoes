@@ -36,6 +36,31 @@ export interface Env {
   // Ticket Sports ("Url do post")
   TICKETSPORTS_TOKEN?: string;
   TICKETSPORTS_CHAVE?: string;
+
+  // Inscrição coletiva paga pelo site (functions/_lib/pagamento-site.ts). Só funciona com PAGAMENTO_SITE = "ligado".
+  PAGAMENTO_SITE?: string;
+  /** Taxa do cartão repassada à equipe, em % sobre o valor do PIX (0 a 30; padrão 0). */
+  PAGAMENTO_CARTAO_ACRESCIMO_PCT?: string;
+  /** Máximo de parcelas no cartão (1 a 12; padrão 1). */
+  PAGAMENTO_CARTAO_PARCELAS?: string;
+  // PIX: API PIX padrão do Banco Central (Banco Inter), functions/_lib/pix.ts
+  PIX_API_URL?: string;
+  PIX_TOKEN_URL?: string;
+  PIX_CLIENT_ID?: string;
+  PIX_CLIENT_SECRET?: string;
+  PIX_CHAVE?: string;
+  PIX_ESCOPO?: string;
+  PIX_CONTA?: string;
+  /** Parte secreta do endereço do webhook do PIX cadastrado no banco. */
+  PIX_WEBHOOK_SEGREDO?: string;
+  /** Certificado do banco (mTLS), ligado ao projeto como mtls_certificates. */
+  PIX_CERT?: Fetcher;
+  // Cartão: Mercado Pago (Checkout Pro), functions/_lib/mercadopago.ts
+  MP_ACCESS_TOKEN?: string;
+  MP_API_URL?: string;
+  MP_SANDBOX?: string;
+  /** Assinatura secreta dos webhooks do Mercado Pago (Suas integrações > Webhooks). */
+  MP_WEBHOOK_SEGREDO?: string;
 }
 
 /** Contexto de uma Function do Pages com o Env do projeto. */
@@ -108,6 +133,16 @@ export interface EnvioApi {
 export interface AvisoFila {
   id: string; integracao_id: string; evento: string; corpo: string; tentativas: number; proxima_em: string;
   ultimo_erro: string; entregue_em: string; desistido_em: string; criado_em: string;
+}
+
+/** Inscrição coletiva paga pelo site (d1/migracoes/020-pagamentos-site.sql). Valores em centavos. */
+export interface PagamentoSite {
+  id: string; codigo_hash: string; convite_id: string; parceiro_id: string; cupom: string; prova_id: string; prova_nome: string; prova_data: string;
+  equipe: string; responsavel: string; telefone: string; email: string; atletas_json: string; atletas_hash: string; n_atletas: number;
+  cortesias: number; valor_atleta: number; desconto_pct: number; valor_unit: number; valor_cheio: number; desconto: number; acrescimo: number;
+  valor: number; valor_pago: number; forma: string; situacao: string; txid: string; pix_copia_cola: string; e2e_id: string;
+  mp_preferencia: string; checkout_url: string; mp_pagamento: string; expira_em: string; pago_em: string; conferido_em: string;
+  registrado_em: string; aviso_email: string; criado_em: string;
 }
 
 /** Contagem (SELECT COUNT(*) AS n ...). */

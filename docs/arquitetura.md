@@ -13,6 +13,7 @@ O código do servidor é **TypeScript** (`functions/**/*.ts`). Não há passo de
 | Painel | `/api/admin/*` | `/admin` (React, `painel/`; reserva: `/admin-classico`) (equipe Tardim) | Senha única + cookie `tardim_painel` | `{ erro: <status>, mensagem }` | `/api/admin/docs` (com login) |
 | Área do parceiro | `/api/parceiro/*` | `parceiro.html` | E-mail/senha ou Google + cookie `tardim_parceiro` | `{ erro: <status>, mensagem }` | `/api/admin/docs` |
 | Site | `/api/orcamento`, `/api/inscricao`, `/api/aviso`, `/api/evento`, `/api/ticketsports` | Páginas do site; Ticket Sports | Nenhum (origem e limite por IP) | `{ erro: "<campo>" }` | `/api/admin/docs` |
+| Pagamento pelo site | `/api/pagamento-site/*` | `assessorias.html` (inscrição coletiva paga por PIX ou cartão); webhooks do banco e do Mercado Pago | Nenhum (origem, limite por IP, código do pedido) | `{ erro: <status>, mensagem }` | `/api/admin/docs` e `functions/_lib/pagamento-site.ts` |
 | API v1 para parceiros | `/api/v1/*` | Sistemas das assessorias (ex.: IM3), servidor a servidor | `Authorization: Bearer tdm_live_...` | `{ erro: { codigo, mensagem } }` | `/api/v1/docs` (pública) e `docs/api-v1-parceiros.md` |
 | Páginas dinâmicas | `/js/provas-db.js`, `/prova-<id>` | Calendário e páginas de prova | Nenhum | — | `functions/_middleware.ts` |
 
@@ -50,7 +51,7 @@ functions/
     avisos.ts             convite assinado, webhooks (HMAC) e fila de novas tentativas
     openapi.ts            especificação pública + página Swagger
   api/                    só roteamento (um arquivo por área)
-    admin/[[rota]].ts · parceiro/[[rota]].ts · v1/[[rota]].ts
+    admin/[[rota]].ts · parceiro/[[rota]].ts · v1/[[rota]].ts · pagamento-site/[[rota]].ts
     orcamento.ts · inscricao.ts · aviso.ts · evento.ts · ticketsports.ts
   arquivos/[[caminho]].ts imagens enviadas pelo painel
 ```
@@ -133,3 +134,8 @@ Gera o site com a versão nova dos arquivos (`npm run site:build`) e publica a p
 | `RESEND_API_KEY`, `AVISO_REMETENTE`, `AVISO_EMAIL` | E-mails (novo cadastro de parceiro, "Me avise", senha nova) |
 | `IG_USER_ID`, `IG_TOKEN` | Conferência de seguidores no Instagram |
 | `TICKETSPORTS_TOKEN`, `TICKETSPORTS_CHAVE` | "Url do post" da Ticket Sports |
+| `PAGAMENTO_SITE` | `ligado` mostra "envie e pague aqui no site" em `assessorias.html` (sem ela, a página fica só com WhatsApp e e-mail). Variável comum, não precisa ser segredo |
+| `PIX_API_URL`, `PIX_TOKEN_URL`, `PIX_CLIENT_ID`, `PIX_CLIENT_SECRET`, `PIX_CHAVE`, `PIX_CONTA`, `PIX_ESCOPO` | Cobrança PIX pela API do Banco Inter (`functions/_lib/pix.ts`). O certificado do Inter entra como `mtls_certificates` com binding `PIX_CERT` no `wrangler.toml` |
+| `PIX_WEBHOOK_SEGREDO` | Parte secreta do webhook cadastrado no Inter: `https://tardimproducoes.com.br/api/pagamento-site/webhook/pix/<segredo>` |
+| `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SEGREDO`, `MP_SANDBOX` | Cartão pelo Mercado Pago (Checkout Pro). Webhook: `https://tardimproducoes.com.br/api/pagamento-site/webhook/mp` (vai sozinho em cada checkout) |
+| `PAGAMENTO_CARTAO_ACRESCIMO_PCT`, `PAGAMENTO_CARTAO_PARCELAS` | Taxa do cartão repassada à equipe (% sobre o PIX, 0 a 30) e máximo de parcelas (1 a 12) |

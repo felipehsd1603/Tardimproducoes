@@ -1,8 +1,10 @@
 /*
  * Inscrição coletiva para assessorias.
  * Tudo acontece no aparelho de quem usa: o site gera o modelo, confere a
- * planilha preenchida e monta o arquivo padronizado. Nenhum dado é enviado
- * a servidor; o arquivo segue para a Tardim Produções por WhatsApp ou e-mail.
+ * planilha preenchida e monta o arquivo padronizado. O arquivo segue para a
+ * Tardim Produções por WhatsApp ou e-mail. Com o pagamento pelo site ligado
+ * (PAGAMENTO_SITE, functions/api/pagamento-site), a equipe também pode enviar
+ * e pagar ali mesmo, por PIX ou cartão.
  */
 (function () {
   "use strict";
@@ -166,6 +168,195 @@
       olho.before(lg);
     }
     document.title = convite.e + " · Inscrição coletiva · Tardim Produções";
+  })();
+
+  // ---------- Pagamento pelo site (PIX ou cartão), functions/api/pagamento-site ----------
+  // Só aparece se o servidor disser que está ligado (PAGAMENTO_SITE = ligado, PIX ou cartão configurados e valor
+  // por atleta combinado no convite). Desligado, a página fica como sempre: conferir e mandar pelo WhatsApp ou e-mail.
+  // O valor que vale é sempre o que o servidor calcula com o convite do banco, nunca o do link.
+  var API_PAG = "/api/pagamento-site/";
+  function centavos(c) { return ((Number(c) || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+  function pede(metodo, caminho, corpo) {
+    return fetch(API_PAG + caminho, {
+      method: metodo, headers: corpo ? { "content-type": "application/json" } : {}, body: corpo ? JSON.stringify(corpo) : undefined,
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j.mensagem || "Não deu certo. Tente de novo."); e.status = r.status; throw e; }
+        return j;
+      });
+    });
+  }
+  var condicoesPorN = {};
+  function condicoes(n) {
+    if (!condicoesPorN[n]) {
+      condicoesPorN[n] = pede("GET", "condicoes?c=" + encodeURIComponent(codigo) + "&n=" + n + "&prova=" + encodeURIComponent(provaConv.nome))
+        .catch(function () { delete condicoesPorN[n]; return { ligado: false }; });
+    }
+    return condicoesPorN[n];
+  }
+  // Biblioteca do QR Code (carregada só quando há um PIX para mostrar)
+  var qrPronto = null;
+  function qrLib() {
+    if (typeof window.qrcode === "function") return Promise.resolve(window.qrcode);
+    if (qrPronto) return qrPronto;
+    qrPronto = new Promise(function (ok, erro) {
+      var s = document.createElement("script");
+      s.src = "js/vendor/qrcode-1.4.4.js";
+      s.onload = function () { ok(window.qrcode); };
+      s.onerror = function () { qrPronto = null; erro(new Error("qrcode")); };
+      document.head.append(s);
+    });
+    return qrPronto;
+  }
+  function qrDataURL(q, texto) {
+    if (q.stringToBytesFuncs && q.stringToBytesFuncs["UTF-8"]) q.stringToBytes = q.stringToBytesFuncs["UTF-8"];
+    var c = q(0, "M");
+    c.addData(texto);
+    c.make();
+    var cel = Math.max(3, Math.floor(280 / (c.getModuleCount() + 8)));
+    return c.createDataURL(cel, cel * 4);
+  }
+  function hora(iso) { var h = new Date(Date.parse(iso)); return isNaN(h.getTime()) ? "" : String(h.getHours()).padStart(2, "0") + ":" + String(h.getMinutes()).padStart(2, "0"); }
+  function diaHora(iso) { var h = new Date(Date.parse(iso)); return isNaN(h.getTime()) ? "" : h.getDate() + " de " + MESES[h.getMonth()] + " às " + hora(iso); }
+
+  /** Oferta "envie e pague aqui" dentro do passo 3. autorizado() confere a caixa de autorização dos atletas. */
+  function ofertaPagamento(box, c, atletas, autorizado) {
+    var n = atletas.length;
+    var pix = c.orcamento.pix, cartao = c.orcamento.cartao, o = pix || cartao;
+    box.hidden = false;
+    box.innerHTML = "";
+    box.append(el("h3", null, "Ou envie e pague aqui no site"), el("p", "muted", "A inscrição da equipe fica feita assim que o pagamento é confirmado, sem precisar mandar a planilha."));
+    var dl = el("dl", "assess-cond");
+    function item(t, v) { dl.append(el("dt", null, t), el("dd", null, v)); }
+    item("Atletas", String(n));
+    if (o.cortesias) item("Cortesias", o.cortesias === 1 ? "1 inscrição grátis" : o.cortesias + " inscrições grátis");
+    item("Valor por atleta", centavos(o.valor_unit) + (o.desconto_pct ? " (" + pct(o.desconto_pct) + " de desconto por volume)" : ""));
+    if (pix) item("Total no PIX", centavos(pix.valor));
+    if (cartao && o.valor) item("Total no cartão", centavos(cartao.valor) + (c.cartao && c.cartao.parcelas > 1 ? " em até " + c.cartao.parcelas + "x" : "") + (cartao.acrescimo ? " (inclui a taxa do cartão)" : ""));
+    box.append(dl);
+    if (c.vagas_restantes != null && n > c.vagas_restantes) {
+      box.append(el("p", "assess-alerta", "O convite da equipe tem " + atletasTxt(c.vagas_restantes) + " restantes e a planilha tem " + n + ". Tire " + (n - c.vagas_restantes) + " ou fale com a Tardim Produções."));
+      return;
+    }
+    var inEmail = el("input"); inEmail.type = "email"; inEmail.autocomplete = "email"; inEmail.placeholder = "voce@exemplo.com";
+    box.append(campo("E-mail do responsável", inEmail, "A confirmação do pagamento chega neste e-mail."));
+    var acoes = el("div", "assess-acoes");
+    var botoes = [];
+    function botao(rotulo, cls, forma) {
+      var b = el("button", cls, rotulo); b.type = "button";
+      b.addEventListener("click", function () { paga(forma, b, rotulo); });
+      botoes.push(b); acoes.append(b);
+    }
+    if (!o.valor) botao("Confirmar inscrição (cortesia)", "btn btn--red", "pix");
+    else {
+      if (pix) botao("Pagar com PIX", "btn btn--red", "pix");
+      if (cartao) botao("Pagar com cartão", pix ? "btn btn--line" : "btn btn--red", "cartao");
+    }
+    var st = el("p", "assess-status"); st.setAttribute("role", "status");
+    box.append(acoes, st);
+
+    function paga(forma, b, rotulo) {
+      if (!autorizado()) return;
+      if (!inResp.value.trim()) { st.textContent = "Informe o nome do responsável no passo 1."; inResp.focus(); return; }
+      if (!inTel.value.trim()) { st.textContent = "Informe o WhatsApp do responsável no passo 1."; inTel.focus(); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(inEmail.value.trim())) { st.textContent = "Informe o e-mail do responsável."; inEmail.focus(); return; }
+      botoes.forEach(function (x) { x.disabled = true; });
+      b.textContent = forma === "cartao" ? "Abrindo o Mercado Pago..." : "Gerando o pagamento...";
+      st.textContent = "";
+      pede("POST", "criar", {
+        c: codigo, prova_nome: estado.prova.nome, responsavel: inResp.value.trim(), telefone: inTel.value.trim(), email: inEmail.value.trim(),
+        aceite: true, forma: forma, atletas: atletas,
+      }).then(function (ped) {
+        if (ped.situacao === "aguardando" && ped.cartao && ped.cartao.url) { location.href = ped.cartao.url; return; }
+        mostraPedido(box, ped, { novo: function () { delete condicoesPorN[n]; condicoes(n).then(function (c2) { if (c2.ligado && c2.orcamento) ofertaPagamento(box, c2, atletas, autorizado); }); } });
+      }).catch(function (e) {
+        botoes.forEach(function (x) { x.disabled = false; });
+        b.textContent = rotulo;
+        st.textContent = e.message;
+      });
+    }
+  }
+
+  /** Pedido criado: PIX com QR Code (confere a cada 5 s), cartão em aberto, confirmado ou vencido. */
+  function mostraPedido(box, ped, opts) {
+    opts = opts || {};
+    box.hidden = false;
+    box.innerHTML = "";
+    if (ped.situacao === "pago" || ped.situacao === "cortesia") {
+      box.append(el("h3", null, "Inscrição da equipe feita"));
+      box.append(el("p", "pag-ok", (ped.situacao === "cortesia" ? "Inscrição confirmada (cortesia). " : "Pagamento de " + centavos(ped.valor) + " confirmado. ") +
+        "A " + ped.equipe + " está inscrita na " + ped.prova.nome + " com " + atletasTxt(ped.atletas) + ". A confirmação foi para o e-mail do responsável."));
+      box.append(el("p", "muted", "A Tardim Produções combina com você a retirada dos kits."));
+      return;
+    }
+    if (ped.situacao !== "aguardando") {
+      box.append(el("h3", null, "Este pagamento não vale mais"));
+      box.append(el("p", "muted", "O prazo terminou sem a confirmação do pagamento. Se você já pagou, fale com a Tardim Produções pelo WhatsApp."));
+      if (opts.novo) { var nv = el("button", "btn btn--red", "Gerar um novo pagamento"); nv.type = "button"; nv.addEventListener("click", opts.novo); box.append(nv); }
+      return;
+    }
+    var st = el("p", "assess-status", "Aguardando o pagamento...");
+    st.setAttribute("role", "status");
+    if (ped.cartao) {
+      box.append(el("h3", null, "Pagamento no cartão"));
+      box.append(el("p", null, (opts.retorno ? "Ainda não recebemos a aprovação do cartão. Se foi recusado, tente de novo." : "Falta concluir o pagamento no Mercado Pago.") +
+        " Valor: " + centavos(ped.valor) + ". Vale até " + diaHora(ped.cartao.expira_em) + "."));
+      var ir = el("a", "btn btn--red", opts.retorno ? "Tentar de novo no cartão" : "Ir para o pagamento no cartão");
+      ir.href = ped.cartao.url;
+      box.append(ir, st);
+    } else if (ped.pix) {
+      box.append(el("h3", null, "Pague com PIX"));
+      var valor = el("p", "assess-pag__total", centavos(ped.valor));
+      var caixa = el("div", "pag-pix");
+      var lado = el("div", "pag-pix__lado");
+      lado.append(el("p", null, "Abra o app do banco, escolha PIX e leia o QR Code, ou copie o código e use \"PIX copia e cola\"."));
+      var ta = el("textarea", "pag-pix__codigo"); ta.readOnly = true; ta.rows = 4; ta.value = ped.pix.copia_cola;
+      ta.setAttribute("aria-label", "Código PIX copia e cola");
+      ta.addEventListener("focus", function () { ta.select(); });
+      var bc = el("button", "btn btn--red", "Copiar código"); bc.type = "button";
+      bc.addEventListener("click", function () { copia(ped.pix.copia_cola, bc, "Copiar código"); });
+      lado.append(ta, bc, el("p", "muted", "O código vale até " + diaHora(ped.pix.expira_em) + "."));
+      caixa.append(lado);
+      qrLib().then(function (q) {
+        var img = el("img", "pag-pix__qr");
+        img.src = qrDataURL(q, ped.pix.copia_cola); img.alt = "QR Code do PIX de " + centavos(ped.valor); img.width = 240; img.height = 240;
+        caixa.prepend(img);
+      }).catch(function () {});
+      box.append(valor, caixa, st, el("p", "muted assess-nota", "Pode deixar esta página aberta: assim que o banco confirmar, ela muda sozinha."));
+    }
+    // Acompanha enquanto a caixa estiver na página (cartão: por até 2 minutos depois da volta do Mercado Pago)
+    var inicio = Date.now();
+    function tique() {
+      if (!document.body.contains(box) || !box.contains(st)) return;
+      if (ped.cartao && Date.now() - inicio > 120000) { st.textContent = "Ainda sem aprovação. Recarregue a página para conferir de novo."; return; }
+      pede("GET", "pedido/" + encodeURIComponent(ped.id) + "?k=" + encodeURIComponent(ped.codigo)).then(function (n) {
+        if (!document.body.contains(box) || !box.contains(st)) return;
+        if (n.situacao !== "aguardando") { n.codigo = ped.codigo; mostraPedido(box, n, opts); return; }
+        st.textContent = "Aguardando o pagamento...";
+        setTimeout(tique, ped.cartao ? 4000 : 5000);
+      }, function (e) {
+        st.textContent = "Aguardando o pagamento... (" + (e.status ? e.message : "sem conexão, tentando de novo") + ")";
+        setTimeout(tique, 8000);
+      });
+    }
+    setTimeout(tique, opts.retorno ? 500 : 5000);
+  }
+
+  // Volta do Mercado Pago: mostra a situação do pedido no topo da página
+  (function () {
+    var qs = new URLSearchParams(location.search);
+    var id = qs.get("pedido"), k = qs.get("k");
+    if (!id || !k) return;
+    var sec = el("section", "assess-card");
+    sec.append(el("p", "assess-card__step", "Pagamento pelo site"), el("h2", null, "Situação do pagamento"));
+    var caixa = el("div", "assess-pag");
+    caixa.append(el("p", "muted", "Conferindo o pagamento..."));
+    sec.append(caixa);
+    app.append(sec);
+    pede("GET", "pedido/" + encodeURIComponent(id) + "?k=" + encodeURIComponent(k)).then(function (ped) {
+      ped.codigo = k;
+      mostraPedido(caixa, ped, { retorno: true });
+    }).catch(function (e) { caixa.innerHTML = ""; caixa.append(el("p", "assess-alerta", e.message)); });
   })();
 
   // Condição comercial combinada (mostrada no site; o valor final é conferido pela Tardim Produções)
@@ -780,6 +971,17 @@
     var bloqueado = !!comErro || !!passou;
     [bBaixar, bWa, bMail].forEach(function (b) { b.disabled = bloqueado; });
     if (bloqueado) aviso.textContent = passou && !comErro ? "O envio libera quando a planilha estiver dentro do limite." : "O envio libera quando não houver erros.";
+    // Pagamento pelo site: só com a planilha sem erros e o servidor dizendo que está ligado
+    if (!bloqueado) {
+      var pagBox = el("div", "assess-pag");
+      pagBox.hidden = true;
+      envio.append(pagBox);
+      condicoes(total).then(function (c) {
+        if (c && c.ligado && c.orcamento && document.body.contains(pagBox)) {
+          ofertaPagamento(pagBox, c, estado.linhas.map(function (l) { return l.v; }), function () { return confere(); });
+        }
+      });
+    }
 
     aut.addEventListener("change", function () { if (aut.checked && /autoriza/.test(aviso.textContent)) aviso.textContent = ""; });
     function confere() {

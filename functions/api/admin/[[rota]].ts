@@ -27,6 +27,7 @@ import { CONFIGS, config, contratoAssinado, enviaArquivo } from "../../_admin/ar
 import { enviaAvisos } from "../../_admin/avisos-email.ts";
 import { listaIntegracoes, convidaConexao, alteraConexao, desconecta } from "../../_admin/integracoes.ts";
 import { listaOrcamentos, listaInscricoes, atletasDoEnvio, alteraAtleta, confirmaEnvio, medicao, resumoAvisos } from "../../_admin/inscricoes.ts";
+import { listaPagamentos, atletasDoPagamento, conferePagamento } from "../../_admin/pagamentos-site.ts";
 import { OPENAPI_ADMIN } from "../../_admin/openapi.ts";
 import { paginaSwagger } from "../../_api-v1/openapi.ts";
 
@@ -91,6 +92,10 @@ const ROTAS: Rota[] = [
   ["GET", "inscricoes/:id/atletas", ({ env, p }) => atletasDoEnvio(env, p.id)],
   ["POST", "inscricoes/:id/confirmar", ({ env, p }) => confirmaEnvio(env, p.id)],
   ["PUT", "atletas/:id", ({ request, env, p }) => alteraAtleta(request, env, p.id)],
+  // Inscrições coletivas pagas pelo site (PIX ou cartão)
+  ["GET", "pagamentos-site", ({ env }) => listaPagamentos(env)],
+  ["GET", "pagamentos-site/:id/atletas", ({ env, p }) => atletasDoPagamento(env, p.id)],
+  ["POST", "pagamentos-site/:id/conferir", ({ env, p }) => conferePagamento(env, p.id)],
   // CRUD das tabelas do painel (provas, parceiros, convites, propostas, minutario, depoimentos).
   // Convites e provas avisam as plataformas das assessorias conectadas, depois da resposta.
   ["GET", ":tabela", async ({ env, p }) => json(await lista(env, p.tabela))],
