@@ -6,7 +6,7 @@
 //
 //   GET  config                 { google: client id ou "" }
 //   GET  cidades?uf=MG          { uf, cidades }  (municípios do IBGE, functions/_lib/cidades.ts)
-//   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], nome, whatsapp, uf, cidade, instagram, seguidores, youtube,
+//   POST cadastro               { tipos: [assessoria|influenciador|embaixador...], cref (embaixador = profissional de Ed. Física), nome, whatsapp, uf, cidade, instagram, seguidores, youtube,
 //                                 assessoria_nome, cnpj, assessoria_instagram, email, senha | credential, aceite }
 //                               Um perfil (linha em parceiros) por tipo marcado, todos no mesmo login (parceiros.conta_id).
 //                               Assessoria exige CNPJ válido (guardado em parceiros.documento).
@@ -41,7 +41,8 @@ const DURACAO = 60 * 60 * 24 * 30; // 30 dias
 const MAX_ERROS = 5, JANELA_ERROS = 15 * 60, MAX_ERROS_EMAIL = 10;
 const MAX_CADASTROS = 5, JANELA_CADASTROS = 60 * 60;
 const ITERACOES = 100000; // máximo do PBKDF2 no Cloudflare Workers
-const TIPOS: Record<string, string> = { assessoria: "Assessoria", influenciador: "Influenciador", embaixador: "Embaixador" };
+// Três categorias com o mesmo benefício. A chave "embaixador" ficou no banco; na tela é o profissional de Educação Física.
+const TIPOS: Record<string, string> = { assessoria: "Assessoria, grupo ou equipe", influenciador: "Influenciador", embaixador: "Profissional de Educação Física" };
 const RE_EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[a-z]{2,}$/i;
 
 class Erro extends Error {
@@ -159,7 +160,7 @@ const ipDe = (request: Request): string => request.headers.get("CF-Connecting-IP
 /** Perfil (linha de parceiros) montado no cadastro. */
 interface Perfil {
   id?: string; tipo: string; nome: string; responsavel: string; documento: string; instagram: string; seguidores: number;
-  youtube?: string; whatsapp?: string; cidade?: string; uf?: string;
+  youtube?: string; whatsapp?: string; cidade?: string; uf?: string; profissao?: string; registro?: string;
 }
 /** O que vai cifrado no link de confirmação do e-mail. */
 interface CadastroPendente { perfis: Perfil[]; email: string; senha: string; exp?: number }
@@ -174,7 +175,7 @@ async function avisaTardim(env: Env, origem: string, perfis: Perfil[], email: st
   ];
   perfis.forEach((x) => {
     linhas.push("", TIPOS[x.tipo] + ": " + x.nome,
-      x.responsavel ? "Responsável: " + x.responsavel : "", x.documento ? "CNPJ: " + x.documento : "",
+      x.responsavel ? "Responsável: " + x.responsavel : "", x.documento ? "CNPJ: " + x.documento : "", x.registro ? "CREF: " + x.registro : "",
       x.instagram ? "Instagram: @" + x.instagram : "",
       x.youtube ? "YouTube: " + x.youtube : "",
       x.seguidores ? "Seguidores (estimado): " + x.seguidores.toLocaleString("pt-BR") : "");
@@ -204,7 +205,7 @@ async function cadastro(request: Request, env: Env, ctx: ComEspera): Promise<Res
   // Um ou mais tipos (aceita também o antigo { tipo })
   const pedidos = ([] as unknown[]).concat(Array.isArray(d.tipos) ? d.tipos : d.tipo ? [d.tipo] : []).map((t) => texto(t, 20));
   const tipos = Object.keys(TIPOS).filter((t) => pedidos.includes(t));
-  if (!tipos.length || tipos.length !== new Set(pedidos).size) throw new Erro(400, "Marque se você é assessoria, influenciador e/ou embaixador.");
+  if (!tipos.length || tipos.length !== new Set(pedidos).size) throw new Erro(400, "Marque se você é assessoria/grupo/equipe, influenciador e/ou profissional de Educação Física.");
   const tem = (t: string): boolean => tipos.includes(t);
   const comum = {
     nome: texto(d.nome, 120), whatsapp: texto(d.whatsapp, 20), uf: texto(d.uf, 2).toUpperCase(), cidade: "",
@@ -221,8 +222,9 @@ async function cadastro(request: Request, env: Env, ctx: ComEspera): Promise<Res
   if (tem("assessoria")) {
     const a: Perfil = { tipo: "assessoria", nome: texto(d.assessoria_nome, 120), responsavel: comum.nome,
       documento: cnpjValido(d.cnpj), instagram: limpaInsta(d.assessoria_instagram), seguidores: 0 };
-    if (a.nome.length < 2) throw new Erro(400, "Informe o nome da assessoria.");
-    if (!a.documento) throw new Erro(400, "Informe um CNPJ válido da assessoria.");
+    if (a.nome.length < 2) throw new Erro(400, "Informe o nome da assessoria, grupo ou equipe.");
+    // Grupos e equipes nem sempre têm CNPJ: é opcional, mas se vier precisa ser válido
+    if (texto(d.cnpj, 20).replace(/\D/g, "") && !a.documento) throw new Erro(400, "CNPJ inválido. Confira os números ou deixe em branco.");
     if (a.instagram && !/^[\w.]{1,30}$/.test(a.instagram)) throw new Erro(400, "Instagram da assessoria inválido.");
     perfis.push(a);
   }
@@ -236,7 +238,11 @@ async function cadastro(request: Request, env: Env, ctx: ComEspera): Promise<Res
     perfis.push({ tipo: "influenciador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores, youtube });
   }
   if (tem("embaixador")) {
-    perfis.push({ tipo: "embaixador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores: 0 });
+    // Só profissionais de Educação Física: o registro no CREF é obrigatório (o de MG o painel confere no CREF6)
+    const registro = texto(d.cref, 30);
+    if (registro.replace(/\D/g, "").length < 3) throw new Erro(400, "Informe o seu registro no CREF.");
+    const profissao = comum.uf === "MG" ? "Profissional de Educação Física (CREF6/MG)" : "Profissional de Educação Física (outro CREF)";
+    perfis.push({ tipo: "embaixador", nome: comum.nome, responsavel: "", documento: "", instagram: comum.instagram, seguidores: 0, profissao, registro });
   }
   perfis.forEach((x) => Object.assign(x, { whatsapp: comum.whatsapp, cidade: comum.cidade, uf: comum.uf }));
   if (d.aceite !== true) throw new Erro(400, "É preciso aceitar a política de privacidade e as regras do programa.");
@@ -275,8 +281,8 @@ async function criaConta(env: Env, ctx: ComEspera, origem: string, perfis: Perfi
   const cid = crypto.randomUUID();
   perfis.forEach((x) => { x.id = crypto.randomUUID(); });
   await env.DB.batch(perfis.map((x) => env.DB.prepare(
-    "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, youtube, cidade, uf, seguidores, documento, conta_id, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
-  ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.youtube || "", x.cidade, x.uf, x.seguidores, x.documento, cid)).concat([
+    "INSERT INTO parceiros (id, tipo, nome, responsavel, whatsapp, email, instagram, youtube, cidade, uf, seguidores, documento, profissao, registro, conta_id, ativo, situacao, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pendente', 'cadastro')"
+  ).bind(x.id, x.tipo, x.nome, x.responsavel, x.whatsapp, email, x.instagram, x.youtube || "", x.cidade, x.uf, x.seguidores, x.documento, x.profissao || "", x.registro || "", cid)).concat([
     env.DB.prepare("INSERT INTO contas (id, parceiro_id, email, senha, google_sub) VALUES (?, ?, ?, ?, ?)").bind(cid, perfis[0].id, email, senha, sub),
   ]));
   ctx.waitUntil(avisaTardim(env, origem, perfis, email));
@@ -463,7 +469,7 @@ type PerfilEu = Pick<Parceiro, "id" | "tipo" | "nome" | "responsavel" | "whatsap
 async function eu(request: Request, env: Env): Promise<Response> {
   const conta = await contaDaSessao(request, env);
   if (!conta) throw new Erro(401, "Entre na sua conta.");
-  // Perfil principal primeiro, depois os outros na ordem assessoria, influenciador, embaixador
+  // Perfil principal primeiro, depois os outros na ordem assessoria, influenciador, profissional de Educação Física
   const perfis = (await env.DB.prepare(
     "SELECT id, tipo, nome, responsavel, whatsapp, instagram, cidade, logo, cor, ativo, situacao, motivo_recusa, criado_em, tiktok, tt_situacao, tt_seguidores, tt_conferido_em FROM parceiros " +
     "WHERE id = ?1 OR conta_id = ?2 ORDER BY id = ?1 DESC, CASE tipo WHEN 'assessoria' THEN 0 WHEN 'influenciador' THEN 1 ELSE 2 END"

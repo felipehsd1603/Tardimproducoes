@@ -5,9 +5,10 @@ import { api, enviaImagem, urlArquivo } from "../api.ts";
 import { aviso, cancelar, falha, filtros, ir, muda, nav, pega, usaEstado, voltarPara } from "../loja.tsx";
 import { Acoes, BarraForm, Bloco, Botao, Campo, Card, Escolha, Form, LinkExt, Marcador, Situacao, Tabela, Trilha, pergunta, perguntaTexto, useCampos } from "../ui.tsx";
 import { base, cidadeUf, comprimeLogo, dataCurtaHora, enc, linkWa, mascaraTel, PROFISSOES, semArroba, seguidoresTxt, slug, TIPOS, UFS } from "../util.ts";
-import type { Conexao, Integracao, Integracoes, Parceiro } from "../tipos.ts";
+import type { Conexao, Integracao, Integracoes, Parceiro, TipoParceiro } from "../tipos.ts";
 
-const opcoesTipo = Object.keys(TIPOS).map((k): [string, string] => [k, TIPOS[k]]);
+// "equipe" não aparece na lista: é a mesma categoria de assessoria
+const opcoesTipo = Object.keys(TIPOS).filter((k) => k !== "equipe").map((k): [string, string] => [k, TIPOS[k]]);
 const linkInsta = (u: string) => "https://www.instagram.com/" + semArroba(u) + "/";
 
 // Instagram conferido pela API da Meta (functions/_lib/instagram.ts, rota parceiros/<id>/instagram)
@@ -200,7 +201,7 @@ export function AbaParceiros() {
   const pend = parceiros.filter((p) => p.situacao === "pendente");
   const termo = slug(busca).replace(/-/g, " ");
   const lista = parceiros.filter((p) => {
-    if (tipo && p.tipo !== tipo) return false;
+    if (tipo && p.tipo !== tipo && !(tipo === "assessoria" && p.tipo === "equipe")) return false;
     if (!termo) return true;
     return slug([p.nome, p.responsavel, p.cidade, p.uf, p.instagram, p.youtube, p.tiktok].join(" ")).replace(/-/g, " ").indexOf(termo) >= 0;
   });
@@ -208,7 +209,7 @@ export function AbaParceiros() {
     <>
       {pend.length ? <CardPendentes lista={pend} /> : null}
       <Card passo="Cadastro" titulo="Parceiros">
-        <p className="muted">Embaixadores, influenciadores, assessorias e equipes. Cada parceiro pode ter convites em várias provas.</p>
+        <p className="muted">Assessorias, grupos e equipes, influenciadores e profissionais de Educação Física. Cada parceiro pode ter convites em várias provas.</p>
         <div className="painel-filtros">
           <Campo rotulo="Tipo"><Escolha opcoes={([["", "Todos os tipos"]] as [string, string][]).concat(opcoesTipo)} value={tipo} onChange={setTipo} /></Campo>
           <Campo rotulo="Busca"><input type="search" placeholder="Buscar por nome, cidade ou Instagram" value={busca} onChange={(e) => setBusca(e.target.value)} /></Campo>
@@ -263,7 +264,7 @@ interface ConfCref { registro: string; situacao: string; nome: string; em: strin
 export function FormParceiro({ p: original }: { p: Parceiro | null }) {
   const p: Partial<Parceiro> = original || { tipo: "embaixador", ativo: true };
   const { v, liga, muda: mudaCampo } = useCampos(() => ({
-    tipo: p.tipo || "embaixador", nome: p.nome || "", responsavel: p.responsavel || "", whatsapp: mascaraTel(p.whatsapp), email: p.email || "",
+    tipo: (p.tipo === "equipe" ? "assessoria" : p.tipo || "embaixador") as TipoParceiro, nome: p.nome || "", responsavel: p.responsavel || "", whatsapp: mascaraTel(p.whatsapp), email: p.email || "",
     instagram: p.instagram || "", youtube: p.youtube || "", cidade: p.cidade || "", uf: p.uf || "", seguidores: p.seguidores ? String(p.seguidores) : "",
     documento: p.documento || "", pix: p.pix || "", observacoes: p.observacoes || "", profissao: p.profissao || "", registro: p.registro || "",
     cor: "#" + (/^[0-9a-f]{6}$/i.test(p.cor || "") ? p.cor : "24325a"),
@@ -372,7 +373,7 @@ export function FormParceiro({ p: original }: { p: Parceiro | null }) {
           <Campo rotulo="Chave Pix" dica="Em nome do próprio parceiro."><input type="text" maxLength={120} {...liga("pix")} /></Campo>
           <Campo rotulo="Observações" cheio><textarea maxLength={1000} {...liga("observacoes")} /></Campo>
 
-          {/* Profissional (embaixador/influenciador): tipo e, no CREF6/MG, registro conferido na consulta pública do CREF6 (rota api/admin/cref6) */}
+          {/* Profissional (Ed. Física/influenciador): tipo e, no CREF6/MG, registro conferido na consulta pública do CREF6 (rota api/admin/cref6) */}
           <div className="assess-grid__full painel-identidade" hidden={equipe}>
             <Campo rotulo="Tipo de profissional">
               <Escolha opcoes={([["", "Não informado"]] as [string, string][]).concat(PROFISSOES.map((x): [string, string] => [x, x]))} value={v.profissao} onChange={(x) => mudaCampo("profissao", x)} />

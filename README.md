@@ -52,7 +52,7 @@ functions/api/inscricao.ts  função POST /api/inscricao: valida e grava a inscr
 painel/             painel da Tardim Produções em React + TypeScript (Vite): npm run painel:build gera admin.html e assets/painel/ (gerados, fora do git)
 admin-classico.html painel antigo (js/admin.js), mantido como reserva em /admin-classico até a conferência do painel novo
 site/pages/kit.astro  kit de divulgação de cada parceiro: js/kit.js
-site/pages/programa-embaixadores.astro  regras do programa de embaixadores
+site/pages/programa-embaixadores.astro  regras do programa de parceiros
 js/provas-db.js     provas e depoimentos do painel (no Cloudflare é respondido pelo banco; o arquivo é só reserva)
                     depoimentos: aba "Depoimentos" do painel; aparecem na página inicial e ao lado do orçamento em empresas.html (js/ui.js). Banco já criado: rode d1/migracoes/008-depoimentos.sql
 functions/api/admin/[[rota]].ts  API do painel: login, provas, parceiros, convites, imagens, orçamentos e inscrições
@@ -167,7 +167,7 @@ Para o servidor local, coloque a saída em `.dev.vars` como `TARDIM_ASSINATURA_J
 - **Banco já criado**: rode `d1/migracoes/013-integracoes.sql`.
 ## Área do parceiro (cadastro e login)
 
-`parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias, influenciadores e embaixadores se cadastram e entram. API em `functions/api/parceiro/`.
+`parceiro.html` (link "Área do parceiro" no rodapé) é onde assessorias/grupos/equipes, influenciadores e profissionais de Educação Física se cadastram e entram. São três categorias com o mesmo benefício (comissão padrão de 10%); no banco o profissional de Educação Física continua com a chave `embaixador` e `equipe` (cadastros antigos) aparece junto com assessoria. O CNPJ é opcional para grupos e equipes; o registro no CREF é obrigatório para o profissional de Educação Física. API em `functions/api/parceiro/`.
 
 - **Cadastro**: tipo, nome (ou nome da assessoria e responsável), WhatsApp (obrigatório), estado e cidade, Instagram e aceite da política de privacidade e das regras do programa. Influenciador também precisa informar o Instagram e o número estimado de seguidores. A cidade é escolhida digitando, com sugestões da lista do IBGE do estado escolhido (`functions/_lib/cidades.ts`, servida por `api/parceiro/cidades?uf=MG`); o servidor só aceita cidade da lista e grava o nome oficial, mesmo que a pessoa digite sem acento. Para atualizar a lista, baixe `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado` e gere o arquivo de novo. Entra com e-mail e senha (mínimo de 8 caracteres, guardada só como hash PBKDF2) ou pelo botão **Entrar com Google**. Quem entra com Google e ainda não tem cadastro completa os dados na sequência. Se o e-mail do Google já tiver cadastro com senha, as duas formas passam a valer na mesma conta.
 - **Aprovação**: o cadastro chega como parceiro com situação "pendente" e inativo. O painel abre na aba Parceiros, mostra "Parceiros (N novos)" e o bloco "Cadastros aguardando aprovação" com **Aprovar** e **Recusar** (o motivo da recusa aparece para o parceiro). Aprovado, o painel oferece a mensagem de aviso pelo WhatsApp.

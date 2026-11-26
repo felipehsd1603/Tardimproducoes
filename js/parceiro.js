@@ -1,6 +1,6 @@
 /*
  * Área do parceiro (parceiro.html): cadastro e login de assessorias,
- * influenciadores e embaixadores (e-mail e senha ou Google). O cadastro fica
+ * influenciadores e profissionais de Educação Física (e-mail e senha ou Google). O cadastro fica
  * pendente até a Tardim Produções aprovar no painel; aprovado, o parceiro vê
  * os convites dele com cupom, links e kit. API: functions/api/parceiro.
  */
@@ -15,9 +15,10 @@
   var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
     "agosto", "setembro", "outubro", "novembro", "dezembro"];
   var TIPOS = [
-    ["assessoria", "Assessoria de corrida", "Inscrição coletiva da equipe, cupom e kit de divulgação."],
+    ["assessoria", "Assessoria, grupo ou equipe", "Inscrição coletiva da equipe, cupom e kit de divulgação."],
     ["influenciador", "Influenciador", "Cupom e link próprios para divulgar as provas."],
-    ["embaixador", "Embaixador", "Profissionais e corredores que representam as provas."],
+    // A chave "embaixador" ficou no banco; a categoria agora é só para profissionais de Educação Física
+    ["embaixador", "Profissional de Educação Física", "Cupom e link próprios para os seus alunos. Precisa do registro no CREF."],
   ];
   var UFS = [["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"], ["BA", "Bahia"], ["CE", "Ceará"],
     ["DF", "Distrito Federal"], ["ES", "Espírito Santo"], ["GO", "Goiás"], ["MA", "Maranhão"], ["MT", "Mato Grosso"],
@@ -138,7 +139,7 @@
   // ---------- entrar / cadastrar ----------
   function telaAcesso(modo, google) {
     app.innerHTML = "";
-    if (lead) lead.textContent = "Assessorias, influenciadores e embaixadores: entre ou faça o seu cadastro.";
+    if (lead) lead.textContent = "Assessorias, grupos e equipes, influenciadores e profissionais de Educação Física: entre ou faça o seu cadastro.";
     var abas = el("div", "cal-tabs parc-abas");
     abas.setAttribute("role", "group");
     abas.setAttribute("aria-label", "Entrar ou cadastrar");
@@ -316,16 +317,19 @@
     var cNome = campo("Seu nome", nome, null, true);
     // Dados da assessoria (só quando "Assessoria" está marcada)
     var aNome = entrada("text", { maxLength: 120, autocomplete: "organization" });
-    var cANome = campo("Nome da assessoria", aNome, null, true);
+    var cANome = campo("Nome da assessoria, grupo ou equipe", aNome, null, true);
     var cnpj = entrada("text", { maxLength: 18, inputMode: "numeric", placeholder: "00.000.000/0000-00" });
-    var cCnpj = campo("CNPJ da assessoria", cnpj, "Obrigatório para assessoria.");
+    var cCnpj = campo("CNPJ", cnpj, "Opcional. Grupos e equipes sem CNPJ podem deixar em branco.");
     cnpj.addEventListener("input", function () {
       var d = cnpj.value.replace(/\D/g, "").slice(0, 14);
       cnpj.value = d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
         .replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
     });
     var aInsta = entrada("text", { maxLength: 100, placeholder: "@assessoria" });
-    var cAInsta = campo("Instagram da assessoria", aInsta, "Opcional.");
+    var cAInsta = campo("Instagram da assessoria, grupo ou equipe", aInsta, "Opcional.");
+    // Profissional de Educação Física: registro no CREF
+    var cref = entrada("text", { maxLength: 30, placeholder: "Ex.: 012345-G/MG" });
+    var cCref = campo("Registro no CREF", cref, "Obrigatório para profissional de Educação Física.", true);
     var wa = entrada("tel", { maxLength: 20, autocomplete: "tel", inputMode: "numeric", placeholder: "(31) 90000-0000" });
     // Máscara: (31) 99999-9999 para celular, (31) 3333-4444 para fixo; tira o +55 de quem cola com DDI
     wa.addEventListener("input", function () {
@@ -381,7 +385,7 @@
     var ir = el("button", "btn btn--red btn--lg assess-grid__full", "Enviar cadastro");
     ir.type = "submit";
 
-    f.append(tipos, cNome, cANome, cCnpj, cAInsta, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cYt, cSeg);
+    f.append(tipos, cNome, cANome, cCnpj, cAInsta, cCref, campo("WhatsApp", wa, null, true), campo("Estado", uf), cCidade, cInsta, cYt, cSeg);
     if (!google) f.append(campo("E-mail", email, null, true), campo("Senha", senha, "Pelo menos 8 caracteres."), campo("Repita a senha", senha2));
     f.append(lAceite, ir);
     c.append(f, erro);
@@ -390,7 +394,8 @@
     function ajusta() {
       var ass = tem("assessoria"), inf = tem("influenciador"), pessoa = inf || tem("embaixador");
       cANome.hidden = cCnpj.hidden = cAInsta.hidden = !ass;
-      cNome.querySelector("span").textContent = ass && !pessoa ? "Seu nome (responsável pela assessoria)" : "Seu nome";
+      cCref.hidden = !tem("embaixador");
+      cNome.querySelector("span").textContent = ass && !pessoa ? "Seu nome (responsável)" : "Seu nome";
       cInsta.hidden = ass && !pessoa;
       cSeg.hidden = cYt.hidden = !inf;
       cInsta.querySelector("small").textContent = inf ? "Obrigatório para influenciador." : "Opcional, mas ajuda na aprovação.";
@@ -408,11 +413,12 @@
       e.preventDefault();
       mostraErro(erro, "");
       var lista_ = TIPOS.map(function (t) { return t[0]; }).filter(tem);
-      var ass = tem("assessoria"), inf = tem("influenciador");
-      var falta = !lista_.length ? "Marque se você é assessoria, influenciador e/ou embaixador."
+      var ass = tem("assessoria"), inf = tem("influenciador"), prof = tem("embaixador");
+      var falta = !lista_.length ? "Marque se você é assessoria/grupo/equipe, influenciador e/ou profissional de Educação Física."
         : nome.value.trim().length < 2 ? "Informe o seu nome."
-        : ass && aNome.value.trim().length < 2 ? "Informe o nome da assessoria."
-        : ass && !cnpjOk(cnpj.value) ? "Informe um CNPJ válido da assessoria."
+        : ass && aNome.value.trim().length < 2 ? "Informe o nome da assessoria, grupo ou equipe."
+        : ass && cnpj.value.replace(/\D/g, "") && !cnpjOk(cnpj.value) ? "CNPJ inválido. Confira os números ou deixe em branco."
+        : prof && cref.value.replace(/\D/g, "").length < 3 ? "Informe o seu registro no CREF."
         : wa.value.replace(/\D/g, "").length < 10 ? "Informe um WhatsApp com DDD."
         : !uf.value ? "Escolha o estado."
         : !cidadeDaLista() ? "Escolha a cidade na lista (digite e toque na sugestão)."
@@ -428,6 +434,7 @@
         whatsapp: wa.value.trim(), uf: uf.value, cidade: cidadeDaLista(), instagram: cInsta.hidden ? "" : insta.value.trim(),
         seguidores: inf ? Number(seg.value.replace(/\D/g, "")) : 0, youtube: inf ? yt.value.trim() : "", aceite: true,
       };
+      if (prof) dados.cref = cref.value.trim();
       if (ass) { dados.assessoria_nome = aNome.value.trim(); dados.cnpj = cnpj.value; dados.assessoria_instagram = aInsta.value.trim(); }
       if (google) dados.credential = google.credential;
       else { dados.email = email.value.trim(); dados.senha = senha.value; }
@@ -501,7 +508,7 @@
     return c;
   }
 
-  // Um login pode ter vários perfis (assessoria, influenciador, embaixador): abas para trocar
+  // Um login pode ter vários perfis (assessoria, influenciador, profissional de Ed. Física): abas para trocar
   var perfilAtual = "";
   function area(d) {
     var perfis = d.perfis || [];
